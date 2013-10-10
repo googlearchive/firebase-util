@@ -1,6 +1,6 @@
 
-function MergedChild() {}
-MergedChild.prototype = {
+function JoinedRecord() {}
+JoinedRecord.prototype = {
    on:              function() {},
    off:             function() {},
    once:            function() {},

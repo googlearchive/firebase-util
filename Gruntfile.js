@@ -10,16 +10,16 @@ module.exports = function(grunt) {
          '<%= pkg.homepage ? "* " + pkg.homepage + "\\n" : "" %>' +
          '* Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>\n' +
          '* MIT LICENSE */\n\n(function(exports) {\n   "use strict";\n\n',
-      footer: '\n\n   exports.FirebaseJoin = FirebaseJoin;\n\n})( typeof(exports) === "undefined" || !exports? window : exports );\n',
+      footer: '})( typeof module !== "undefined" && module.exports? module.exports : [window.FirebaseUtil = {}][0] );\n',
 
       concat: {
          app: {
             options: { banner: '<%= banner %>', footer: '<%= footer %>' },
             src: [
                'src/FirebaseJoin.js',
-               'src/Snapshot.js',
-               'src/MergedChild.js',
-               'src/static_methods.js'
+               'src/JoinedSnapshot.js',
+               'src/JoinedRecord.js',
+               'src/exports.js'
             ],
             dest: 'fbjoin.js'
          }

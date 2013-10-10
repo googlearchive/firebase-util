@@ -1,6 +1,6 @@
 
-function Snapshot() {}
-Snapshot.prototype = {
+function JoinedSnapshot() {}
+JoinedSnapshot.prototype = {
    val:         function() {}, //todo
    child:       function() {}, //todo
    forEach:     function() {}, //todo
