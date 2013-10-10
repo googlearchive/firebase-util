@@ -252,7 +252,7 @@ a reference to all the joined paths, and providing most of the normal functional
    - **on**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance
    - **once**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance
    - **child**: returns a [JoinedRecord](#api_joinedrecord) instance
-   - **parent**: returns a [JoinedRecord](#api_joinedrecord) instance
+   - **parent**: <span style="color:red">throws an Error</span>
    - **name**: returns an array of path names, one for each path
    - **set**: see [Writing data](#writing_data)
    - **setWithPriority**: sets priority on all of the paths
