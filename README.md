@@ -31,7 +31,7 @@ An instance of this class can be used anywhere a normal Firebase reference would
 
 ### On the web:
 
-```
+```html
 <script src="http://static.firebase.com/v0/firebase.js"></script>
 <script src="fbjoin.min.js"></script>
 
@@ -43,7 +43,7 @@ An instance of this class can be used anywhere a normal Firebase reference would
 
 ### In node.js:
 
-```
+```javascript
 var FirebaseJoin = require('./fbjoin.js');
 var ref = new FirebaseJoin( new Firebase(PATH1), new Firebase(PATH2), ... );
 ref.on('child_added', function(snap) { console.log(snap.val()); });
@@ -60,7 +60,7 @@ the data to).
 
 For example, given this data:
 
-```
+```javascript
 {
    path1: {
       foo: {a: 1, b: 2},
@@ -75,7 +75,7 @@ For example, given this data:
 
 We could do any of these ops:
 
-```
+```javascript
    var fb = new Firebase(URL);
    var ref = FirebaseUtil.join( fb.child('path1'), fb.child('path2') )
 
@@ -100,7 +100,7 @@ Primitive values are stored using the path's parent name.
 
 For example, given this data:
 
-```
+```javascript
 {
    car: { 123: "Ford GT" }
    truck: { 123: "Ford F150" }
@@ -109,7 +109,7 @@ For example, given this data:
 
 We could do this:
 
-```
+```javascript
 var ref = new FirebaseJoin( new Firebase("INSTANCE/car"), new Firebase("INSTANCE/truck") );
 
 ref.once("value", ...);
@@ -121,7 +121,7 @@ ref.child(123).set({ car: "Ford Mustang", truck: "Ford Studebaker" });
 
 Conflicting field names can be resolved by adding a `.value` key to the `keyMap` property, [see key maps](#keymaps):
 
-```
+```javascript
 new FirebaseJoin( {ref: new Firebase('INSTANCE/car'), keyMap: {'.value': 'foo'}}, new Firebase('INSTANCE/truck') );
 // results: { 123: {foo: "Ford GT", truck: "Ford F150"} }
 ```
@@ -135,7 +135,7 @@ determines how to look up the secondary records. Note that at least one path mus
 
 For example, given this data structure:
 
-```
+```javascript
 {
    account: {
       kato: {
@@ -162,7 +162,7 @@ For example, given this data structure:
 
 We could use this join:
 
-```
+```javascript
 new FirebaseJoin(
     new Firebase('INSTANCE/account'),
     new Firebase('INSTANCE/profile'),
@@ -187,7 +187,7 @@ in the data to a particular path by adding a key map hash.
 
 For example, given this data:
 
-```
+```javascript
 {
    "profile": {
       "kato": {
@@ -207,7 +207,7 @@ For example, given this data:
 
 We could use do this:
 
-```
+```javascript
 var fb = new Firebase(URL);
 var ref = FirebaseUtil.join( {ref: fb.child('profile'), keyMap: {'name': 'profile_name'}}, fb.child('facebook_profile') );
 ref.once('value', function(snap) {
@@ -287,13 +287,13 @@ data from all the joined paths, and providing most of the normal snapshot functi
 
 If you don't have [Grunt](http://gruntjs.com/) installed, do it like so
 
-```
+```bash
 npm install -g grunt
 ```
 
 [Fork this project](https://help.github.com/articles/fork-a-repo) into your own GitHub repo
 
-```
+```bash
 git clone https://github.com/YOURNAME/FirebaseJoin.git
 cd FirebaseJoin
 npm install
@@ -304,7 +304,7 @@ grunt
 
 Add test cases to cover any new code you create. Make sure all test cases pass before committing changes.
 
-```
+```bash
 grunt test
 ```
 
