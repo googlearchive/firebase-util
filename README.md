@@ -18,6 +18,7 @@ An instance of this class can be used anywhere a normal Firebase reference would
     - [FirebaseUtil.join](#api_join)
     - [FirebaseUtil.union](#api_union)
     - [FirebaseUtil.intersection](#api_intersection)
+    - [JoinedRecord](#api_joinedrecord)
     - [JoinedSnapshot](#api_joinedsnapshot)
  - [Contributing](#contributing)
  - [License (MIT)](#license)
