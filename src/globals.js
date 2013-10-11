@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * @var {Object} a namespace to store internal tools and classes.
+ * @var {Object} a namespace to store internal utils for use by FirebaseUtil methods
  */
 var fbutil = {};
 

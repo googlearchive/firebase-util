@@ -1,9 +1,9 @@
-function JoinedSnapshot() {}
-
-JoinedSnapshot.prototype =
+var JoinedSnapshot =
 (function(exports, fbutil) {
 
-    return {
+   function JoinedSnapshot() {}
+
+   JoinedSnapshot.prototype = {
       val:         function() {}, //todo
       child:       function() {}, //todo
       forEach:     function() {}, //todo
@@ -14,6 +14,7 @@ JoinedSnapshot.prototype =
       ref:         function() {}, //todo
       getPriority: function() {}, //todo
       exportVal:   function() {}  //todo
-   }
+   };
 
+   return JoinedSnapshot;
 })(exports, fbutil);

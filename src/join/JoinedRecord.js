@@ -1,10 +1,10 @@
-function JoinedRecord() {}
-
-JoinedRecord.prototype =
+var JoinedRecord =
 (function(exports, fbutil) {
    "use strict";
 
-   return {
+   function JoinedRecord() {}
+
+   JoinedRecord.prototype = {
       //todo sorting?
 
       auth:            function() {}, // wrap
@@ -31,4 +31,5 @@ JoinedRecord.prototype =
       ref:             function() { return this; }
    };
 
+   return JoinedRecord;
 })(exports, fbutil);
