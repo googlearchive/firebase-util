@@ -16,19 +16,17 @@ module.exports = function(grunt) {
          app: {
             options: { banner: '<%= banner %>', footer: '<%= footer %>' },
             src: [
-               'src/FirebaseJoin.js',
-               'src/JoinedSnapshot.js',
-               'src/JoinedRecord.js',
-               'src/exports.js'
+               'src/globals.js',
+               'src/join/*.js'
             ],
-            dest: 'fbjoin.js'
+            dest: 'fbutil.js'
          }
       },
 
       uglify: {
          app: {
             files: {
-               'fbjoin.min.js': ['fbjoin.js']
+               'fbutil.min.js': ['fbutil.js']
             }
          }
       },
@@ -52,10 +50,7 @@ module.exports = function(grunt) {
          test: {
             options: {
                reporter: 'spec',
-               growl: true,
-               require: [
-                  './fbjoin.js'
-               ]
+               growl: true
             },
             src: ['test/**/*.js']
          }
