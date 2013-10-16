@@ -1,5 +1,4 @@
-(function(exports, fbutil) {
-   "use strict";
+(function(exports, fb) {
 
    /**
     * Sync to multiple Firebase paths and seamlessly merge the data into a single object.
@@ -27,4 +26,4 @@
     */
    exports.intersection = function() {};
 
-})(exports, fbutil);
+})(exports, fb);

@@ -3,30 +3,34 @@
 module.exports = function(grunt) {
    'use strict';
 
+   //todo add a grunt task to read all packages in src/ and link to their readme files and descriptions
+
    grunt.initConfig({
       pkg: grunt.file.readJSON('package.json'),
       banner: '/*! <%= pkg.title || pkg.name %> - v<%= pkg.version %> - ' +
          '<%= grunt.template.today("yyyy-mm-dd") %>\n' +
          '<%= pkg.homepage ? "* " + pkg.homepage + "\\n" : "" %>' +
          '* Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>\n' +
-         '* MIT LICENSE */\n\n(function(exports) {\n   "use strict";\n\n',
-      footer: '})( typeof module !== "undefined" && module.exports? module.exports : [window.FirebaseUtil = {}][0] );\n',
+         '* MIT LICENSE */\n\n(function(exports) {\n\n',
+      footer: '\n\n})( typeof module !== "undefined" && module.exports? module.exports : [window.Firebase.Util = {}][0] );\n',
 
       concat: {
          app: {
             options: { banner: '<%= banner %>', footer: '<%= footer %>' },
             src: [
-               'src/globals.js',
-               'src/join/*.js'
+               'src/global/util.js',
+               'src/global/logger.js',
+               'src/join/libs/*.js',
+               'src/join/exports.js'
             ],
-            dest: 'fbutil.js'
+            dest: 'firebase-utils.js'
          }
       },
 
       uglify: {
          app: {
             files: {
-               'fbutil.min.js': ['fbutil.js']
+               'firebase-utils.min.js': ['firebase-utils.js']
             }
          }
       },
@@ -49,10 +53,14 @@ module.exports = function(grunt) {
       mochaTest: {
          test: {
             options: {
-               reporter: 'spec',
-               growl: true
+               growl: true,
+               timeout: 5000
             },
-            src: ['test/**/*.js']
+            require: [
+               "chai"
+            ],
+            log: true,
+            src: ['test/*.js']
          }
       }
 
@@ -65,7 +73,7 @@ module.exports = function(grunt) {
    grunt.loadNpmTasks('grunt-notify');
    grunt.loadNpmTasks('grunt-mocha-test');
 
-   grunt.registerTask('make', ['concat', 'uglify']);
+   grunt.registerTask('make', ['concat', 'uglify', 'test']);
    grunt.registerTask('test', ['mochaTest']);
 
    grunt.registerTask('default', ['make', 'watch']);

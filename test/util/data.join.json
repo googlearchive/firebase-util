@@ -1,0 +1,39 @@
+{
+   "account": {
+      "kato": {
+         "email": "wulf@firebase.com",
+         "member_since": "2013"
+      }
+   },
+
+   "profile": {
+      "kato": {
+         "name": "Michael Wulf",
+         "nick": "Kato",
+         "style": "Kung Fu"
+      }
+   },
+
+   "styles": {
+      "Kung Fu": {
+         "description": "Chinese system based on physical exercises involving animal mimicry"
+      }
+   },
+
+   "unions": {
+      "fruit": {
+         "a": "apple",
+         "b": "banana"
+      },
+      "legume": {
+         "b": "baked beans",
+         "c": "chickpeas",
+         "d": "dry-roasted peanuts"
+      },
+      "veggie": {
+         "b": "broccoli",
+         "d": "daikon raddish",
+         "e": "elephant garlic"
+      }
+   }
+}

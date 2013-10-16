@@ -34,10 +34,10 @@ A JoinedRecord can be used anywhere a normal Firebase reference would work, incl
 
 ```html
 <script src="http://static.firebase.com/v0/firebase.js"></script>
-<script src="fbutil.min.js"></script>
+<script src="firebase-utils.min.js"></script>
 
 <script>
-   var ref = FirebaseUtil.join( new Firebase(PATH1), new Firebase(PATH2), ... );
+   var ref = Firebase.Util.join( new Firebase(PATH1), new Firebase(PATH2), ... );
    ref.on('child_added', function(snap) { console.log(snap.val()); });
 </script>
 ```
@@ -136,8 +136,9 @@ ref.once('value', ...);
 ## Dynamic Path Names
 
 To include records from paths which don't have matching key hierarchies, a mapping function can be provided in place
-of the Firebase ref. It will be passed a record from any intersecting path (whichever loads first) and
-determines how to look up the secondary records. Note that at least one path must exist which is a Firebase reference.
+of the Firebase ref. It will be called after all non-dynamic paths are loaded and merged, and given a snapshot containing
+ the merged record. It cannot depend on any data from other dynamic paths, and at least one path must exist
+ which is a Firebase reference and not dynamic;
 
 For example, given this data structure:
 
@@ -149,7 +150,7 @@ For example, given this data structure:
           member_since: "2013"
       }
    },
-//
+
    profile: {
       "kato": {
           name: "Michael Wulf",
@@ -157,7 +158,7 @@ For example, given this data structure:
           style: "Kung Fu"
       }
    },
-//
+
    styles: {
        "Kung Fu": {
           description: "Chinese system based on physical exercises involving animal mimicry"
@@ -172,15 +173,14 @@ We could use this join:
 FirebaseUtil.join(
     new Firebase('INSTANCE/account'),
     new Firebase('INSTANCE/profile'),
-    function(recordId, parentName, snapshot) {
-      if( parentName === 'profile' ) {
-         var style = snapshot.val().style;
+    function(recordId, snapshot) {
+       var style = snapshot.val().style;
+       if( style !== null ) {
          return new Firebase('INSTANCE/styles/'+style+'/description');
-      }
-      else {
-         // wait for the profile to load
-         return undefined;
-      }
+       }
+       else {
+         return null; // skipped for this record
+       }
     }
 );
 ```
@@ -252,8 +252,7 @@ The hash is structured as follows:
 
    - **ref**: {Firebase|Function} (required!) ref to the parent path for this set of records
    - **intersects**: {boolean} defaults to false, if true the join will only contain records that exist in this path
-   - **dataKey**: {string} specify the data key if this path contains primitive values
-   - **sortBy**: {boolean} sort records by this path's ordering
+   - **sortBy**: {boolean} sort records using this path's data?
    - **keyMap**: {Object} map fields specific to each Firebase ref, see [key maps](#keymaps)
 
 <a name="api"></a>
@@ -278,12 +277,12 @@ For example, given this data
       "fruit": {
          "a": "apple",
          "b": "banana"
-      }
+      },
       "legume": {
-         "b": "baked beans"
+         "b": "baked beans",
          "c": "chickpeas",
          "d": "dry-roasted peanuts"
-      }
+      },
       "veggie": {
          "b": "broccoli",
          "d": "daikon raddish",
@@ -329,12 +328,12 @@ For example, given this data
       "fruit": {
          "a": "apple",
          "b": "banana"
-      }
+      },
       "legume": {
-         "b": "baked beans"
+         "b": "baked beans",
          "c": "chickpeas",
          "d": "dry-roasted peanuts"
-      }
+      },
       "veggie": {
          "b": "broccoli",
          "d": "daikon raddish",
@@ -398,6 +397,18 @@ data from all the joined paths, and providing most of the normal snapshot functi
    - **exportVal**: returns the merged values by calling exportVal() on each path ref and extending the previous results
 
 <a name="contributing"></a>
+
+## Firebase.Util.enableDebugging(int)
+
+Set the level of debug output. Defaults to 0 (errors only). This can be set or changed at any time after Firebase.Util is loaded.
+
+  - 0: no output
+  - 1: errors
+  - 2: warnings and errors
+  - 3: info, warnings, errors
+  - 4: log, info, warnings, errors
+  - 5: debug, log, info, warnings, errors
+
 # Contributing
 
 ## Setup
@@ -414,12 +425,38 @@ npm install -g grunt
 git clone https://github.com/YOURNAME/FirebaseJoin.git
 cd FirebaseJoin
 npm install
+```
+
+Declare environment variables for testing. In Mac/Linux:
+
+```bash
+FIREBASE_TEST_URL="https://INSTANCE.firebaseio.com"
+FIREBASE_TEST_SECRET="xxoXaABB28..."
+```
+
+(For DOS use `set VAR=value`, for PowerShell, use `$env:VAR=value`)
+
+Set security rules on your development Firebase as follows:
+
+```json
+{
+  "rules": {
+    ".read": "auth.id !== null",
+    ".write": "auth.id !== null"
+  }
+}
+```
+
+Make project, monitor for changes, and automagically run test units:
+
+```bash
 grunt
 ```
 
 ## Testing
 
 Add test cases to cover any new code you create. Make sure all test cases pass before committing changes.
+You must declare `FIREBASE_TEST_URL` and `FIREBASE_TEST_SECRET` first. (see setup)
 
 ```bash
 grunt test
@@ -427,7 +464,13 @@ grunt test
 
 ## Committing changes
 
-See [Using Pull Requests](https://help.github.com/articles/using-pull-requests)
+See [Using Pull Requests](https://help.github.com/articles/using-pull-requests).
+
+Before submitting your pull requests, make sure your code meets the following criteria:
+
+ - all test units for all packages must pass (100% success rate)
+ - all public methods in your package must include a complete set of test cases
+ - README.md must be complete and include summary, examples, and API details
 
 <a name="license"></a>
 # LICENSE

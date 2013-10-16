@@ -1,7 +1,8 @@
 var assert = require('chai').assert;
-var FirebaseUtil = require('../fbutil.js');
 
 describe('join.JoinedSnapshot', function() {
+   var fb = require('../firebase-utils.js');
+
    describe('...', function() {
       it('should be tested');
    });
