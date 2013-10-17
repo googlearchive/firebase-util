@@ -111,6 +111,7 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should work with primitives', function(done) {
+         helpers.debugThisTest();
          new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
             expect(snap.val()).to.deep.equal({
                a: { fruit: "apple" },
@@ -136,8 +137,8 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it.only('should call "value" on a child_added event', function(done) {
-         helpers.debugThisTest(); //debug
+      it('should call "value" on a child_added event', function(done) {
+//         helpers.debugThisTest(); //debug
 
          function setVal(snap) {
             step = verify;

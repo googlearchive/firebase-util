@@ -143,16 +143,16 @@
       _pathEvent: function(path, event, snap, prevChild) {
          fb.log.debug('_pathEvent', event, path.toString(), snap.name(), path.getKeyMap());//debug
 
-         if( event !== 'value' && this.observers[event].length ) {
-            //todo
-            //todo add and monitor child recs
-            //todo
-            //todo
-            //todo
-            //todo
-            //todo
+         if( event !== 'value' && hasAnyObservers(this.observers) ) {
             join.buildSnapshot(this.child(snap.name()), function(joinedSnap) {
-               this.notifyAll(event, joinedSnap);
+               //todo
+               //todo It may be necessary to transform child events because the combined
+               //todo result may differ. For example, if a child rec already exists because
+               //todo another union path created it, it's now a child_changed instead of added
+               //todo or if a single path in a union is removed, it's a child_changed instead
+               //todo of a remove, so address these cases individually
+               //todo
+               this._notifyAll(event, joinedSnap, prevChild);
             }, this);
          }
 
@@ -241,6 +241,10 @@
          delete this.loadedChildRecs[rec.name()];
       }
    };
+
+   function hasAnyObservers(obs) {
+      return fb.util.find(obs, function(list) { return list.length > 0; }) !== undefined;
+   }
 
    /** add JoinedRecord to package
      ***************************************************/
