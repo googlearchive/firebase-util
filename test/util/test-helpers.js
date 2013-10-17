@@ -1,15 +1,17 @@
 
+var startedAt = new Date().getTime();
 var JQDeferred = require('JQDeferred');
 var Firebase = require('firebase');
 var URL = process.env.FIREBASE_TEST_URL;
 var SECRET = process.env.FIREBASE_TEST_SECRET;
+var fb = require('../../firebase-utils.js')._ForTestingOnly;
 var TokGen = new (require('firebase-token-generator'))(SECRET);
 if( !URL || !SECRET ) {
    throw new Error('Please declare environment variables FIREBASE_TEST_URL and FIREBASE_TEST_SECRET before invoking test units.');
 }
 var FB = new Firebase(URL);
 
-var utils = exports;
+var helpers = exports;
 
 /**
  * Set a value on a Firebase path
@@ -18,9 +20,9 @@ var utils = exports;
  * @param {*} data
  * @returns {JQDeferred}
  */
-utils.set = function(path, data) {
+helpers.set = function(path, data) {
    return JQDeferred(function(def) {
-      utils.ref(path).set(data, utils.handle(def));
+      helpers.ref(path).set(data, helpers.handle(def));
    })
 };
 
@@ -30,9 +32,9 @@ utils.set = function(path, data) {
  * @param {Array|String} path (arrays joined joined with /)
  * @returns {JQDeferred} resolves to the value
  */
-utils.get = function(path) {
+helpers.get = function(path) {
    return JQDeferred(function(def) {
-      utils.ref(path).once('value', function(snap) {
+      helpers.ref(path).once('value', function(snap) {
          def.resolve(snap.val());
       }, def.reject);
    });
@@ -44,7 +46,7 @@ utils.get = function(path) {
  * @param {Array|String} path (arrays joined joined with /)
  * @returns {Firebase}
  */
-utils.ref = function(path) {
+helpers.ref = function(path) {
    return path? FB.child(typeof(path)==='string'? path : path.join('/')) : FB;
 };
 
@@ -54,10 +56,10 @@ utils.ref = function(path) {
  * @param {Array|String} path (arrays joined joined with /)
  * @returns {JQDeferred}
  */
-utils.sup = function(path) {
+helpers.sup = function(path) {
    return JQDeferred(function(def) {
-      var ref = utils.ref(path);
-      ref.auth(SECRET, utils.handle(def, ref));
+      var ref = helpers.ref(path);
+      ref.auth(SECRET, helpers.handle(def, ref));
    });
 };
 
@@ -68,7 +70,7 @@ utils.sup = function(path) {
  * @param {JQDeferred} deferred
  * @returns {Function}
  */
-utils.handle = function(deferred) {
+helpers.handle = function(deferred) {
    var args = Array.prototype.slice.call(arguments, 1);
    return function(err) {
       var cbargs = Array.prototype.slice.call(arguments, 1);
@@ -84,38 +86,52 @@ utils.handle = function(deferred) {
  * @param {Array|String} path (arrays joined joined with /)
  * @returns {JQDeferred}
  */
-utils.auth = function(user, path) {
+helpers.auth = function(user, path) {
    return JQDeferred(function(def) {
-      var ref = utils.ref(path);
-      ref.auth( utils.tok(user), utils.handle(def, ref) );
+      var ref = helpers.ref(path);
+      ref.auth( helpers.tok(user), helpers.handle(def, ref) );
    });
 };
 
 /**
  * Calls Firebase.unauth()
  */
-utils.unauth = function() {
-   utils.ref().unauth();
+helpers.unauth = function() {
+   helpers.ref().unauth();
 };
 
 /**
- * Creates a Firebase auth token (usually just call utils.auth())
+ * Creates a Firebase auth token (usually just call helpers.auth())
  * @param {String} user
  * @returns {String} the token
  */
-utils.tok = function(user) {
+helpers.tok = function(user) {
    return TokGen.createToken({id: user});
 };
 
 /**
- * Makes all utils methods return promise objects and allows them to be chained
+ * Turns on all debugging until the test unit completes. Returns a new done() function
+ * for you to call after finishing.
+ * @param [level]
+ */
+helpers.debugThisTest = function(level) {
+   revertLogging = fb.log.logLevel(level||'debug');
+};
+var revertLogging;
+
+afterEach(function() {
+   revertLogging && revertLogging();
+});
+
+/**
+ * Makes all helpers methods return promise objects and allows them to be chained
  * (guaranteed to run in order). Also adds a special testDone() method to the chain
  * which can be called with mocha's async done() function to handle it's invocation
  * based on whether the chain succeeds or fails.
  *
  * Example:
  * <pre><code>
- *    utils.chain()
+ *    helpers.chain()
  *       // log in as super user
  *       .sup()
  *       // remove widgets
@@ -134,13 +150,13 @@ utils.tok = function(user) {
  *       .testDone(done);
  * </code></pre>
  *
- * @returns {JQDeferred} with all methods from utils as deferrable calls
+ * @returns {JQDeferred} with all methods from helpers as deferrable calls
  */
-utils.chain = function() {
+helpers.chain = function() {
    var def = arguments[0] || JQDeferred().resolve();
-   for(var key in utils) {
-      if( utils.hasOwnProperty(key) ) {
-         def[key] = wrapFn(def, utils[key]);
+   for(var key in helpers) {
+      if( helpers.hasOwnProperty(key) ) {
+         def[key] = wrapFn(def, helpers[key]);
       }
    }
    def.testDone = function(done) {
@@ -150,7 +166,7 @@ utils.chain = function() {
    };
    var _then = def.then;
    def.then = function(successFn, errorFn) {
-      return utils.chain(_then.call(def, successFn, errorFn));
+      return helpers.chain(_then.call(def, successFn, errorFn));
    };
    return def;
 };
@@ -162,7 +178,7 @@ function argsAsArray(argThing) {
 function wrapFn(chain, fn) {
    return function() {
       var origArgs = argsAsArray(arguments);
-      return utils.chain(chain.then(function() {
+      return helpers.chain(chain.then(function() {
          return JQDeferred.when(fn.apply(null, origArgs));
       }));
    }

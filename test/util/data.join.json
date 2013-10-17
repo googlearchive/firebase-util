@@ -1,12 +1,21 @@
 {
    "account": {
+      "bruce": {
+         "email": "bruce@lee.com",
+         "name": "bruce"
+      },
       "kato": {
          "email": "wulf@firebase.com",
-         "member_since": "2013"
+         "name": "kato"
       }
    },
 
    "profile": {
+      "bruce": {
+         "name": "Bruce Lee",
+         "nick": "Little Phoenix",
+         "style": "Jeet Kune Do"
+      },
       "kato": {
          "name": "Michael Wulf",
          "nick": "Kato",
@@ -17,6 +26,9 @@
    "styles": {
       "Kung Fu": {
          "description": "Chinese system based on physical exercises involving animal mimicry"
+      },
+      "Jeet Kune Do": {
+         "description": "Eclectic/hybrid style of no style and philosophy of life founded by martial artist Bruce Lee with direct, non-classical, and straightforward movements."
       }
    },
 
@@ -34,6 +46,15 @@
          "b": "broccoli",
          "d": "daikon raddish",
          "e": "elephant garlic"
+      }
+   },
+
+   "ordered": {
+      "set1": {
+         "one": { }
+      },
+      "set2": {
+
       }
    }
 }

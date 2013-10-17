@@ -89,6 +89,10 @@ describe('global.js', function() {
       it('should work for many objects', function() {
          assert.deepEqual(fb.util.extend({}, {one: 1}, {two: 2}, {three: {thirty: 30}}, {four: 4}), {one: 1, two: 2, three: {thirty: 30}, four: 4});
       });
+
+      it('should recursively merge if true is passed as first arg', function() {
+         assert.deepEqual(fb.util.extend(true, {a: {one: 1}, b: 2}, {a: {two: 2}, b: 22}), {a: {one: 1, two: 2}, b: 22});
+      });
    });
 
    describe('#bind', function() {

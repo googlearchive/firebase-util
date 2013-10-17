@@ -1,33 +1,17 @@
 
-# Firebase Join Utils
+# Firebase.Util
 
-Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use all your favorite
-Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
-during set/update/remove ops.
+This is a collection of power toys (mostly experimental) for use in Firebase.
 
-A JoinedRecord can be used anywhere a normal Firebase reference would work, including [angularFire](http://angularfire.com/).
+## Libraries
 
- - [Usage](#usage)
-    - [Setup](#setup)
-    - [Writing data: set, update, remove, and push](#writing_data)
-    - [Working with primitives](#working_with_primitives)
-    - [Dynamic path names](#dynamic_path_names)
-    - [Dealing with conflicting fields (key maps)](#keymaps)
-    - [Queries: limit, startAt, and endAt](#queries)
-    - [Configuration options](#configuration_options)
- - [API](#api)
-    - [FirebaseUtil.join](#api_join)
-    - [FirebaseUtil.union](#api_union)
-    - [FirebaseUtil.intersection](#api_intersection)
-    - [JoinedRecord](#api_joinedrecord)
-    - [JoinedSnapshot](#api_joinedsnapshot)
- - [Contributing](#contributing)
- - [License (MIT)](#license)
+ - [Firebase.Util.Join](src/join/README.md)
+   Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use all your favorite
+   Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
+   during set/update/remove ops.
 
-<a name="usage"></a>
 # Usage
 
-<a name="setup"></a>
 ## Setup
 
 ### On the web:
@@ -50,364 +34,41 @@ var ref = FirebaseUtil.join( new Firebase(PATH1), new Firebase(PATH2), ... );
 ref.on('child_added', function(snap) { console.log(snap.val()); });
 ```
 
-<a name="writing_data"></a>
-## Writing data: set, update, remove, and push
+### Including specific packages
 
-Set, update, remove, and push operations behave logically, applying appropriate child sets of the data to their respective paths.
+Specific packages can be included separately by adding the package name:
+```html
+<script src="firebase-utils.join.min.js"></script>
+```
 
-If any of these operations could be called against an empty path or before data is downloaded using on() or once(), then
-you will need to specify a [key map](#keymaps) or these operations will fail with an error (we won't know where to map
-the data to).
+# Global Utilities
 
-For example, given this data:
+## Firebase.Util.logLevel(int)
+
+Log debugging info to JavaScript console (or command line in node.js). Defaults to 'warn' (errors and warnings).
+This can be set or changed at any time to any of the following:
 
 ```javascript
-{
-   path1: {
-      foo: {a: 1, b: 2},
-      bar: {a: 100, b: 200}
-   },
-   path1: {
-      foo: {c: 3},
-      bar: {c: 300}
-   }
-}
+Firebase.Util.logLevel(true);  // default logging (also accepts 'all' or 'on')
+Firebase.Util.logLevel(false); // all logging off (also accepts 0, 'off' or 'none')
+Firebase.Util.logLevel('error');
+Firebase.Util.logLevel('warn');
+Firebase.Util.logLevel('info');
+Firebase.Util.logLevel('log');
+Firebase.Util.logLevel('debug');
 ```
-
-We could do any of these ops:
+Additionally, the logLevel() method returns a `revert` function that can be used to restore the logging level to it's previous value:
 
 ```javascript
-   var fb = new Firebase(URL);
-   var ref = FirebaseUtil.join( fb.child('path1'), fb.child('path2') )
-
-   ref.child('foo').set({a: 11, c: 33});
-   // path1: { foo: {a: 11 /* b removed! */}, ... }, path2: { foo: {c: 33}, ... }
-   
-   ref..child('foo').update({b: 'hello'});
-   // path1: { foo: {a: 1, b: "hello"}, ... }, path2: { foo: {c: 3}, ... }
-   
-   ref.remove();
-   // path1: { /* foo removed! */, ... }, path2: { /* foo removed! */, ... }
-
-   ref.push({a: 1000, b: 2000, c: 3000});
-   // path1: { "-0xBAF...": {a: 1000, b: 2000}, ...}, path2: {"-0xBAF...": {c: 3000}, ...}
+// log a whole lotta junk
+var revert = Firebase.Util.logLevel('debug');
+/*
+   ...call some Firbase.Util commands...
+*/
+revert(); // revert to default logging
 ```
 
-<a name="working_with_primitives"></a>
-## Works with Primitives
-
-This class can accept paths that store primitives, objects, or arrays
-Primitive values are stored using the path's parent name.
-
-For example, given this data:
-
-```javascript
-{
-   car: { 123: "Ford GT" }
-   truck: { 123: "Ford F150" }
-}
-```
-
-We could do this:
-
-```javascript
-var ref = FirebaseUtil.join( new Firebase("INSTANCE/car"), new Firebase("INSTANCE/truck") );
-
-ref.once("value", ...);
-// results: { 123: {car: "Ford GT", truck: "Ford F150"} }
-
-ref.child(123).set({ car: "Ford Mustang", truck: "Ford Studebaker" });
-// in Firebase: { car: {123: "Ford Mustang"}, truck: {123: "Ford Studebaker"} }
-```
-
-Conflicting field names can be resolved by adding a `.value` key to the `keyMap` property, [see key maps](#keymaps):
-
-```javascript
-ver ref = FirebaseUtil.join(
-   {ref: new Firebase('INSTANCE/car'), keyMap: {'.value': 'foo'}},
-   new Firebase('INSTANCE/truck')
-)
-
-ref.once('value', ...);
-// results: { 123: {foo: "Ford GT", truck: "Ford F150"} }
-```
-
-<a name="dynamic_path_names"></a>
-## Dynamic Path Names
-
-To include records from paths which don't have matching key hierarchies, a mapping function can be provided in place
-of the Firebase ref. It will be called after all non-dynamic paths are loaded and merged, and given a snapshot containing
- the merged record. It cannot depend on any data from other dynamic paths, and at least one path must exist
- which is a Firebase reference and not dynamic;
-
-For example, given this data structure:
-
-```javascript
-{
-   account: {
-      kato: {
-          email: "wulf@firebase.com",
-          member_since: "2013"
-      }
-   },
-
-   profile: {
-      "kato": {
-          name: "Michael Wulf",
-          nick: "Kato",
-          style: "Kung Fu"
-      }
-   },
-
-   styles: {
-       "Kung Fu": {
-          description: "Chinese system based on physical exercises involving animal mimicry"
-       }
-   }
-}
-```
-
-We could use this join:
-
-```javascript
-FirebaseUtil.join(
-    new Firebase('INSTANCE/account'),
-    new Firebase('INSTANCE/profile'),
-    function(recordId, snapshot) {
-       var style = snapshot.val().style;
-       if( style !== null ) {
-         return new Firebase('INSTANCE/styles/'+style+'/description');
-       }
-       else {
-         return null; // skipped for this record
-       }
-    }
-);
-```
-
-<a name="keymaps"></a>
-## Dealing with conflicting fields (key maps)
-
-If there is no data at the path we are going to merge, or paths have conflicting field names, we can map each field
-in the data to a particular path by adding a key map hash.
-
-For example, given this data:
-
-```javascript
-{
-   "profile": {
-      "kato": {
-         "name": "Michael Wulf",
-         "email": "wulf@firebase.com"
-      }
-   },
-
-   "facebook_profile": {
-      "kato": {
-         "id": "A98441133B64",
-         "name": "Stupendous Man"
-      }
-   }
-}
-```
-
-We could use do this:
-
-```javascript
-var fb = new Firebase(URL);
-var ref = FirebaseUtil.join(
-   {ref: fb.child('profile'), keyMap: {'name': 'profile_name'}},
-   fb.child('facebook_profile')
-);
-
-ref.once('value', ...);
-// { kato: { profile_name: "Michael Wulf", name: "Stupendous Man", id: "A98441133B64" } }
-```
-
-Note that, because we declared a keyMap for the first ref, but didn't include email, that it doesn't exist in the results.
-Thus, a keymap could also be used to filter data added into the join. Be careful using this in conjunction with update()
-or set()!
-
-<a name="queries"></a>
-## Queries: limit, startAt, and endAt
-
-If you attempt to call limit(), startAt(), or endAt() on a [JoinedRecord](#api_joinedrecord) it will throw an Error.
-The desired behavior is very difficult to define in a global manner. (Feel free to send feedback if you come up
-with some applicable use cases! wulf@firebase.com)
-
-You can use query operations on a Firebase reference before passing it into the join/union/intersection methods. However,
- this probably only makes for intersecting paths, and probably only if exactly one path has these constraints. Otherwise,
- results are likely to contain senseless and disconnected data.
-
-```javascript
-var indexRef = new Firebase('URL/index_path').limit(10);
-FirebaseUtil.intersection( indexRef, new Firebase('URL/data_path') );
-```
-
-<a name="configuration_options"></a>
-## Configuration options
-
-The `paths` elements passed to the FirebaseJoin constructor contain a Firebase ref, a function, or a hash.
-The hash is structured as follows:
-
-   - **ref**: {Firebase|Function} (required!) ref to the parent path for this set of records
-   - **intersects**: {boolean} defaults to false, if true the join will only contain records that exist in this path
-   - **sortBy**: {boolean} sort records using this path's data?
-   - **keyMap**: {Object} map fields specific to each Firebase ref, see [key maps](#keymaps)
-
-<a name="api"></a>
-# API
-
-<a name="api_join"></a>
-## FirebaseUtil.join( path[, path...] )
-
-`@param {Firebase|Function|Object} path`: any number of paths to be joined, see [config](#configuration_options)
-
-<a name="api_union"></a>
-## FirebaseUtil.union( path[, path...] )
-
-`@param {Firebase|Function|Object} path`: any number of paths to be joined, see [config](#configuration_options)
-
-This returns the union of two or more paths (an OUTER JOIN).
-
-For example, given this data
-
-```json
-   {
-      "fruit": {
-         "a": "apple",
-         "b": "banana"
-      },
-      "legume": {
-         "b": "baked beans",
-         "c": "chickpeas",
-         "d": "dry-roasted peanuts"
-      },
-      "veggie": {
-         "b": "broccoli",
-         "d": "daikon raddish",
-         "e": "elephant garlic"
-      }
-   }
-```
-
-Calling union with all three paths:
-
-```javascript
-FirebaseUtil.union(
-   new Firebase('INSTANCE/fruit'),
-   new Firebase('INSTANCE/legume'),
-   new Firebase('INSTANCE/veggie')
-);
-```
-
-Produces this:
-
-```javascript
-  {
-     a: { fruit: "apple" },
-     b: { fruit:  "bannana", legume: "baked beans", veggie: "broccoli" },
-     c: { legume: "chickpeas" },
-     d: { legume: "dry-roasted peanuts", veggie: "daikon raddish" },
-     e: { veggie: "elephant garlic" }
-  }
-```
-
-<a name="api_intersection"></a>
-## FirebaseUtil.intersection( path[, path...] )
-
-`@param {Firebase|Function|Object} path`: any number of paths to be joined, see [config](#configuration_options)
-
-This is the intersection of the two or more paths (an INNER JOIN), so that only
-records existing in all paths provided are returned.
-
-For example, given this data
-
-```json
-   {
-      "fruit": {
-         "a": "apple",
-         "b": "banana"
-      },
-      "legume": {
-         "b": "baked beans",
-         "c": "chickpeas",
-         "d": "dry-roasted peanuts"
-      },
-      "veggie": {
-         "b": "broccoli",
-         "d": "daikon raddish",
-         "e": "elephant garlic"
-      }
-   }
-```
-
-Calling intersection with these paths:
-
-```javascript
-FirebaseUtil.intersection(
-    new Firebase('INSTANCE/fruit'),
-    new Firebase('INSTANCE/legume'),
-    new Firebase('INSTANCE/veggie')
- );
-```
-
-Produces this:
-
-```javascript
-  {
-     b: { fruit:  "bannana", legume: "baked beans", veggie: "broccoli" },
-  }
-```
-
-<a name="api_joinedrecord"></a>
-## JoinedRecord
-
-A wrapper on [Firebase](https://www.firebase.com/docs/javascript/firebase/index.html) containing
-a reference to all the joined paths, and providing most of the normal functionality, with some minor variations:
-
-   - **on**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance
-   - **once**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance
-   - **child**: returns a [JoinedRecord](#api_joinedrecord) instance
-   - **parent**: if created from JoinedRecord.child(), returns the parent JoinedRecord, otherwise, calls parent() on the first Firebase path in the join
-   - **name**: returns an array of path names, one for each path
-   - **set**: see [Writing data](#writing_data)
-   - **setWithPriority**: sets priority on all of the paths
-   - **setPriority**: sets priority on all of the paths
-   - **update**: see [Writing data](#writing_data)
-   - **remove**: removes records from all the joined paths
-   - **limit**: <span style="color:red">throws an Error</span>
-   - **endAt**: <span style="color:red">throws an Error</span>
-   - **startAt**: <span style="color:red">throws an Error</span>
-   - **push**: see [Writing data](#writing_data)
-   - **toString**: returns toString() for the first path in the join
-   - **transaction**: <span style="color:red">throws an Error</span>
-   - **onDisconnect**:  <span style="color:red">throws an Error</span>
-
-<a name="api_joinedsnapshot"></a>
-## JoinedSnapshot
-
-A wrapper on [DataSnapshot](https://www.firebase.com/docs/javascript/datasnapshot/index.html) containing
-data from all the joined paths, and providing most of the normal snapshot functionality with these minor variations:
-
-   - **child**: once a child ref is obtained, parent() will not return back to this merged snapshot, but rather to the path of that child's actual parent!
-   - **name**: returns an array of path names, one for each path
-   - **ref**: returns a [JoinedRecord](#api_joinedrecord) instance
-   - **getPriority**: returns an array of priorities, one for each path
-   - **exportVal**: returns the merged values by calling exportVal() on each path ref and extending the previous results
-
-<a name="contributing"></a>
-
-## Firebase.Util.enableDebugging(int)
-
-Set the level of debug output. Defaults to 0 (errors only). This can be set or changed at any time after Firebase.Util is loaded.
-
-  - 0: no output
-  - 1: errors
-  - 2: warnings and errors
-  - 3: info, warnings, errors
-  - 4: log, info, warnings, errors
-  - 5: debug, log, info, warnings, errors
+Debugging can also be enabled in the browser by adding `debugLevel=x` into the url's query parameters. This allows one to turn on debugging for quick troubleshooting without having to modify any code.
 
 # Contributing
 

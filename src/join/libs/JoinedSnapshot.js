@@ -10,8 +10,9 @@
       val:         function() { return this.data; },
       child:       function() { return this.rec.child.apply(this.rec, fb.util.toArray(arguments)); },
       forEach:     function(cb) {
-         fb.util.each(this.data, function(v, k) {
-            cb(new JoinedSnapshot(this.child(k), v));
+         // use find because if cb returns true, then forEach should exit
+         return !!fb.util.find(this.data, function(v, k) {
+            return cb(new JoinedSnapshot(this.child(k), v));
          }, this);
       },
 

@@ -49,6 +49,19 @@ be called with a printf-like logic and all other arguments are substituted into 
    -  %j - JSON.
    -  % - single percent sign ('%'). This does not consume an argument.
 
+All of the following are valid log function calls:
+
+```javascript
+fb.log('hello %s', "world");
+fb.log('json value: %j', {foo: bar}, 'more', 'args', 'not in sprintf');  // additional args are sent directly to console
+
+fb.log.debug('hello %s', "world");
+fb.log.log('hello %s', "world");
+fb.log.info('hello %s', "world");
+fb.log.warn('hello %s', "world");
+fb.log.error('hello %s', "world");
+```
+
 ## Testing
 
 All packages must include a complete set of test units. See [test/README.md](../test/README.md) for details.

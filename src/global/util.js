@@ -24,7 +24,7 @@ else {
    var util = fb.package('util');
 
    util.isObject = function(v) {
-      return !!v && typeof(v) === 'object';
+      return v !== null && typeof(v) === 'object';
    };
 
    util.isArray = function(v) {
@@ -39,14 +39,14 @@ else {
       var args = util.toArray(arguments);
       var recurse = args[0] === true;
       recurse && args.shift();
-      for(var i=1; i<arguments.length; i++) {
-         for(var key in arguments[i]) {
-            if(arguments[i].hasOwnProperty(key)) {
-               arguments[0][key] = recurse && util.isObject(arguments[0][key])? util.extend(true, arguments[0][key], arguments[i][key]) : arguments[i][key];
+      for(var i= 1, len=args.length; i < len; i++) {
+         for(var key in args[i]) {
+            if(args[i].hasOwnProperty(key)) {
+               args[0][key] = recurse && util.isObject(args[0][key])? util.extend(true, args[0][key], args[i][key]) : args[i][key];
             }
          }
       }
-      return arguments[0];
+      return args[0];
    };
 
    util.bind = function(fn, scope) {

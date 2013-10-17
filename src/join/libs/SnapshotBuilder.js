@@ -1,6 +1,17 @@
 (function(exports, fb) {
    var join = fb.package('join');
 
+   /**
+    * Builds snapshots by calling once('value', ...) against each path. Paths are resolved iteratively so
+    * that dynamic paths can be loaded once enough data is present for their needs. All data is applied
+    * in the order the paths were declared (not in the order they return from Firebase) ensuring merging
+    * looks correct.
+    *
+    * Use this by calling fb.package('join').buildSnapshot(...).
+    *
+    * @param {JoinedRecord} rec
+    * @constructor
+    */
    function SnapshotBuilder(rec) {
       this.rec = rec;
       this.observers = [];
@@ -35,6 +46,9 @@
       },
 
       /**
+       * Each time new paths resolve, call this again with the latest snapshot available, so that we can try to
+       * resolve any remaining dynamic paths. Once all paths have resolved, this will also trigger finalize().
+       *
        * @param [newestSnap]
        */
       _processPathsAgain: function(newestSnap) {
@@ -60,6 +74,7 @@
             fb.util.each(this.subs, function(s) { s(); });
             this.subs = null;
             this.snapshot = new join.JoinedSnapshot(this.rec, mergeValue(this.valueParts));
+            fb.log.debug('finalized snapshot "%j"', this.snapshot.val()); //debug
             if( this.groupedPaths.unresolved.length ) {
                fb.log('%d unresolved paths were not included in this snapshot', this.groupedPaths.unresolved.length);
             }
@@ -69,8 +84,8 @@
 
       _notify: function() {
          var snapshot = this.snapshot;
-         fb.util.each(this.observers, function(obs) {
-            obs[0].apply(obs[1], [snapshot].concat(obs.splice(2)));
+         fb.util.each(this.observers, function(obsArgs) {
+            obsArgs[0].apply(obsArgs[1], [snapshot].concat(obsArgs.splice(2)));
          });
          this.observers = [];
       },
@@ -80,14 +95,15 @@
          var myIndex = parts[1];
          this.callbacksExpected++;
          disposable(this.subs, path.ref(), 'value', function(snap) {
-            var v = snap.val();
-            if( v === null ) {
+            fb.log.debug('_loadIntersection: loaded path "%s" with value "%j"', path.toString(), snap.val());
+            if( snap.val() === null ) {
                // all intersected values must be present or the total value is null
+               // so we can abort the load here and send out notifications
                this.valueParts = [];
                this._finalize();
             }
             else {
-               this.valueParts[myIndex] = v;
+               this.valueParts[myIndex] = createValue(path, snap);
                this._callbackCompleted();
             }
          }, this);
@@ -98,7 +114,8 @@
          var myIndex = parts[1];
          this.callbacksExpected++;
          disposable(this.subs, path.ref(), 'value', function(snap) {
-            this.valueParts[myIndex] = snap.val();
+            fb.log.debug('_loadUnion: loaded path "%s" with value "%j"', path.toString(), snap.val());
+            this.valueParts[myIndex] = createValue(path, snap);
             this._callbackCompleted();
          }, this);
       },
@@ -121,8 +138,41 @@
                this._loadUnion(parts);
             }
          }
+         else {
+            fb.log.info('Could not resolve dynamic path "%s" for snapshot "%j"', path.toString(), snap.val());
+         }
       }
    };
+
+   function createValue(path, snap) {
+      var snapVal = snap.val(), finalVal = null;
+      if( snapVal !== null ) {
+         if( path.isJoinedChild() ) {
+            if( fb.util.isObject(snapVal) ) {
+               finalVal = snapVal;
+            }
+            else {
+               var key = findPrimitiveKey(path);
+               finalVal = {};
+               finalVal[key] = snapVal;
+            }
+         }
+         else {
+            // if this is the joined parent, then we check each child to see if it's a primitive
+            finalVal = {};
+            snap.forEach(function(ss) {
+               finalVal[ss.name()] = createValue(path.childPath(ss.ref(), ss.name()), ss);
+            });
+         }
+      }
+      return finalVal;
+   }
+
+   function findPrimitiveKey(path) {
+      var keyMap = path.getKeyMap();
+      if( keyMap['.value'] ) { return keyMap['.value']; }
+      else { return path.name(); }
+   }
 
    function mergeValue(parts) {
       var out = fb.util.extend.apply(null, [true, {}].concat(parts));

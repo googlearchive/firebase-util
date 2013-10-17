@@ -1,47 +1,59 @@
 
 var expect = require('chai').expect;
 var fb = require('../firebase-utils.js')._ForTestingOnly;
-var utils = require('./util/test.util.js');
+var helpers = require('./util/test-helpers.js');
 var data = require('./util/data.join.json');
 
 describe('join.JoinedRecord', function() {
    var JoinedRecord = fb.join.JoinedRecord;
 
    before(function(done){
-//      utils.chain().sup().set(null, data).unauth().testDone(done);
-      utils.chain().set(null, data).testDone(done);
+//      helpers.chain().sup().set(null, data).unauth().testDone(done);
+      helpers.chain().set(null, data).testDone(done);
    });
 
    after(function() {
-      utils.unauth();
+      helpers.unauth();
    });
 
    describe('<constructor>', function() {
       it('should throw an error if there are no Firebase refs (cannot all be dynamic functions)', function() {
          expect(function() {
-            new JoinedRecord(function() {});
-         }).to.throw(Error, /[Nn]o valid Firebase ref/);
+            new JoinedRecord({ref: function() {}, keyMap: { hello: 'world' }, pathName: 'test'});
+         }).to.throw(Error, /no valid Firebase/i);
+      });
+
+      it('should throw an error if passed a dynamic ref and there is no pathName', function() {
+         expect(function() {
+            new JoinedRecord({ref: function() {}, keyMap: { foo: 'bar' }});
+         }).to.throw(Error, /pathName/);
+      });
+
+      it('should throw an error if passed a dynamic ref and there is no keyMap', function() {
+         expect(function() {
+            new JoinedRecord({ref: function() {}, pathName: 'test'});
+         }).to.throw(Error, /keyMap/);
       });
    });
 
    describe('#auth', function() {
       it('should invoke callback with err if not successful', function(done) {
-         new JoinedRecord(utils.ref('path1'), utils.ref('path2')).auth('not a valid secret', function(err, auth) {
+         new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).auth('not a valid secret', function(err, auth) {
             expect(err).to.exist;
             done();
          });
       });
 
       it('should succeed with a valid token', function(done) {
-         new JoinedRecord(utils.ref()).auth(utils.tok('test-user'), function(err) {
+         new JoinedRecord(helpers.ref('test')).auth(helpers.tok('test-user'), function(err) {
             expect(err).not.to.exist;
             done();
          });
       });
 
       it('should cause .info/authenticated to be true', function(done) {
-         new JoinedRecord(utils.ref()).auth(utils.tok('test-user'), function() {
-            utils.chain()
+         new JoinedRecord(helpers.ref('test')).auth(helpers.tok('test-user'), function() {
+            helpers.chain()
                .get('.info/authenticated')
                .then(function(v) {
                   expect(v).to.be.true;
@@ -53,12 +65,12 @@ describe('join.JoinedRecord', function() {
 
    describe('#unauth', function() {
       it('should cause .info/authenticated to become false', function(done) {
-         utils.chain()
+         helpers.chain()
             .auth('test-user')
             .get('.info/authenticated')
             .then(function(v) {
                expect(v).to.be.true;
-               new JoinedRecord(utils.ref('path1')).unauth();
+               new JoinedRecord(helpers.ref('path1')).unauth();
             })
             .get('.info/authenticated')
             .then(function(v) {
@@ -70,40 +82,117 @@ describe('join.JoinedRecord', function() {
 
    describe('#on', function() {
       it('should return a JoinedSnapshot', function(done) {
-         new JoinedRecord(utils.ref('account')).on('value', function(snap) {
+         new JoinedRecord(helpers.ref('account/kato')).on('value', function(snap) {
             expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
             snap.ref().off();
             done();
          });
       });
 
-      it('should merge data in order paths were added');
+      it('should merge data in order paths were added', function(done) {
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile')).on('value', function(snap) {
+            expect(snap.val()).to.deep.equal({
+               "bruce": {
+                  "email": "bruce@lee.com",
+                  "name": "Bruce Lee",
+                  "nick": "Little Phoenix",
+                  "style": "Jeet Kune Do"
+               },
+               "kato": {
+                  "email": "wulf@firebase.com",
+                  "name": "Michael Wulf",
+                  "nick": "Kato",
+                  "style": "Kung Fu"
+               }
+            });
+            snap.ref().off();
+            done();
+         });
+      });
 
-      it('should update when a record is added later');
+      it('should work with primitives', function(done) {
+         new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
+            expect(snap.val()).to.deep.equal({
+               a: { fruit: "apple" },
+               b: { fruit: "banana", legume: "baked beans" },
+               c: { legume: "chickpeas" },
+               d: { legume: "dry-roasted peanuts" }
+            });
+            snap.ref().off();
+            done();
+         });
+      });
+
+      it('should put values in correct keys if keyMap overrides them', function(done) {
+         new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
+            expect(snap.val()).to.deep.equal({
+               a: { fruit: "apple" },
+               b: { fruit: "banana", legume: "baked beans" },
+               c: { legume: "chickpeas" },
+               d: { legume: "dry-roasted peanuts" }
+            });
+            snap.ref().off();
+            done();
+         });
+      });
+
+      it.only('should call "value" on a child_added event', function(done) {
+         helpers.debugThisTest(); //debug
+
+         function setVal(snap) {
+            step = verify;
+            helpers.ref('account/john').set({name: 'john'});
+         }
+
+         function verify(snap) {
+            expect(snap.val()).to.deep.equal({
+               "bruce": {
+                  "email": "bruce@lee.com",
+                  "name": "Bruce Lee",
+                  "nick": "Little Phoenix",
+                  "style": "Jeet Kune Do"
+               },
+               "kato": {
+                  "email": "wulf@firebase.com",
+                  "name": "Michael Wulf",
+                  "nick": "Kato",
+                  "style": "Kung Fu"
+               },
+               "john": {
+                  "name": "john"
+               }
+            });
+            snap.ref().off();
+            done();
+         }
+
+         var step = setVal;
+
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile')).on('value', function(snap) {
+            // the first time this is called with empty callback to skip the pre-add notification
+            step(snap);
+         });
+      });
+
+      it('should call "value" on a child_removed event');
+
+      it('should call "value" on a child_changed event');
+
+      it('should call "value" on a child_moved event');
+
+      it('should be union if no intersecting paths are declared');
 
       it('should not call child_added until all intersecting paths exist');
 
       it('should not call child_removed until all intersecting paths are removed');
 
-      it('should call child_added immediately if there are no intersecting paths (a union)');
+      it('should call child_added for any preloaded records when on() is declared');
 
       it('should not call child_removed until last path is removed if no intersecting paths (a union)');
 
       it('should accept a single path');
 
       it('should accept paths that don\'t exist (that just return null)');
-
-      it('should return everything for value');
-
-      it('should call value on a child_added event');
-
-      it('should call value on a child_removed event');
-
-      it('should call value on a child_changed event');
-
-      it('should call value on a child_moved event');
-
-      it('should be union if no intersecting paths are declared');
 
       it('should return null if any intersecting path is null');
 
@@ -175,7 +264,7 @@ describe('join.JoinedRecord', function() {
    describe('#onDisconnect', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(utils.ref('path1'), utils.ref('path2')).onDisconnect();
+            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).onDisconnect();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -183,7 +272,7 @@ describe('join.JoinedRecord', function() {
    describe('#limit', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(utils.ref('path1'), utils.ref('path2')).limit();
+            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).limit();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -191,7 +280,7 @@ describe('join.JoinedRecord', function() {
    describe('#endAt', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(utils.ref('path1'), utils.ref('path2')).endAt();
+            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).endAt();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -199,7 +288,7 @@ describe('join.JoinedRecord', function() {
    describe('#startAt', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(utils.ref('path1'), utils.ref('path2')).startAt();
+            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).startAt();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -207,7 +296,7 @@ describe('join.JoinedRecord', function() {
    describe('#transaction', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(utils.ref('path1'), utils.ref('path2')).transaction();
+            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).transaction();
          }).to.throw(fb.NotSupportedError);
       });
   });

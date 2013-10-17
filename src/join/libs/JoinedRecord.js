@@ -85,7 +85,7 @@
                ref = test.child(firstPart);
             }
             else {
-               fb.log.warn('Child path "'+firstPart+'" not found in any of my joined paths (you probably need a keyMap); I am returning a child ref from the first joined path, which may not be what you wanted');
+               fb.log.warn('Key "%s" not found in any of my joined paths (is it in your keyMap?); I am returning a child ref from the first joined path, which may not be what you wanted', firstPart);
                ref = this.firstRef.child(firstPart);
             }
          }
@@ -120,7 +120,7 @@
       ref:             function() { return this; },
 
       //////// methods that are not allowed
-      onDisconnect:    function() { throw new Error('onDisconnect() not supported on JoinedRecord'); }, //todo
+      onDisconnect:    function() { throw new Error('onDisconnect() not supported on JoinedRecord'); },
       limit:           function() { throw new Error('limit not supported on JoinedRecord; try calling limit() on ref before passing into Firebase.Util'); },
       endAt:           function() { throw new Error('endAt not supported on JoinedRecord; try calling endAt() on ref before passing into Firebase.Util'); },
       startAt:         function() { throw new Error('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into Firebase.Util.join'); },
@@ -138,50 +138,29 @@
          });
       },
 
-      _applyEvent: function(path, event, snap, prevChild) {
-         if( event === 'child_removed' ) {
-
-         }
-         else if( event === 'child_moved' ) {
-
-         }
-         else {
-
-         }
-      },
-
       // this should never be called by a dynamic path, only by primary paths
       // that are controlling when a record gets created and processed
-      _pathEvent: function(path, snap, event, prevChild) {
-         fb.log('_pathEvent', event, path.toString(), snap.name(), path.keyMap); //debug
+      _pathEvent: function(path, event, snap, prevChild) {
+         fb.log.debug('_pathEvent', event, path.toString(), snap.name(), path.getKeyMap());//debug
 
-         if( event !== 'value' ) {
-            var rec = this.child(snap.name());
-            rec._applyEvent(path, event, snap, prevChild);
-            if( event === 'child_added' ) {
-               //todo
-               //todo
-               //todo
-               //todo
-               //todo
-            }
-            else {
-               //todo
-               //todo
-               //todo
-               //todo
-               //todo
-               //todo
-            }
-
-            //todo store the record and monitor it for updates
-
-            rec._notifyWhenLoaded(event, this.observers[event], prevChild);
+         if( event !== 'value' && this.observers[event].length ) {
+            //todo
+            //todo add and monitor child recs
+            //todo
+            //todo
+            //todo
+            //todo
+            //todo
+            join.buildSnapshot(this.child(snap.name()), function(joinedSnap) {
+               this.notifyAll(event, joinedSnap);
+            }, this);
          }
 
-         join.buildSnapshot(this, function(snap) {
-            this._notifyAll('value', snap);
-         }, this);
+         if( this.observers['value'].length ) {
+            join.buildSnapshot(this, function(joinedSnap) {
+               this._notifyAll('value', joinedSnap);
+            }, this);
+         }
       },
 
       _loadPaths: function(paths) {
@@ -215,6 +194,9 @@
             });
          }
 
+         // if we're loading several records, wait for the prev record
+         // to do it's magic before we send our notifications (so they
+         // are sent in the same order Firebase would have sent them)
          if( prev instanceof JoinedRecord ) {
             prevName = prev.name();
             prev._whenLoaded(function() {
@@ -241,6 +223,22 @@
          if(!this.firstRef && path.ref()) {
             this.firstRef = path.ref();
          }
+      },
+
+      _addChildRec: function(rec, prevChild) {
+         //todo
+         //todo
+         //todo
+         //todo
+         //todo
+      },
+
+      _removeChildRec: function(rec) {
+         var i = fb.util.indexOf(this.sortedChildKeys, rec.name());
+         if( i > -1 ) {
+            this.sortedChildKeys.splice(i, 1);
+         }
+         delete this.loadedChildRecs[rec.name()];
       }
    };
 
