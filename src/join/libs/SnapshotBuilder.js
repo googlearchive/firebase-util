@@ -1,5 +1,8 @@
 (function(exports, fb) {
-   var join = fb.package('join');
+   var undefined;
+   var util = fb.pkg('util');
+   var log  = fb.pkg('log');
+   var join = fb.pkg('join');
 
    /**
     * Builds snapshots by calling once('value', ...) against each path. Paths are resolved iteratively so
@@ -7,7 +10,7 @@
     * in the order the paths were declared (not in the order they return from Firebase) ensuring merging
     * looks correct.
     *
-    * Use this by calling fb.package('join').buildSnapshot(...).
+    * Use this by calling fb.pkg('join').buildSnapshot(...).
     *
     * @param {JoinedRecord} rec
     * @constructor
@@ -21,7 +24,13 @@
       this.state = 'unloaded';
       this.snapshot = null;
       this.subs = [];
-      this.groupedPaths = groupPaths(rec.paths);
+      this.pendingPaths = groupPaths(rec.paths);
+      log.debug('SnapshotBuilder<constructor>(%s) intersects: %d, unions: %d, unresolved: %d',
+         rec,
+         this.pendingPaths.intersects.length,
+         this.pendingPaths.unions.length,
+         this.pendingPaths.unresolved.length
+      );
    }
 
    SnapshotBuilder.prototype = {
@@ -30,62 +39,49 @@
        * @param [context]
        */
       value: function(callback, context) {
-         this.observers.push(fb.util.toArray(arguments));
+         this.observers.push(util.toArray(arguments));
          if( this.state === 'loaded' ) {
             this._notify();
          }
-         else {
+         else if( this.state === 'unloaded' ) {
             this._process();
          }
          return this;
       },
 
-      _process: function() {
-         this.state = 'processing';
-         this._processPathsAgain();
+      ref: function() {
+         return this.rec;
       },
 
-      /**
-       * Each time new paths resolve, call this again with the latest snapshot available, so that we can try to
-       * resolve any remaining dynamic paths. Once all paths have resolved, this will also trigger finalize().
-       *
-       * @param [newestSnap]
-       */
-      _processPathsAgain: function(newestSnap) {
-         if( this.state !== 'loaded' ) {
-            fb.util.each(this.groupedPaths.intersects, this._loadIntersection, this);
-            fb.util.each(this.groupedPaths.unions, this._loadUnion, this);
-            this.groupedPaths.intersects = [];
-            this.groupedPaths.unions = [];
-            newestSnap && fb.util.each(this.groupedPaths.unresolved, function(path) {
-               this._tryToResolve(path, newestSnap);
-            }, this);
-            if( this.callbacksExpected === this.callbacksReceived ) {
-               // either all paths have resolved or those which cannot be resolved will never resolve
-               // so it's time to call this mission completed
-               this._finalize();
-            }
-         }
+      _process: function() {
+         this.state = 'processing';
+
+         // load all intersecting paths and then all unions
+         util.each(this.pendingPaths.intersects, this._loadIntersection, this);
+
+         // and then all unions
+         util.each(this.pendingPaths.unions, this._loadUnion, this);
       },
 
       _finalize: function() {
+         // should only be called exactly once
          if( this.state !== 'loaded' ) {
             this.state = 'loaded';
-            fb.util.each(this.subs, function(s) { s(); });
+            util.each(this.subs, function(s) { s(); });
             this.subs = null;
             this.snapshot = new join.JoinedSnapshot(this.rec, mergeValue(this.valueParts));
-            fb.log.debug('finalized snapshot "%j"', this.snapshot.val()); //debug
-            if( this.groupedPaths.unresolved.length ) {
-               fb.log('%d unresolved paths were not included in this snapshot', this.groupedPaths.unresolved.length);
+            log('SnapshotBuilder(%s): finalized snapshot "%j"', this.rec, this.snapshot.val());
+            if( this.pendingPaths.unresolved.length ) {
+               log.info('%d unresolved paths were not included in this snapshot', this.pendingPaths.unresolved.length);
             }
-            this._notify();
+            util.defer(this._notify, this);
          }
       },
 
       _notify: function() {
          var snapshot = this.snapshot;
-         fb.util.each(this.observers, function(obsArgs) {
-            obsArgs[0].apply(obsArgs[1], [snapshot].concat(obsArgs.splice(2)));
+         util.each(this.observers, function(obsArgs) {
+            obsArgs[0].apply(obsArgs[1]||null, [snapshot].concat(obsArgs.splice(2)));
          });
          this.observers = [];
       },
@@ -94,8 +90,9 @@
          var path = parts[0];
          var myIndex = parts[1];
          this.callbacksExpected++;
-         disposable(this.subs, path.ref(), 'value', function(snap) {
-            fb.log.debug('_loadIntersection: loaded path "%s" with value "%j"', path.toString(), snap.val());
+//         log('_loadIntersection: initialized "%s"', path.toString());
+         deferredDisposable(this.subs, path.ref(), 'value', function(snap) {
+//            log('SnapshotBuilder._loadIntersection completed "%s" with value "%j"', path.toString(), snap.val());
             if( snap.val() === null ) {
                // all intersected values must be present or the total value is null
                // so we can abort the load here and send out notifications
@@ -104,7 +101,7 @@
             }
             else {
                this.valueParts[myIndex] = createValue(path, snap);
-               this._callbackCompleted();
+               this._callbackCompleted(snap);
             }
          }, this);
       },
@@ -113,24 +110,40 @@
          var path = parts[0];
          var myIndex = parts[1];
          this.callbacksExpected++;
-         disposable(this.subs, path.ref(), 'value', function(snap) {
-            fb.log.debug('_loadUnion: loaded path "%s" with value "%j"', path.toString(), snap.val());
+//         log('_loadUnion: initialized "%s"', path.toString());
+         deferredDisposable(this.subs, path.ref(), 'value', function(snap) {
+//            log('_loadUnion: completed "%s" with value "%j"', path.toString(), snap.val());
             this.valueParts[myIndex] = createValue(path, snap);
-            this._callbackCompleted();
+            util.defer(this._callbackCompleted, this);
          }, this);
       },
 
       _callbackCompleted: function() {
          if( this.callbacksExpected === ++this.callbacksReceived) {
-            // once all the intersect and join ops are retrieved, try resolving any dynamic paths again
-            this._processPathsAgain(new join.JoinedSnapshot(this.rec, mergeValue(this.valueParts)));
+            if( this.pendingPaths.unresolved.length ) {
+               // when all the intersect and join ops are retrieved, try resolving any dynamic paths
+               this._resolveDynamicPaths(new join.JoinedSnapshot(this.rec, mergeValue(this.valueParts)));
+            }
+
+            if( this.callbacksExpected === this.callbacksReceived ) {
+               // either all dynamic paths are resolved or cannot be resolved,
+               // so it's time to call this mission completed
+               this._finalize();
+            }
          }
+      },
+
+      _resolveDynamicPaths: function(newestSnap) {
+         // try to resolve any unresolved dynamic paths which depend on data from the unions/intersections
+         newestSnap && util.each(this.pendingPaths.unresolved, function(path) {
+            this._tryToResolve(path, newestSnap);
+         }, this);
       },
 
       _tryToResolve: function(parts, snap) {
          var path = parts[0];
          if( path.tryResolve(snap) ) {
-            removeItem(this.groupedPaths.unresolved, parts);
+            removeItem(this.pendingPaths.unresolved, parts);
             if( path.isIntersection() ) {
                this._loadIntersection(parts);
             }
@@ -139,16 +152,16 @@
             }
          }
          else {
-            fb.log.info('Could not resolve dynamic path "%s" for snapshot "%j"', path.toString(), snap.val());
+            log.info('Could not resolve dynamic path "%s" for snapshot "%j"', path, snap.val());
          }
       }
    };
 
    function createValue(path, snap) {
       var snapVal = snap.val(), finalVal = null;
-      if( snapVal !== null ) {
+      if( snapVal !== null && snapVal !== undefined ) {
          if( path.isJoinedChild() ) {
-            if( fb.util.isObject(snapVal) ) {
+            if( util.isObject(snapVal) ) {
                finalVal = snapVal;
             }
             else {
@@ -175,14 +188,14 @@
    }
 
    function mergeValue(parts) {
-      var out = fb.util.extend.apply(null, [true, {}].concat(parts));
-      return fb.util.isEmpty(out)? null : out;
+      var out = util.extend.apply(null, [true, {}].concat(parts));
+      return util.isEmpty(out)? null : out;
    }
 
    function groupPaths(paths) {
       var out = { intersects: [], unions: [], dynamics: [], unresolved: [], expect: 0 };
 
-      fb.util.each(paths, function(path) {
+      util.each(paths, function(path) {
          // we can't use dynamic paths; if this is a child, it's already resolved
          // if it's the parent, then dynamic paths are useless to us
          if( path.isUnresolved() || !path.isDynamic() ) {
@@ -192,7 +205,7 @@
             else { out.unions.push(parts); }
          }
          else {
-            fb.log("Called 'value' on a JoinedRecord which contains dynamic paths (they were excluded): %s", this.rec.toString());
+            log("Called 'value' on a JoinedRecord which contains dynamic paths (they were excluded): %s", this.rec.toString());
          }
       });
 
@@ -200,18 +213,26 @@
    }
 
    function removeItem(list, item) {
-      var i = fb.util.indexOf(list, item);
+      var i = util.indexOf(list, item);
       if( i > -1 ) {
          list.splice(i, 1);
       }
    }
 
-   function disposable(subs, ref, event, fn, context) {
-      ref.once(event, fn, context);
-      subs.push(function() {
-         ref.off(event, fn, context);
+   function deferredDisposable(subs, ref, event, fn, context) {
+      // if Firebase data is cached locally, this method could return before all the
+      // load methods have even been called, causing some issues with the counters
+      // so we defer to ensure everything is counted
+      util.defer(function() {
+         ref.once(event, fn, context);
+         subs.push(function() {
+            ref.off(event, fn, context);
+         });
       });
    }
+
+   // intended for use with instanceof; should use fb.join.buildSnapshot() to instantiate
+   join.SnapshotBuilder = SnapshotBuilder;
 
    /**
     * Any additional args passed to this method will be returned to the callback, after the snapshot, upon completion
@@ -219,10 +240,10 @@
     * @param [callback]
     * @param [context]
     */
-   fb.join.buildSnapshot = function(rec, callback, context) {
+   join.buildSnapshot = function(rec, callback, context) {
       var snap = new SnapshotBuilder(rec);
       if( callback ) {
-         snap.value.apply(snap, fb.util.toArray(arguments).slice(1));
+         snap.value.apply(snap, util.toArray(arguments).slice(1));
       }
       return snap;
    };

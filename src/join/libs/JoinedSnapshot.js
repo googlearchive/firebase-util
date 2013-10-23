@@ -1,5 +1,5 @@
 (function(exports, fb) {
-   fb.package('join');
+   fb.pkg('join');
 
    function JoinedSnapshot(rec, data) {
       this.rec = rec;
@@ -12,7 +12,9 @@
       forEach:     function(cb) {
          // use find because if cb returns true, then forEach should exit
          return !!fb.util.find(this.data, function(v, k) {
-            return cb(new JoinedSnapshot(this.child(k), v));
+            if( v !== null && v !== undefined ) {
+               return cb(new JoinedSnapshot(this.child(k), v));
+            }
          }, this);
       },
 

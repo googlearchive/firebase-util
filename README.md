@@ -114,14 +114,18 @@ Make project, monitor for changes, and automagically run test units:
 grunt
 ```
 
+## Best Practices
+
+Read the [README.md under src/](src/README.md) for an overview of the standards, code structure, and utilities for development.
+
 ## Testing
 
 Add test cases to cover any new code you create. Make sure all test cases pass before committing changes.
-You must declare `FIREBASE_TEST_URL` and `FIREBASE_TEST_SECRET` first. (see setup)
+You must declare `FIREBASE_TEST_URL` and `FIREBASE_TEST_SECRET` first. (see setup).
 
-```bash
-grunt test
-```
+You can run all test units at any time using `grunt test` or automagically after changes by using `grunt watch`.
+
+Read the [README.md under test/](test/README.md) for details about test standards, structure, and helper methods.
 
 ## Committing changes
 

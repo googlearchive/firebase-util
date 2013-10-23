@@ -72,7 +72,11 @@
          case '%d':
             return parseInt(v, 10);
          case '%j':
-            return fb.util.isObject(v)? JSON.stringify(v) : v+'';
+            v =  fb.util.isObject(v)? JSON.stringify(v) : v+'';
+            if(v.length > 500) {
+               v = v.substr(0, 500)+'.../*truncated*/...}';
+            }
+            return v;
          case '%s':
             return v + '';
          default:

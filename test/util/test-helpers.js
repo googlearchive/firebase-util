@@ -64,6 +64,15 @@ helpers.sup = function(path) {
 };
 
 /**
+ * Reset all Firebase data and log in as super
+ * @param {Object} json data to load into Firebase instance
+ * @param {Function} [done] optionally call this method when finished
+ */
+helpers.reset = function(json, done) {
+   return helpers.chain().sup().set(null, json).testDone(done||function() {});
+};
+
+/**
  * Handle a standard node.js callback (error first) and resolve on completion. Any additional arguments
  * passed to this method are passed into resolve on success.
  *
@@ -110,9 +119,10 @@ helpers.tok = function(user) {
 };
 
 /**
- * Turns on all debugging until the test unit completes. Returns a new done() function
- * for you to call after finishing.
- * @param [level]
+ * Turns on fb.log reporting until the test unit completes (automagically reverted to what it was before the test).
+ * The log level defaults to 'debug'
+ *
+ * @param {String|int} [level]
  */
 helpers.debugThisTest = function(level) {
    revertLogging = fb.log.logLevel(level||'debug');
@@ -162,7 +172,7 @@ helpers.chain = function() {
    def.testDone = function(done) {
       // if done is passed any arguments, other than an Error, it will freak
       // so wrap the success callback
-      def.then(function() { done(); }, done);
+      return def.fail(done).done(function() { done(); });
    };
    var _then = def.then;
    def.then = function(successFn, errorFn) {

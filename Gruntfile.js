@@ -12,14 +12,13 @@ module.exports = function(grunt) {
          '<%= pkg.homepage ? "* " + pkg.homepage + "\\n" : "" %>' +
          '* Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>\n' +
          '* MIT LICENSE */\n\n(function(exports) {\n\n',
-      footer: '\n\n})( typeof module !== "undefined" && module.exports? module.exports : [window.Firebase.Util = {}][0] );\n',
+      footer: '\n\n})( typeof window !== "undefined"? [window.Firebase.Util = {}][0] : module.exports );\n',
 
       concat: {
          app: {
             options: { banner: '<%= banner %>', footer: '<%= footer %>' },
             src: [
-               'src/global/util.js',
-               'src/global/logger.js',
+               'src/global/*.js',
                'src/join/libs/*.js',
                'src/join/exports.js'
             ],

@@ -7,14 +7,11 @@ var data = require('./util/data.join.json');
 describe('join.JoinedRecord', function() {
    var JoinedRecord = fb.join.JoinedRecord;
 
-   before(function(done){
-//      helpers.chain().sup().set(null, data).unauth().testDone(done);
-      helpers.chain().set(null, data).testDone(done);
+   beforeEach(function(done){
+      helpers.reset(data, done);
    });
 
-   after(function() {
-      helpers.unauth();
-   });
+   afterEach(helpers.unauth);
 
    describe('<constructor>', function() {
       it('should throw an error if there are no Firebase refs (cannot all be dynamic functions)', function() {
@@ -111,7 +108,6 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should work with primitives', function(done) {
-         helpers.debugThisTest();
          new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
             expect(snap.val()).to.deep.equal({
                a: { fruit: "apple" },
@@ -137,8 +133,8 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should call "value" on a child_added event', function(done) {
-//         helpers.debugThisTest(); //debug
+      it.only('should call "value" on a child_added event', function(done) {
+         helpers.debugThisTest(null); //debug
 
          function setVal(snap) {
             step = verify;

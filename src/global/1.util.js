@@ -19,9 +19,9 @@ else {
     * Creates a namespace for packages inside the fb object
     * @param {String} name
     */
-   fb.package = function(name) { fb[name] || (fb[name] = {}); return fb[name]; };
+   fb.pkg = function(name) { fb[name] || (fb[name] = {}); return fb[name]; };
 
-   var util = fb.package('util');
+   var util = fb.pkg('util');
 
    util.isObject = function(v) {
       return v !== null && typeof(v) === 'object';
@@ -31,8 +31,9 @@ else {
       return (Array.isArray || isArray).call(null, v);
    };
 
-   util.toArray = function(vals) {
-      return util.map(vals, function(v, k) { return v; });
+   util.toArray = function(vals, startFrom) {
+      var newVals = util.map(vals, function(v, k) { return v; });
+      return startFrom > 0? newVals.slice(startFrom) : newVals;
    };
 
    util.extend = function(){
@@ -59,8 +60,9 @@ else {
     * @returns {boolean}
     */
    util.isEmpty = function(vals) {
-      if( !util.isObject(vals) ) { return false; }
-      return util.find(vals, function(v) { return true; }) === undefined;
+      return vals === undefined || vals === null ||
+         (util.isArray(vals) && vals.length === 0) ||
+         (util.isObject(vals) && !util.contains(vals, function(v) { return true; }));
    };
 
    /**
@@ -112,6 +114,24 @@ else {
       return undefined;
    };
 
+   util.has = function(vals, key) {
+      return (util.isArray(vals) && vals[key] !== undefined)
+         || (util.isObject(vals) && vals.hasOwnProperty(key))
+         || false;
+   };
+
+   util.contains = function(vals, iterator, scope) {
+      if( typeof(iterator) !== 'function' ) {
+         if( util.isArray(vals) ) {
+            return util.indexOf(vals, iterator) > -1;
+         }
+         iterator = (function(testVal) {
+            return function(v) { return v === testVal; }
+         })(iterator);
+      }
+      return util.find(vals, iterator, scope) !== undefined;
+   };
+
    util.each = function(vals, cb, scope) {
       if( isArguments(vals) ) { vals = Array.prototype.slice.call(vals, 0); }
       if( util.isArray(vals) ) {
@@ -129,6 +149,87 @@ else {
 
    util.indexOf = function(list, item) {
       return (list.indexOf || indexOf).call(list, item);
+   };
+
+   /**
+    * Invoke a function after a setTimeout(..., 0), to help convert synch callbacks to async ones.
+    * Additional args after `scope` will be passed to the fn when it is invoked
+    *
+    * @param {Function} fn
+    * @param {Object} scope the `this` scope inside `fn`
+    */
+   util.defer = function(fn, scope) {
+      var args = util.toArray(arguments);
+      setTimeout(util.bind.apply(null, args), 0);
+   };
+
+   /**
+    * Inherit prototype of another JS class.
+    *
+    * @param {Function} InheritingClass
+    * @param {Function|Object} InheritedClassOrInstance
+    * @param {Object} [moreFns]
+    * @returns {Function}
+    */
+   util.inherit = function(InheritingClass, InheritedClassOrInstance, moreFns) {
+      if( typeof(InheritedClassOrInstance) === 'function' ) {
+         InheritedClassOrInstance = new InheritedClassOrInstance();
+      }
+      InheritingClass.prototype = InheritedClassOrInstance;
+      if( moreFns ) {
+         util.extend(InheritingClass.prototype, moreFns);
+      }
+      return InheritingClass;
+   };
+
+   /**
+    * Call a method on each instance contained in the list. Any additional args are passed into the method.
+    *
+    * @param {Object|Array} list contains instantiated objects
+    * @param {String} methodName
+    * @return {Array}
+    */
+   util.call = function(list, methodName) {
+      var args = util.toArray(arguments, 2);
+      var res = [];
+      util.each(list, function(o) {
+         o && typeof(o[methodName]) === 'function' && res.push(o[methodName].apply(o, args));
+      });
+      return res;
+   };
+
+   /**
+    * Determine if two variables are equal. They must be:
+    *  - of the same type
+    *  - arrays must be same length and all values pass isEqual()
+    *  - objects must contain the same keys and their values pass isEqual()
+    *  - primitives must pass ===
+    *
+    * @param a
+    * @param b
+    * @returns {boolean}
+    */
+   util.isEqual = function(a, b) {
+      if( a === b ) { return true; }
+      else if( typeof(a) !== typeof(b) ) {
+         return false;
+      }
+      else if( util.isObject(a) && util.isObject(b) ) {
+         var isA = util.isArray(a);
+         var isB = util.isArray(b);
+         if( isA || isB ) {
+            return isA && isB && a.length === b.length && !util.has(a, function(v, i) {
+               return !util.isEqual(v, b[i]);
+            });
+         }
+         else {
+            return util.isEqual(util.keys(a).sort(), util.keys(b).sort())
+               && !util.has(a, function(v, k) { return !util.isEqual(v, b[k]) });
+         }
+      }
+      else {
+         return false;
+      }
    };
 
    // a polyfill for Function.prototype.bind (invoke using call or apply!)

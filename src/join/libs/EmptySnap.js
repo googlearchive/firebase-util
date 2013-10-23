@@ -25,6 +25,6 @@
    function no() { return false; }
    function noop() { return null; }
 
-   fb.package('join').EmptySnap = EmptySnap;
+   fb.pkg('join').EmptySnap = EmptySnap;
 
 })(fb);

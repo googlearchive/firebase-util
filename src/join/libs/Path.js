@@ -1,22 +1,22 @@
 (function (fb) {
    "use strict";
-
-   var join = fb.package('join');
+   var undefined;
+   var util = fb.pkg('util');
+   var join = fb.pkg('join');
 
    /** PATH
     ***************************************************
     * @private
     * @constructor
     */
-   function Path(props, rec) {
+   function Path(props) {
       this.subs = [];
       this.props = buildPathProps(props);
-      this.rec = rec;
       this.resolveFn = null;
       if( !this.props.pathName ) {
          throw new Error('No pathName found; '+(this.props.ref && !this.props.ref.name()? 'path cannot be set to the Firebase root' : 'must be declared for dynamic paths'));
       }
-      if( fb.util.isEmpty(this.props.keyMap) ) {
+      if( util.isEmpty(this.props.keyMap) ) {
          if( this.props.ref ) {
             this._buildKeyMap();
          }
@@ -26,7 +26,7 @@
       }
    }
 
-   Path.prototype = {
+   join.Path = util.inherit(Path, new util.Observable(['child_added', 'child_removed', 'child_moved', 'child_changed', 'value']), {
       child: function(key, snap) {
          return this.props.childFn(key, snap);
       },
@@ -66,6 +66,7 @@
       isDynamic: function() { return !this.ref(); },
       isIntersection: function() { return this.props.intersects; },
       isSortBy: function() { return this.props.sortBy; },
+      setSortBy: function(b) { this.props.sortBy = b; },
       ref: function() { return this.props.ref; },
       hasKey: function(key) { return this.props.keyMap.hasOwnProperty(key); },
       isUnresolved: function() { return this.resolveFn !== null; },
@@ -81,18 +82,17 @@
          return !!ref;
       },
 
-      on: function(event) {
-         fb.log('Path.on(%s)', event); //debug
+      onObserverAdded: function(event, observer) {
          if( !this.isDynamic() && !this.subs[event] ) {
-            var fn = fb.util.bind(this._sendEvent, this, event);
+            var fn = util.bind(this._sendEvent, this, event);
             this.subs[event] = this.props.ref.on(event, fn, function(err) {
                fb.log.error(err);
             });
          }
       },
 
-      off: function(event) {
-         if( !this.isDynamic() && this.subs[event] ) {
+      onObserverRemoved: function(event) {
+         if( !this.hasObservers(event) && this.subs[event] ) {
             this.props.ref.off(event, this.subs[event]);
             delete this.subs[event];
          }
@@ -107,7 +107,10 @@
       },
 
       _sendEvent: function(event, snap, prevChild) {
-         this.props.callback(this, event, snap, prevChild);
+         if( !this.isJoinedChild() || event === 'value' || this.hasKey(snap.name()) ) {
+            fb.log.debug('Path(%s)::sendEvent(%s, %s): %j, %s)', this.name(), event, snap.name(), snap.val(), prevChild); //debug
+            this.triggerEvent(event, this, event, snap, prevChild);
+         }
       },
 
       // this should only ever be called on the master JoinedRecord
@@ -122,27 +125,25 @@
       },
 
       _loadKeyMapFromSnap: function(snap) {
-         if( snap.val() === null ) {
-            fb.log.warn('No keyMap found for "%s". This can happen because the path has no data and you have not passed the keyMap option in your properties hash (see "key maps" in src/join/README.md). If a set() or push() operation is called before any records are downloaded, then this path will be ignored and not properly included.', self.toString());
-         }
-         else {
+         var b = snap.val() !== null;
+         if( b ) {
             var km = this.props.keyMap = {};
-            if( fb.util.isObject(snap.val()) ) {
-               fb.util.each(snap.val(), function(v, k) { km[k] = k; });
+            if( util.isObject(snap.val()) ) {
+               util.each(snap.val(), function(v, k) { km[k] = k; });
             }
             else {
-               km['.value'] = this.pathName;
+               km['.value'] = this.props.pathName;
             }
          }
-         fb.log.debug('_loadKeyMapFromSnap', this.props.keyMap, snap.val(), this.toString());
-         return false;
+         fb.log.debug('_loadKeyMapFromSnap', this.toString(), this.props.keyMap);
+         return b;
       }
-   };
+   });
 
    /** UTILS
     ***************************************************/
 
-   function buildPathProps(props) {
+   function buildPathProps(props, allowSortPath) {
       if( props instanceof Firebase ) {
          props = propsFromRef(props);
       }
@@ -151,7 +152,7 @@
          props = propsFromHash(props);
       }
 
-      var out = fb.util.extend({
+      var out = util.extend({
          intersects: false,
          childFn: null,
          ref: null,
@@ -162,7 +163,10 @@
          callback: function(path, event, snap, prevChild) {}
       }, props);
 
-      if( fb.util.isArray(out.keyMap) ) {
+      // revoke the sortBy if caller says it's not allowed for this path
+      if( allowSortPath ) { out.sortBy = false; }
+
+      if( util.isArray(out.keyMap) ) {
          out.keyMap = arrayToMap(out.keyMap);
       }
       return out;
@@ -170,7 +174,7 @@
 
    function arrayToMap(map) {
       var out = {};
-      fb.util.each(map, function(m) {
+      util.each(map, function(m) {
          out[m] = m;
       });
       return out;
@@ -184,7 +188,7 @@
       else {
          addOpts = propsFromRef(props.ref);
       }
-      return fb.util.extend({}, props, addOpts, props.pathName? {pathName: props.pathName} : {});
+      return util.extend({}, props, addOpts, props.pathName? {pathName: props.pathName} : {});
    }
 
    function propsFromRef(ref) {
@@ -194,7 +198,5 @@
          pathName: ref.name()
       }
    }
-
-   join.Path = Path;
 
 })(fb);

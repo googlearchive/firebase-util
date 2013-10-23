@@ -13,13 +13,27 @@ Be sure to [include an appropriate require](http://chaijs.com/) for expect, shou
 ## Running Tests
 
     grunt test
+    grunt watch
 
-## Writing Tests
+## Test Standards
 
  - tests should be named test.`package`.`FileToTest`.js, where package is the directory under src/ where the package is kept
- - store data sets in test/util/data.`package`.json
+ - store data sets in test/util/data.`package`.json (keep data sets small and specific to the test units)
  - tests should clear all Firebase data and rebuild before each test (don't worry about cleanup after tests)
- - all tests are expected to authenticate before writing to the dev firebase (see test-helpers.js::utils.sup() method)
+ - all tests need to authenticate before writing to the dev firebase
+
+Here's a recommended before/after combo for any tests that need Firebase access:
+
+```javascript
+   var helpers = require('./util/test-helpers.js');
+   var data = require('./util/data.PACKAGE_NAME.json');
+
+   beforeEach(function(done) {
+      helpers.reset(data, done);
+   });
+
+   afterEach(helpers.unauth);
+```
 
 ## Test Helpers
 
@@ -35,4 +49,4 @@ and interacting with Firebase quickly. See inline docs for details. Here is a qu
    - **helpers.tok(user)**: create a Firebase auth token in format { id: user }
    - **helpers.handle(deferred)**: resolve or reject a deferred object when a standard node.js callback returns (e.g. function(err) {...})
    - **helpers.debugThisTest()**: temporarily set logging on full blast until this test unit finishes
-   - **helpers.chain()**: chain several helpers calls together: helpers.chain().sup().set(...).auth(...).get(...).then(...).done(...);
+   - **helpers.chain()**: chain several helpers calls together: helpers.chain().sup().set(...).auth(...).get(...).then(...).testDone(...);

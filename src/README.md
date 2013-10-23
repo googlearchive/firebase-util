@@ -18,7 +18,7 @@ Two global variables are made available to your library, `exports` and `fb`. You
 ```javascript
 (function(exports, fb) { // private scope for my package
    // declare my package in every lib and file I will access it from
-   var mypackage = fb.package('mypackage');
+   var mypackage = fb.pkg('mypackage');
 
    // available to any internal library by using fb.mypackage.utilityMethod
    mypackage.utilityMethod = function() {};
