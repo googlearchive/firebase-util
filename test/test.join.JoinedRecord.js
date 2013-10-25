@@ -80,8 +80,8 @@ describe('join.JoinedRecord', function() {
    describe('#on', function() {
       it('should return a JoinedSnapshot', function(done) {
          new JoinedRecord(helpers.ref('account/kato')).on('value', function(snap) {
-            expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
             snap.ref().off();
+            expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
             done();
          });
       });
@@ -109,26 +109,26 @@ describe('join.JoinedRecord', function() {
 
       it('should work with primitives', function(done) {
          new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
+            snap.ref().off();
             expect(snap.val()).to.deep.equal({
                a: { fruit: "apple" },
                b: { fruit: "banana", legume: "baked beans" },
                c: { legume: "chickpeas" },
                d: { legume: "dry-roasted peanuts" }
             });
-            snap.ref().off();
             done();
          });
       });
 
       it('should put values in correct keys if keyMap overrides them', function(done) {
          new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
+            snap.ref().off();
             expect(snap.val()).to.deep.equal({
                a: { fruit: "apple" },
                b: { fruit: "banana", legume: "baked beans" },
                c: { legume: "chickpeas" },
                d: { legume: "dry-roasted peanuts" }
             });
-            snap.ref().off();
             done();
          });
       });
@@ -137,11 +137,27 @@ describe('join.JoinedRecord', function() {
          helpers.debugThisTest(null); //debug
 
          function setVal(snap) {
+            expect(snap.val()).to.deep.equal({
+               "bruce": {
+                  "email": "bruce@lee.com",
+                  "name": "Bruce Lee",
+                  "nick": "Little Phoenix",
+                  "style": "Jeet Kune Do"
+               },
+               "kato": {
+                  "email": "wulf@firebase.com",
+                  "name": "Michael Wulf",
+                  "nick": "Kato",
+                  "style": "Kung Fu"
+               }
+            });
             step = verify;
             helpers.ref('account/john').set({name: 'john'});
          }
 
+         var ct = 0;
          function verify(snap) {
+            snap.ref().off();
             expect(snap.val()).to.deep.equal({
                "bruce": {
                   "email": "bruce@lee.com",
@@ -159,7 +175,6 @@ describe('join.JoinedRecord', function() {
                   "name": "john"
                }
             });
-            snap.ref().off();
             done();
          }
 

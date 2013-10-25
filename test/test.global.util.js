@@ -355,4 +355,12 @@ describe('global.js', function() {
       it('should be tested');
    });
 
+   describe('#inherit', function() {
+      it('should be tested');
+   });
+
+   describe('#bindAll', function() {
+      it('should be tested');
+   });
+
 });

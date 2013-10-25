@@ -24,13 +24,7 @@
       this.state = 'unloaded';
       this.snapshot = null;
       this.subs = [];
-      this.pendingPaths = groupPaths(rec.paths);
-      log.debug('SnapshotBuilder<constructor>(%s) intersects: %d, unions: %d, unresolved: %d',
-         rec,
-         this.pendingPaths.intersects.length,
-         this.pendingPaths.unions.length,
-         this.pendingPaths.unresolved.length
-      );
+      this.pendingPaths = groupPaths(rec.paths, rec.sortPath);
    }
 
    SnapshotBuilder.prototype = {
@@ -69,10 +63,10 @@
             this.state = 'loaded';
             util.each(this.subs, function(s) { s(); });
             this.subs = null;
-            this.snapshot = new join.JoinedSnapshot(this.rec, mergeValue(this.valueParts));
-            log('SnapshotBuilder(%s): finalized snapshot "%j"', this.rec, this.snapshot.val());
-            if( this.pendingPaths.unresolved.length ) {
-               log.info('%d unresolved paths were not included in this snapshot', this.pendingPaths.unresolved.length);
+            this.snapshot = new join.JoinedSnapshot(this.rec, mergeValue(this.pendingPaths.sortIndex, this.valueParts));
+//            log('Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val());
+            if( this.pendingPaths.dynamics.length ) {
+               log('%d dynamic paths were not included in this snapshot', this.pendingPaths.dynamics.length);
             }
             util.defer(this._notify, this);
          }
@@ -120,9 +114,9 @@
 
       _callbackCompleted: function() {
          if( this.callbacksExpected === ++this.callbacksReceived) {
-            if( this.pendingPaths.unresolved.length ) {
+            if( this.pendingPaths.dynamics.length ) {
                // when all the intersect and join ops are retrieved, try resolving any dynamic paths
-               this._resolveDynamicPaths(new join.JoinedSnapshot(this.rec, mergeValue(this.valueParts)));
+               this._resolveDynamicPaths(new join.JoinedSnapshot(this.rec, mergeValue(this.pendingPaths.sortIndex, this.valueParts)));
             }
 
             if( this.callbacksExpected === this.callbacksReceived ) {
@@ -134,16 +128,19 @@
       },
 
       _resolveDynamicPaths: function(newestSnap) {
-         // try to resolve any unresolved dynamic paths which depend on data from the unions/intersections
-         newestSnap && util.each(this.pendingPaths.unresolved, function(path) {
-            this._tryToResolve(path, newestSnap);
+         // try to resolve any dynamic paths which depend on data from the unions/intersections
+         newestSnap && util.each(this.pendingPaths.dynamics, function(parts) {
+            this._tryToResolve(parts, newestSnap);
          }, this);
       },
 
       _tryToResolve: function(parts, snap) {
          var path = parts[0];
-         if( path.tryResolve(snap) ) {
-            removeItem(this.pendingPaths.unresolved, parts);
+         if( !path.isJoinedChild() ) {
+            this._mergeDynamicChildren(parts);
+         }
+         else if( path.tryResolve(snap) ) {
+            removeItem(this.pendingPaths.dynamics, parts);
             if( path.isIntersection() ) {
                this._loadIntersection(parts);
             }
@@ -154,6 +151,18 @@
          else {
             log.info('Could not resolve dynamic path "%s" for snapshot "%j"', path, snap.val());
          }
+      },
+
+      _mergeDynamicChildren: function(parts) {
+         var path = parts[0];
+         var idx = parts[1];
+         var keys = {};
+         this.callbacksExpected++;
+         mergeDynamicVal(path, this.valueParts, util.bind(function(mergedVal) {
+            this.valueParts[idx] = mergedVal;
+            this.callbacksReceived++;
+            this._callbackCompleted();
+         }, this));
       }
    };
 
@@ -187,29 +196,39 @@
       else { return path.name(); }
    }
 
-   function mergeValue(parts) {
-      var out = util.extend.apply(null, [true, {}].concat(parts));
+   function mergeValue(sortIndex, valueParts) {
+      var out = util.extend({}, valueParts[sortIndex]);
+      util.each(valueParts, function(v, i) {
+         i === sortIndex || util.extend(true, out, v);
+      });
       return util.isEmpty(out)? null : out;
    }
 
-   function groupPaths(paths) {
-      var out = { intersects: [], unions: [], dynamics: [], unresolved: [], expect: 0 };
+   function groupPaths(paths, sortPath) {
+      var out = { intersects: [], unions: [], dynamics: [], expect: 0, sortIndex: 0 };
 
       util.each(paths, function(path) {
-         // we can't use dynamic paths; if this is a child, it's already resolved
-         // if it's the parent, then dynamic paths are useless to us
-         if( path.isUnresolved() || !path.isDynamic() ) {
-            var parts = [path, out.expect++];
-            if( path.isUnresolved() ) { out.unresolved.push(parts); }
-            else if( path.isIntersection() ) { out.intersects.push(parts); }
-            else { out.unions.push(parts); }
+         // child paths which are unresolved can be resolved after we fetch
+         if( !path.isDynamic() ) {
+            pathParts(out, sortPath, path);
          }
          else {
-            log("Called 'value' on a JoinedRecord which contains dynamic paths (they were excluded): %s", this.rec.toString());
+            // parent paths which are unresolved are a bit more tricky, store them separately (see _resolveDynamicPaths)
+            out.dynamics.push(path);
          }
       });
 
       return out;
+   }
+
+   function pathParts(pendingPaths, sortPath, path) {
+      if( path === sortPath ) {
+         pendingPaths.sortIndex = pendingPaths.expect;
+      }
+
+      var parts = [path, pendingPaths.expect++];
+      if( path.isIntersection() ) { pendingPaths.intersects.push(parts); }
+      else { pendingPaths.unions.push(parts); }
    }
 
    function removeItem(list, item) {
@@ -231,8 +250,41 @@
       });
    }
 
-   // intended for use with instanceof; should use fb.join.buildSnapshot() to instantiate
-   join.SnapshotBuilder = SnapshotBuilder;
+   function mergeDynamicVal(path, valParts, callback) {
+      var recsNeeded = 0, recsLoaded = 0, keysFound = {}, mergedVal = {};
+
+      util.each(valParts, loadKeysFrom);
+
+      function loadKeysFrom(valPart) {
+         util.each(valPart, function(v, k) {
+            if( !util.has(keysFound, k) ) {
+               keysFound[k] = true;
+               var ref = path.child(k);
+               ref && getRec(k, ref);
+            }
+         });
+      }
+
+      function getRec(key, ref) {
+         recsNeeded++;
+         // prevent synchronous callbacks from Firebase from causing it
+         // to complete before the next part to load has been counted
+         util.defer(function() {
+            ref.once('value', function(snap) {
+               doneLoadingRec(key, snap.val());
+            });
+         });
+      }
+
+      function doneLoadingRec(key, val) {
+         if( val !== null ) {
+            mergedVal[key] = val;
+         }
+         if( ++recsLoaded === recsNeeded ) {
+            callback(mergedVal);
+         }
+      }
+   }
 
    /**
     * Any additional args passed to this method will be returned to the callback, after the snapshot, upon completion
@@ -241,7 +293,21 @@
     * @param [context]
     */
    join.buildSnapshot = function(rec, callback, context) {
-      var snap = new SnapshotBuilder(rec);
+      //todo this can't handle the parent joins correctly if they have dynamic paths :(
+      var snap;
+      if( rec.currentValue !== undefined ) {
+         snap = {
+            value: function(callback) {
+               callback(new join.JoinedSnapshot(rec, rec.currentValue));
+            },
+            ref: function() {
+               return rec;
+            }
+         }
+      }
+      else {
+         snap = new SnapshotBuilder(rec);
+      }
       if( callback ) {
          snap.value.apply(snap, util.toArray(arguments).slice(1));
       }

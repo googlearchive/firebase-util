@@ -164,21 +164,34 @@ else {
    };
 
    /**
-    * Inherit prototype of another JS class.
+    * Inherit prototype of another JS class. Adds an _super() method for the constructor to call.
+    * It takes any number of arguments (whatever the inherited classes constructor methods are),
+    * the first of which must be the `this` instance.
+    *
+    * Limitations:
+    *    1. Inherited constructor must be callable with no arguments (to make instanceof work), but can be called
+    *       properly during instantiation with arguments by using _super(this, args...)
+    *    2. Can only inherit one super class, no exceptions
+    *    3. Cannot call prototype = {} after using this method
     *
     * @param {Function} InheritingClass
-    * @param {Function|Object} InheritedClassOrInstance
-    * @param {Object} [moreFns]
+    * @param {Function} InheritedClass a class which can be constructed without passing any arguments
     * @returns {Function}
     */
-   util.inherit = function(InheritingClass, InheritedClassOrInstance, moreFns) {
-      if( typeof(InheritedClassOrInstance) === 'function' ) {
-         InheritedClassOrInstance = new InheritedClassOrInstance();
-      }
-      InheritingClass.prototype = InheritedClassOrInstance;
-      if( moreFns ) {
-         util.extend(InheritingClass.prototype, moreFns);
-      }
+   util.inherit = function(InheritingClass, InheritedClass) {
+      // make sure we don't blow away any existing prototype methods on the object
+      // and also accept additional arguments to inherit() and extend the prototype accordingly
+      var moreFns = [InheritingClass.prototype || {}].concat(util.toArray(arguments, 2));
+
+      InheritingClass.prototype = new InheritedClass;
+      util.each(moreFns, function(fns) {
+         util.extend(InheritingClass.prototype, fns);
+      });
+
+      InheritingClass.prototype._super = function(self) {
+         InheritedClass.apply(self, util.toArray(arguments,1));
+      };
+
       return InheritingClass;
    };
 
@@ -230,6 +243,13 @@ else {
       else {
          return false;
       }
+   };
+
+   util.bindAll = function(context, methods) {
+      util.each(methods, function(m,k) {
+         methods[k] = util.bind(m, context);
+      });
+      return methods;
    };
 
    // a polyfill for Function.prototype.bind (invoke using call or apply!)
