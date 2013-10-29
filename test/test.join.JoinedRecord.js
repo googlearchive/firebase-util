@@ -35,21 +35,21 @@ describe('join.JoinedRecord', function() {
 
    describe('#auth', function() {
       it('should invoke callback with err if not successful', function(done) {
-         new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).auth('not a valid secret', function(err, auth) {
+         new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).auth('not a valid secret', function(err, auth) {
             expect(err).to.exist;
             done();
          });
       });
 
       it('should succeed with a valid token', function(done) {
-         new JoinedRecord(helpers.ref('test')).auth(helpers.tok('test-user'), function(err) {
+         new JoinedRecord(helpers.ref('unions/fruit')).auth(helpers.tok('test-user'), function(err) {
             expect(err).not.to.exist;
             done();
          });
       });
 
       it('should cause .info/authenticated to be true', function(done) {
-         new JoinedRecord(helpers.ref('test')).auth(helpers.tok('test-user'), function() {
+         new JoinedRecord(helpers.ref('unions/fruit')).auth(helpers.tok('test-user'), function() {
             helpers.chain()
                .get('.info/authenticated')
                .then(function(v) {
@@ -67,7 +67,7 @@ describe('join.JoinedRecord', function() {
             .get('.info/authenticated')
             .then(function(v) {
                expect(v).to.be.true;
-               new JoinedRecord(helpers.ref('path1')).unauth();
+               new JoinedRecord(helpers.ref('unions/fruit')).unauth();
             })
             .get('.info/authenticated')
             .then(function(v) {
@@ -78,7 +78,7 @@ describe('join.JoinedRecord', function() {
    });
 
    describe('#on', function() {
-      it('should return a JoinedSnapshot', function(done) {
+      it('should return a JoinedSnapshot on parent', function(done) {
          new JoinedRecord(helpers.ref('account/kato')).on('value', function(snap) {
             snap.ref().off();
             expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
@@ -87,7 +87,9 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should merge data in order paths were added', function(done) {
+         helpers.debugThisTest();
          new JoinedRecord(helpers.ref('account'), helpers.ref('profile')).on('value', function(snap) {
+            snap.ref().off();
             expect(snap.val()).to.deep.equal({
                "bruce": {
                   "email": "bruce@lee.com",
@@ -102,12 +104,11 @@ describe('join.JoinedRecord', function() {
                   "style": "Kung Fu"
                }
             });
-            snap.ref().off();
             done();
          });
       });
 
-      it('should work with primitives', function(done) {
+      it('should put primitives into field named by path', function(done) {
          new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
             snap.ref().off();
             expect(snap.val()).to.deep.equal({
@@ -120,12 +121,15 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should put values in correct keys if keyMap overrides them', function(done) {
-         new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
+      it('If keyMap specified, should put primitives into that field', function(done) {
+         new JoinedRecord(
+            {ref: helpers.ref('unions/fruit'), keyMap: {'.value': 'フルーツ'}},
+            helpers.ref('unions/legume')
+         ).on('value', function(snap) {
             snap.ref().off();
             expect(snap.val()).to.deep.equal({
-               a: { fruit: "apple" },
-               b: { fruit: "banana", legume: "baked beans" },
+               a: { 'フルーツ': "apple" },
+               b: { 'フルーツ': "banana", legume: "baked beans" },
                c: { legume: "chickpeas" },
                d: { legume: "dry-roasted peanuts" }
             });
@@ -133,9 +137,9 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it.only('should call "value" on a child_added event', function(done) {
-         helpers.debugThisTest(null); //debug
+      it('should call "child_added" for all pre-loaded recs');
 
+      it('should call "value" on a child_added event', function(done) {
          function setVal(snap) {
             expect(snap.val()).to.deep.equal({
                "bruce": {
@@ -152,10 +156,9 @@ describe('join.JoinedRecord', function() {
                }
             });
             step = verify;
-            helpers.ref('account/john').set({name: 'john'});
+            helpers.ref('account/john').set({name: 'john', email: 'john@john.com'});
          }
 
-         var ct = 0;
          function verify(snap) {
             snap.ref().off();
             expect(snap.val()).to.deep.equal({
@@ -172,7 +175,9 @@ describe('join.JoinedRecord', function() {
                   "style": "Kung Fu"
                },
                "john": {
-                  "name": "john"
+                  // the name will lose out to the profile path (which has none)
+                  // so all we get is an email
+                  "email": "john@john.com"
                }
             });
             done();
@@ -180,10 +185,11 @@ describe('join.JoinedRecord', function() {
 
          var step = setVal;
 
-         new JoinedRecord(helpers.ref('account'), helpers.ref('profile')).on('value', function(snap) {
-            // the first time this is called with empty callback to skip the pre-add notification
-            step(snap);
-         });
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile'))
+            .on('value', function(snap) {
+               // the first time this is called with empty callback to skip the pre-add notification
+               step(snap);
+            });
       });
 
       it('should call "value" on a child_removed event');
@@ -196,11 +202,11 @@ describe('join.JoinedRecord', function() {
 
       it('should not call child_added until all intersecting paths exist');
 
-      it('should not call child_removed until all intersecting paths are removed');
+      it('should call child_removed if any intersecting paths is removed');
 
       it('should call child_added for any preloaded records when on() is declared');
 
-      it('should not call child_removed until last path is removed if no intersecting paths (a union)');
+      it('should not call child_removed until last path is removed if a union');
 
       it('should accept a single path');
 
@@ -215,14 +221,44 @@ describe('join.JoinedRecord', function() {
       it('should sort data according to first sortBy path');
 
       it('should invoke the cancel callback for all listeners if canceled');
-  });
+
+      it('should return a regular snap if called on child');
+
+      it('should work with "value" if called on child');
+
+      it('should work with "child_added" if called on child');
+
+      it('should work with "child_removed" if called on child');
+
+      it('should work with "child_changed" if called on child');
+
+      it('should work with "child_moved" if called on child');
+   });
 
    describe('#off', function() {
-      it('should be tested');
+      it('should remove a specific listener if given a function and context');
+
+      it('should remove all listeners on a given event if no function');
+
+      it('should should remove all listeners if no arguments');
   });
 
    describe('#once', function() {
-      it('should be tested');
+      it('should return a JoinedSnapshot');
+
+      it('should return a regular snap if called on a child');
+
+      it('should work for "value"');
+
+      it('should work for "child_added"');
+
+      it('should work for "child_removed"');
+
+      it('should work for "child_changed"');
+
+      it('should work for "child_removed"');
+
+      it('should get called exactly one time');
   });
 
    describe('#child', function() {
@@ -254,7 +290,13 @@ describe('join.JoinedRecord', function() {
   });
 
    describe('#remove', function() {
-      it('should be tested');
+      it('should remove record from all joined paths');
+
+      it('should not blow up if record does not exist');
+
+      it('should trigger "child_moved" on next record');
+
+      it('should work with dynamic paths');
   });
 
    describe('#push', function() {
@@ -276,7 +318,7 @@ describe('join.JoinedRecord', function() {
    describe('#onDisconnect', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).onDisconnect();
+            new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).onDisconnect();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -284,7 +326,7 @@ describe('join.JoinedRecord', function() {
    describe('#limit', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).limit();
+            new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).limit();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -292,7 +334,7 @@ describe('join.JoinedRecord', function() {
    describe('#endAt', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).endAt();
+            new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).endAt();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -300,7 +342,7 @@ describe('join.JoinedRecord', function() {
    describe('#startAt', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).startAt();
+            new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).startAt();
          }).to.throw(fb.NotSupportedError);
       });
   });
@@ -308,7 +350,7 @@ describe('join.JoinedRecord', function() {
    describe('#transaction', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
-            new JoinedRecord(helpers.ref('path1'), helpers.ref('path2')).transaction();
+            new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).transaction();
          }).to.throw(fb.NotSupportedError);
       });
   });

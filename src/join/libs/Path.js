@@ -1,16 +1,16 @@
 (function (fb) {
    "use strict";
-   var undefined;
+   var log  = fb.pkg('log');
    var util = fb.pkg('util');
    var join = fb.pkg('join');
-   var EVENTS = ['child_added', 'child_removed', 'child_moved', 'child_changed', 'value'];
+   var EVENTS = ['child_added', 'child_removed', 'child_moved', 'child_changed', 'value', 'keyMapLoaded'];
 
    /** PATH
     ***************************************************
     * @private
     * @constructor
     */
-   function Path(props, keyMapLoadedCallback) {
+   function Path(props) {
       this._super(this, EVENTS, util.bindAll(this, { onAdd: this._observerAdded, onRemove: this._observerRemoved }));
       this.subs = [];
       this.props = buildPathProps(props);
@@ -18,7 +18,7 @@
       if( !this.props.pathName ) {
          throw new Error('No pathName found; '+(this.props.ref && !this.props.ref.name()? 'path cannot be set to the Firebase root' : 'must be declared for dynamic paths'));
       }
-      this._buildKeyMap(keyMapLoadedCallback);
+      this._buildKeyMap();
    }
 
    Path.prototype = {
@@ -65,7 +65,7 @@
       isSortBy: function() { return this.props.sortBy; },
       setSortBy: function(b) { this.props.sortBy = b; },
       ref: function() { return this.props.ref; },
-      hasKey: function(key) { return util.has(this.props.keyMap, key); },
+      hasKey: function(key) { return util.contains(this.props.keyMap, key); },
       sourceKey: function(key) {
          var res = null;
          util.find(this.props.keyMap, function(v,k) {
@@ -79,6 +79,12 @@
       isUnresolved: function() { return this.resolveFn !== null; },
       isJoinedChild: function() { return this.props.isJoinedChild; },
 
+      // see the reconcilePaths() method in PathLoader.js
+      removeConflictingKey: function(fromKey, owningPath) {
+         log.info('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, fromKey, this.getKeyMap()[fromKey], owningPath);
+         delete this.props.keyMap[fromKey];
+      },
+
       tryResolve: function(snap) {
          var ref = this.resolveFn(snap);
          if( ref ) {
@@ -89,11 +95,24 @@
          return !!ref;
       },
 
-      _observerAdded: function(event, observer) {
-         if( !this.isDynamic() && !this.subs[event] ) {
+      /**
+       * Unless keyMap is passed in the config, it will be empty until the first data set is fetched!
+       * @returns {Object} a hash
+       */
+      getKeyMap: function() {
+         return this.props.keyMap || {};
+      },
+
+      _observerAdded: function(event) {
+         if( event === 'keyMapLoaded' ) {
+            if( this.props.keyMap !== null ) {
+               this._finishedKeyMap();
+            }
+         }
+         else if( !this.isDynamic() && !this.subs[event] ) {
             var fn = util.bind(this._sendEvent, this, event);
             this.subs[event] = this.props.ref.on(event, fn, function(err) {
-               fb.log.error(err);
+               log.error(err);
             });
          }
       },
@@ -105,22 +124,16 @@
          }
       },
 
-      /**
-       * Unless keyMap is passed in the config, it will be empty until the first data set is fetched!
-       * @returns {Object} a hash
-       */
-      getKeyMap: function() {
-         return this.props.keyMap;
-      },
-
       _sendEvent: function(event, snap, prevChild) {
          // the hasKey here is critical because we only trigger events for children
          // which are part of our keyMap on the child records (the joined parent gets all, of course)
          if( !this.isJoinedChild() || event === 'value' || this.hasKey(snap.name()) ) {
             var mappedVals = mapValues(this.getKeyMap(), snap.val());
             if( mappedVals !== null || event !== 'child_added' ) {
-//               fb.log('Path(%s/%s)::sendEvent(%s, %j, %s) to %d observers', this.name(), snap.name(), event, mappedVals, prevChild, this.getObservers(event).length);
-               this.triggerEvent(event, this, event, snap.name(), mappedVals, prevChild);
+//               log('Path(%s/%s)::sendEvent(%s, %j, %s) to %d observers', this.name(), snap.name(), event, mappedVals, prevChild, this.getObservers(event).length);
+               util.defer(function() {
+                  this.triggerEvent(event, this, event, snap.name(), mappedVals, prevChild, snap);
+               }, this);
             }
          }
       },
@@ -128,16 +141,14 @@
       // this should only ever be called on the master JoinedRecord
       // child joins should already have a key map provided when childPath() is called
       _buildKeyMap: function(cb) {
-         if( util.isEmpty(this.props.keyMap) ) {
+         if( !util.isObject(this.props.keyMap) ) {
             if( !this.isDynamic() && !this.isJoinedChild() ) {
                this.props.ref.limit(1).once('value', function(outerSnap) {
                   var self = this;
                   outerSnap.forEach(function(snap) {
-                     self._loadKeyMapFromSnap(snap);
+                     return self._loadKeyMapFromSnap(snap);
                   });
-                  if( util.isEmpty(this.props.keyMap) ) {
-                     fb.log.error('The path "%s" is empty! You either need to add at least one data record into the path or declare a keyMap. No data will be written to or read from this path :(');
-                  }
+                  this._finishedKeyMap();
                   cb && cb(this);
                }, this);
             }
@@ -146,12 +157,21 @@
             }
          }
          else {
+            this._finishedKeyMap();
             cb && cb(this);
          }
       },
 
+      _finishedKeyMap: function() {
+         if( util.isEmpty(this.props.keyMap) ) {
+            log.warn('The path "%s" is empty! You either need to add at least one data record into the path or declare a keyMap. No data will be written to or read from this path :(', this);
+         }
+         this.triggerEvent('keyMapLoaded');
+         this.stopObserving('keyMapLoaded');
+      },
+
       _loadKeyMapFromSnap: function(snap) {
-         var b = snap.val() !== null && util.isEmpty(this.props.keyMap);
+         var b = snap.val() !== null && this.props.keyMap === null;
          if( b ) {
             var km = this.props.keyMap = {};
             if( util.isObject(snap.val()) ) {
@@ -161,7 +181,7 @@
                km['.value'] = this.props.pathName;
             }
          }
-         fb.log.debug('Loaded keyMap for Path(%s) from child record "%s": ', this.toString(), snap.name(), this.props.keyMap);
+         log.info('Loaded keyMap for Path(%s) from child record "%s": %j', this.toString(), snap.name(), km);
          return b;
       }
    };
@@ -172,16 +192,18 @@
     ***************************************************/
 
    function mapValues(keyMap, snapVal) {
-      var out = {}, isObject = util.isObject(snapVal);
+      var out = {};
       if( snapVal !== null ) {
-         if( !util.isObject(snapVal) ) {
-            snapVal = {'.value': snapVal};
+         if( keyMap['.value'] ) {
+            out[ keyMap['.value'] ] = snapVal;
          }
-         util.each(keyMap, function(fromKey, toKey) {
-            if( !util.isEmpty(snapVal[fromKey]) ) {
-               out[toKey] = snapVal[fromKey];
-            }
-         });
+         else if( util.isObject(snapVal) ) {
+            util.each(keyMap, function(fromKey, toKey) {
+               if( !util.isEmpty(snapVal[fromKey]) ) {
+                  out[toKey] = snapVal[fromKey];
+               }
+            });
+         }
       }
       return out;
    }
@@ -199,7 +221,7 @@
          intersects: false,
          childFn: null,
          ref: null,
-         keyMap: {},
+         keyMap: null,
          sortBy: false,
          pathName: null,
          isJoinedChild: false,

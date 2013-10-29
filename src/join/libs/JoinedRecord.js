@@ -11,17 +11,15 @@
          onAdd: this._monitorEvent,
          onRemove: this._stopMonitoringEvent
       }));
-      log('JoinedRecord', this._observableProps.onEvent);//debug
       this.joinedParent = null;
       this.paths = [];
       this.sortPath = null;
-      this.loadedChildRecs = {};
       this.sortedChildKeys = [];
+      this.childRecs = {};
       this.priorValue = undefined;
       this.currentValue = undefined;
       this.prevChildName  = null;
       this.intersections = [];
-      this.pathsLoadedCallbacks = [];
       this._loadPaths(util.toArray(arguments));
    }
 
@@ -39,10 +37,16 @@
             context = cancelCallback;
             cancelCallback = null;
          }
+
          var obs = this.observe(eventType, callback, context, cancelCallback);
 
          if( eventType === 'value' ) {
-            this._triggerWhenLoaded('value', obs);
+            if( this.currentValue !== undefined ) {
+               obs.notify(makeSnap(this));
+            }
+            else {
+               this._myValueChanged();
+            }
          }
          else if( eventType === 'child_added' ) {
             this._notifyExistingRecsAdded(obs);
@@ -54,29 +58,26 @@
          return this;
       },
 
-      once: function(eventType, callback, failureCallback, context) {},
+      once: function(eventType, callback, failureCallback, context) {
+         if( util.isObject(failureCallback) && arguments.length === 3 ) {
+            context = failureCallback;
+            failureCallback = null;
+         }
+         this.observe(eventType, function(snap, prevChild) {
+            this.stopObserving(eventType, callback, context);
+            callback.call(context, snap, prevChild);
+         }, context, failureCallback);
+      },
 
       child: function(childPath) {
-         var test, ref;
+         var ref;
          var parts = childPath.split('/'), firstPart = parts.shift();
-         test = this.loadedChildRecs[firstPart];
-         if( test ) {
-            // I already have this child record loaded so just return it
-            ref = test;
+         if( this.joinedParent ) {
+            ref = this._findFirebaseRefForChild(firstPart)
          }
-         else if( this.joinedParent ) {
-            // if this is the child of a join path, then its children are just regular Firebase refs
-            // so we can just try to find the correct source for the key and call child() on that ref
-            test = util.find(this.paths, function(path) {
-               return path.hasKey(firstPart);
-            });
-            if( test ) {
-               ref = test.child(firstPart);
-            }
-            else {
-               log.warn('Key "%s" not found in any of my joined paths (is it in your keyMap?); I am returning a child ref from the first joined path, which may not be what you wanted', firstPart);
-               ref = this.sortPath.ref().child(firstPart);
-            }
+         else if( this._isChildLoaded(firstPart) ) {
+            // I already have this child record loaded so just return it
+            ref = this._getJoinedChild(firstPart);
          }
          else {
             // this is the joined parent, so we fetch a JoinedRecord as the child
@@ -116,11 +117,17 @@
 
       _monitorEvent: function(eventType) {
          if( this.getObservers(eventType).length === 1 ) {
-            log.debug('JoinedRecord(%s) now has listeners for "%s"', this, eventType);
-            if( this.getObservers().length === 1 ) {
+            var paths;
+            log('JoinedRecord(%s) now has observers for "%s"', this, eventType);
+            if( this.joinedParent ) {
+               paths = this.paths;
+               util.call(paths, 'observe', eventType, this._pathNotification, this);
+            }
+            else if( this.getObservers().length === 1 ) {
+               log.info('My first observer attached, loading my data and Firebase connections');
+               paths = this.intersections.length? this.intersections : this.paths;
                this.pathLoader.done(function() {
                   // this is the first observer, so start up our path listeners
-                  var paths = this.intersections.length? this.intersections : this.paths;
                   util.each(paths, function(path) {
                      path.observe(eventsToMonitor(this, path), this._pathNotification, this);
                   }, this);
@@ -131,12 +138,19 @@
 
       _stopMonitoringEvent: function(eventType) {
          if( !this.hasObservers(eventType) ) {
-            log.debug('JoinedRecord(%s) has no more listeners%s', this, eventType? 'for "'+eventType : '"');
-            if( !this.hasAnyObservers() ) {
+            log('JoinedRecord(%s) has no more observers%s', this, eventType? 'for "'+eventType+'"' : '');
+            if( this.joinedParent ) {
+               util.call('paths', 'stopObserving', eventType, this._pathNotification, this);
+            }
+            else if( !this.hasObservers() ) {
+               log.info('My last observer detached, releasing my data and Firebase listeners');
                // nobody is monitoring this event anymore, so we'll stop monitoring the path now
                var paths = this.intersections.length? this.intersections : this.paths;
-               util.each(paths, this._removeChildRec, this);
-               util.call(this.paths, 'stopObserving');
+               util.call(paths, 'stopObserving');
+               var oldRecs = this.childRecs;
+               this.childRecs = {};
+               util.each(oldRecs, this._removeChildRec, this);
+               this.sortedChildKeys = [];
                this.currentValue = undefined;
             }
          }
@@ -144,23 +158,18 @@
 
       // this should never be called by a dynamic path, only by primary paths
       // that are controlling when a record gets created and processed
-      _pathNotification: function(path, event, childName, mappedVals, prevChild) {
-         var rec, self = this;
-         log.debug('Received "%s" event from Path(%s/%s): %j', event, path.toString(), childName, mappedVals);//debug
+      _pathNotification: function(path, event, childName, mappedVals, prevChild, childSnap) {
+         var rec;
+         log.debug('Received "%s" from Path(%s): %j', event, path.toString(), this.joinedParent? mappedVals:childSnap.val());
 
          if( this.joinedParent ) {
             // most of the child record events are just pretty much a passthrough
             switch(event) {
                case 'value':
-                  this._myValueChanged(path.getKeyMap(), mappedVals);
+                  this._myValueChanged();
                   break;
                default:
-                  log.error('I cannot proccess "%s" yet :(');
-                  //todo
-                  //todo
-                  //todo
-                  //todo
-                  //todo
+                  this.triggerEvent(event, childSnap);
             }
          }
          else {
@@ -168,20 +177,12 @@
             switch(event) {
                case 'child_added':
                   if( mappedVals !== null ) {
-                     if( !this._isChildLoaded(childName) ) {
-                        rec._triggerWhenLoaded('child_added', function(snap, prevName) {
-                           self._addChildRec(rec, prevName);
-                        }, prevChild);
-                     }
-                     else if( path === this.sortPath && prevChild !== rec.prevChildName ) {
-                        this._moveChildRec(rec, prevChild);
-                     }
+                     this._addChildRec(path, rec, prevChild);
                   }
                   break;
                case 'child_moved':
                   if( this.sortPath === path && this._isChildLoaded(childName) ) {
                      this._moveChildRec(rec, prevChild);
-                     this.triggerEvent('child_moved', rec._snap(), prevChild||null);
                   }
                   break;
             }
@@ -192,20 +193,26 @@
 
       _isChildLoaded: function(key) {
          if( util.isObject(key) ) { key = key.name(); }
-         return this.loadedChildRecs.hasOwnProperty(key) && this.loadedChildRecs[key].currentValue !== undefined;
+         return this._getJoinedChild(key) !== undefined;
       },
 
       // must be called before any on/off events
-      _loadPaths: function(paths) {
-         this.pathLoader = new join.PathLoader(this, paths);
+      _loadPaths: function(pathArgs) {
+         util.each(buildPaths(this, pathArgs), this._addPath, this);
+         this.pathLoader = new join.PathLoader(this.paths);
          if( this.sortPath ) {
             if( !util.isEmpty(this.intersections) && !this.sortPath.isIntersection() ) {
                log.warn('Sort path cannot be set to a non-intersecting path as this makes no sense; using the first intersecting path instead');
                this.sortPath = this.intersections[0];
             }
          }
+         else if( !util.isEmpty(this.intersections) ) {
+            this.sortPath = this.intersections[0];
+         }
          else {
-            this.sortPath = util.isEmpty(this.intersections)? this.paths[0] : this.intersections[0];
+            this.sortPath = util.find(this.paths, function(path) {
+               return !path.isDynamic();
+            });
          }
 
          if( !this.sortPath ) {
@@ -214,8 +221,7 @@
       },
 
       // must be called before any on/off events
-      _addPath: function(pathProps) {
-         var path = pathProps instanceof join.Path? pathProps : new join.Path(pathProps);
+      _addPath: function(path) {
          this.paths.push(path);
          if( this.sortPath ) {
             path.props.setSortBy(false);
@@ -226,104 +232,49 @@
          if( path.isIntersection() ) {
             this.intersections.push(path);
          }
-      },
-
-      _triggerIfChanged: function(event) {
-         this._triggerWhenLoaded(event, function(snap) {
-            if( shouldNotify(event, snap, this.priorValue) ) {
-               this.triggerEvent(event, snap);
-            }
-         })
-      },
-
-      /**
-       * A utility that ensures child paths have loaded all their join components before triggering
-       * any event notifications. It can handle chaining by providing a prev object value() function (see SnapshotBuilder)
-       *
-       * @param {String} event
-       * @param {Array|Object|Function} observer of join.Observer objects
-       * @param {String|null|Object} [afterThisRec]
-       * @returns {*}
-       * @private
-       */
-      _triggerWhenLoaded: function(event, observer, afterThisRec) {
-         if( !util.isArray(observer) ) { observer = [observer]; }
-         var prevName, self = this;
-         var childKeys = this.sortedChildKeys;
-         var builder = join.buildSnapshot(this);
-
-         this.pathLoader.done(function() {
-            if( util.isObject(afterThisRec) ) {
-               // if we're chaining several records, wait for the prev record
-               // to do it's magic before we send our notifications (so they
-               // are sent in the same order Firebase would have sent
-               // them if not joined)
-               this.prevChildName = afterThisRec.ref().name();
-               afterThisRec.value(function() {
-                  builder.value(notifyAll);
-               });
-            }
-            else {
-               builder.value(notifyAll);
-            }
-         }, this);
-
-
-         function notifyAll(snap) {
-//            log('JoinedRecord(%s) loaded', this);
-            if( util.has(['child_added', 'child_moved'], event) ) {
-               prevName = snap.ref().prevChildName;
-               if( util.indexOf(childKeys, prevName) === - 1 ) {
-                  prevName = childKeys[childKeys.length-1] || null;
-               }
-            }
-            util.each(observer, function(obs) {
-               if( typeof(obs) === 'function' ) {
-                  obs(snap, prevName);
-               }
-               else {
-                  obs.notify(snap, prevName);
-               }
-            });
-         }
-
-         return builder;
-      },
-
-      _notifyAll: function(event, snap) {
-         var prevName = util.contains(['child_added', 'child_moved'], event)? this.prevChildName : undefined;
-         util.each(this.observers[event], function(obs) {
-            obs.notify(snap, prevName);
-         });
+         return path;
       },
 
       // only applicable to the parent joined path
-      _addChildRec: function(rec, prevName) {
-         if( !this.loadedChildRecs[rec.name()] ) {
-            rec._triggerWhenLoaded('child_added', util.bind(function() {
-               log.debug('JoinedRecord::child_added %s', rec);
-               this._sortRecAfter(rec, prevName);
-               this._setMyValue(this.currentValue, rec);
-               rec.on('value', this._updateChildRec, this);
-            }, this));
-         }
+      _addChildRec: function(path, rec, prevName) {
+         rec.once('value', function(snap) {
+            if( snap.val() !== null ) {
+               if( !this._isChildLoaded(rec.name()) ) {
+                  this._sortRecAfter(rec, prevName);
+                  this.childRecs[rec.name()] = rec;
+                  this._setMyValue(join.sortSnapshotData(this, this.currentValue, snap));
+                  this.triggerEvent('child_added', makeSnap(rec));
+                  this.triggerEvent('value', makeSnap(this));
+                  rec.on('value', this._updateChildRec, this);
+               }
+               else if( path === this.sortPath ) {
+                  this._moveChildRec(rec, prevName);
+               }
+            }
+         }, this);
          return rec;
       },
 
       // only applicable to the parent join path
       _removeChildRec: function(rec) {
+         var childName = rec.name();
+         rec.stopObserving(null, this._updateChildRec, this);
          if( this._isChildLoaded(rec) ) {
-            log.debug('JoinedRecord::child_removed %s', rec);
-            var i = util.indexOf(this.sortedChildKeys, rec.name());
+            var i = util.indexOf(this.sortedChildKeys, childName);
             rec.off('value', this._updateChildRec, this);
             if( i > -1 ) {
                this.sortedChildKeys.splice(i, 1);
+               if( i < this.sortedChildKeys.length ) {
+                  var nextRec = this.child(this.sortedChildKeys[i]);
+                  this.triggerEvent('child_moved', makeSnap(nextRec), i > 0? this.sortedChildKeys[i-1] : null);
+               }
             }
-            delete this.loadedChildRecs[rec.name()];
+            delete this.childRecs[childName];
             if( util.isObject(this.currentValue) ) {
-               delete this.currentValue[rec.name()];
+               delete this.currentValue[childName];
             }
-            this.triggerEvent('child_removed', snap(rec, rec.priorValue));
+            this.triggerEvent('child_removed', makeSnap(rec, rec.priorValue));
+            this.triggerEvent('value', makeSnap(this));
          }
          return rec;
       },
@@ -334,19 +285,18 @@
             this._removeChildRec(snap.ref());
          }
          else {
-            log.debug('JoinedRecord::child_changed %s)', snap.ref());
-            if( !util.isObject(this.currentValue) ) {
-               this.currentValue = {};
+            if( !util.isObject(this.currentValue) || !snap.isEqual(this.currentValue[snap.name()]) ) {
+               this._setMyValue(join.sortSnapshotData(this, this.currentValue, snap));
+               this.triggerEvent('child_changed', snap);
+               this.triggerEvent('value', makeSnap(this));
             }
-            this.currentValue[snap.name()] = snap.val();
-            this.triggerEvent('child_changed', snap);
          }
       },
 
       // only applicable to parent join path
       _sortRecAfter: function(rec, prevChild) {
          var toY, len = this.sortedChildKeys.length;
-         if( prevChild === null || len === 0 ) {
+         if( !prevChild || len === 0 ) {
             toY = 0;
          }
          else {
@@ -359,9 +309,9 @@
          this.sortedChildKeys.splice(toY, 0, rec.name());
          if( toY < len ) {
             var nextKey = this.sortedChildKeys[toY+1];
-            var nextRec = this.loadedChildRecs[nextKey];
+            var nextRec = this._getJoinedChild(nextKey);
             nextRec.prevChildName = rec.name();
-            this._isChildLoaded(nextRec) && this.triggerEvent('child_moved', snap(nextRec), rec.name());
+            this._isChildLoaded(nextRec) && this.triggerEvent('child_moved', makeSnap(nextRec), rec.name());
          }
       },
 
@@ -381,34 +331,36 @@
             }
 
             if( toY !== fromX ) {
-               log.debug('JoinedRecord::child_moved %s -> %s', rec.name(), prevChild);
+//               log('Join::child_moved %s -> %s (%s)', rec.name(), prevChild, this);
                this.sortedChildKeys.splice(toY, 0, this.sortedChildKeys.splice(fromX, 1));
                rec.prevChildName = prevChild;
-               this._isChildLoaded(rec) && this.triggerEvent('child_moved', snap(rec), prevChild);
-               this._setMyValue(this.currentValue);
+               this._isChildLoaded(rec) && this.triggerEvent('child_moved', makeSnap(rec), prevChild);
+               this._setMyValue(join.sortSnapshotData(this, this.currentValue));
+               this.triggerEvent('value', makeSnap(this));
             }
          }
       },
 
       // only applicable to child paths
-      _myValueChanged: function(keyMap, mappedVals) {
-         var newValue = mergeIntoVal(keyMap, this.currentValue, mappedVals);
-         if( this._setMyValue(newValue) ) {
-            this.triggerEvent('value', snap(this));
-         }
+      _myValueChanged: function() {
+         this.pathLoader.done(function() {
+            join.buildSnapshot(this).value(function(snap) {
+               log('_myValueChanged', snap.val()); //debug
+               if( this._setMyValue(snap.val()) ) {
+                  this._loadCachedChildren();
+                  this.triggerEvent('value', makeSnap(this));
+               }
+            }, this);
+         }, this);
       },
 
       /**
        * @param newValue
-       * @param [newRec]
        * @returns {boolean}
        * @private
        */
-      _setMyValue: function(newValue, newRec) {
-         log('_setMyValue', newValue); //debug
-         newValue = JoinedRecord.sortData(this, newValue, newRec);
+      _setMyValue: function(newValue) {
          if( !util.isEqual(newValue, this.currentValue) ) {
-            log('_setMyValue', newValue); //debug
             this.priorValue = this.currentValue;
             this.currentValue = newValue;
             return true;
@@ -421,62 +373,71 @@
             /** @var {join.SnapshotBuilder} prev */
             var prev = null;
             util.each(this.sortedChildKeys, function(key) {
-               var rec = this.loadedChildRecs[key];
-               // we load these in parallel, but we pass in prev on each iteration
-               // which allows them to make sure that the notifications are in order
-               prev = rec._triggerWhenLoaded('child_added', obs, prev);
+               if( this._isChildLoaded(key) ) {
+                  var rec = this._getJoinedChild(key);
+                  obs.notify(makeSnap(rec), prev);
+                  prev = rec.name();
+               }
             }, this);
          }
       },
 
-      _eventTriggered: function(event, args) {
-         log('_eventTriggered!!!!!!!!!!!!!!', event, args);
-         event !== 'value' && this._triggerIfChanged('value');
+      _eventTriggered: function(event, observers, snap, prevChild) {
+         var fn = observers.length? log : log.debug;
+         fn('Join::%s(%s%s) sent to %d observers by %s', event, snap.name(), prevChild? '->'+prevChild : '', observers.length, this);
+         log.debug(snap.val());
+      },
+
+      _getJoinedChild: function(keyName) {
+         return this.joinedParent? undefined : this.childRecs[keyName];
+      },
+
+      _loadCachedChildren: function() {
+         if( !this.joinedParent && this.priorValue === undefined ) {
+            var prev = null, loaded = [];
+            this.sortedChildKeys = [];
+            util.each(this.currentValue, function(v, k) {
+               if( !this._isChildLoaded(k) ) {
+                  var rec = this.child(k);
+                  rec.currentValue = v;
+                  rec.prevChildName = prev;
+                  this.sortedChildKeys.push(k);
+                  this.childRecs[k] = rec;
+                  loaded.push(rec);
+               }
+               prev = k;
+            }, this);
+            util.each(loaded, function(rec) {
+               this.triggerEvent('child_added', makeSnap(rec), rec.prevChildName);
+            }, this);
+         }
+      },
+
+      _findFirebaseRefForChild: function(keyName) {
+         var ref;
+         // if this is the child of a join path, then its children are just regular Firebase refs
+         // so we can just try to find the correct source for the key and call child() on that ref
+         ref = util.find(this.paths, function(path) {
+            return path.hasKey(keyName);
+         });
+         if( ref ) {
+            ref = ref.child(keyName);
+         }
+         if( !ref ) {
+            log.warn('Key "%s" not found in any of my joined paths (is it in your keyMap?); I am returning a child ref from the first joined path, which may not be what you wanted', keyName);
+            ref = this.sortPath.ref().child(keyName);
+         }
+         return ref;
       }
    };
 
    util.inherit(JoinedRecord, util.Observable);
-
-   /**
-    * @param {JoinedRecord} rec
-    * @param {Object} data
-    * @param {JoinedRecord} [addChildRec]
-    * @returns {*}
-    */
-   JoinedRecord.sortData = function(rec, data, addChildRec) {
-      var out = data;
-      if( util.isObject(data) ) {
-         out = {};
-         if( rec.joinedParent ) {
-            util.each(rec.paths, function(path) {
-               util.each(path.getKeyMap(), function(key) {
-                  util.isEmpty(data[key]) || (out[key] = data[key]);
-               });
-            });
-         }
-         else {
-            util.each(rec.sortedChildKeys, function(key) {
-               if( addChildRec && addChildRec.name() === key ) {
-                  out[key] = addChildRec;
-               }
-               else if( !util.isEmpty(data[key]) ) {
-                  out[key] = data[key];
-               }
-            });
-         }
-      }
-      return util.isEmpty(out)? null : out;
-   };
 
    function eventsToMonitor(rec, path) {
       var events = [];
       if( !path.isDynamic() ) {
          if( path.isIntersection() || !rec.intersections.length ) {
             events.push('child_added');
-         }
-         if( rec.joinedParent ) {
-            events.push('value');
-            events.push('child_removed');
          }
          if( path === rec.sortPath ) {
             events.push('child_moved');
@@ -485,52 +446,27 @@
       return events.length? events : null;
    }
 
-   function mergeIntoVal(keyMap, oldValue, mappedVals) {
-      var processingValue = util.extend({}, oldValue);
-      util.each(keyMap, function(key) {
-         if( util.isEmpty(mappedVals[key]) ) {
-            delete processingValue[key];
-         }
-         else {
-            processingValue[key] = mappedVals[key];
-         }
-      });
-      return util.isEmpty(processingValue)? null : processingValue;
-   }
-
-   function pick(obj, keys) {
-      var out = {};
-      if( !util.isEmpty(obj) ) {
-         if( util.isObject(obj) ) {
-            util.each(keys, function(key) {
-               util.isEmpty(obj[key]) || (out[key] = obj[key]);
-            });
-         }
-         else if(keys['.value'] ) {
-            out[keys['.value']] = obj;
-         }
-      }
-      return out;
-   }
-
-   function snap(rec, val) {
+   function makeSnap(rec, val) {
       if( arguments.length === 1 ) { val = rec.currentValue; }
       return new join.JoinedSnapshot(rec, val);
    }
 
-   function shouldNotify(event, snap, priorValue) {
-      var res = true;
-      switch(event) {
-         case 'child_added':
-            if( snap.val() === null ) { res = false; }
-            break;
-         case 'value':
-            if( snap.val() === priorValue ) { res = false; }
-            break;
-         default:
-            // nothing to do
+   function buildPaths(rec, paths) {
+      var builtPaths;
+      if( paths[0] instanceof join.JoinedRecord ) {
+         // occurs when loading child paths from a JoinedRecord, which
+         // passes the parent JoinedRecord (paths[0]) and a key name (paths[1])
+         rec.joinedParent = paths[0];
+         builtPaths = util.map(rec.joinedParent.paths, function(parentPath) {
+            return parentPath.childPath(rec, paths[1]);
+         });
       }
-      return res;
+      else {
+         builtPaths = util.map(paths, function(props) {
+            return props instanceof join.Path? props : new join.Path(props);
+         });
+      }
+      return builtPaths;
    }
 
    /** add JoinedRecord to package

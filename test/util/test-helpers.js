@@ -69,7 +69,7 @@ helpers.sup = function(path) {
  * @param {Function} [done] optionally call this method when finished
  */
 helpers.reset = function(json, done) {
-   return helpers.chain().sup().set(null, json).testDone(done||function() {});
+   return helpers.chain().sup().set(null, json).testDone(done||function(err) { err && fb.log.error(err); });
 };
 
 /**
@@ -123,9 +123,10 @@ helpers.tok = function(user) {
  * The log level defaults to 'debug'
  *
  * @param {String|int} [level]
+ * @param {String|RegExp} [grep]
  */
-helpers.debugThisTest = function(level) {
-   revertLogging = fb.log.logLevel(level||'debug');
+helpers.debugThisTest = function(level, grep) {
+   revertLogging = fb.log.logLevel(level||'debug', grep);
 };
 var revertLogging;
 

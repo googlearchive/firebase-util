@@ -12,8 +12,9 @@
 
    /**
     * @param {int} level use -1 to turn off all logging, use 5 for maximum debugging
+    * @param {string|RegExp} [grep] filter logs to those whose first value matches this text or expression
     */
-   exports.logLevel = logger.logLevel = function(level) {
+   exports.logLevel = logger.logLevel = function(level, grep) {
       if( typeof(level) !== 'number' ) { level = levelInt(level); }
 
       if( oldDebuggingLevel === level ) { return; }
@@ -30,7 +31,9 @@
                if( typeof(args[0]) === 'string' && args[0].match(/(%s|%d|%j)/) ) {
                   args = printf(args);
                }
-               fn.apply(typeof(console) === 'undefined'? fakeConsole : console, args);
+               if( !grep || !filterThis(grep, args) ) {
+                  fn.apply(typeof(console) === 'undefined'? fakeConsole : console, args);
+               }
             };
          }
          else {
@@ -81,6 +84,18 @@
             return v + '';
          default:
             return v;
+      }
+   }
+
+   function filterThis(expr, args) {
+      if( !args.length ) {
+         return true;
+      }
+      else if( expr instanceof RegExp ) {
+         return !expr.test(args[0]+'');
+      }
+      else {
+         return !(args[0]+'').match(expr);
       }
    }
 

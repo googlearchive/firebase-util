@@ -156,7 +156,6 @@
       _mergeDynamicChildren: function(parts) {
          var path = parts[0];
          var idx = parts[1];
-         var keys = {};
          this.callbacksExpected++;
          mergeDynamicVal(path, this.valueParts, util.bind(function(mergedVal) {
             this.valueParts[idx] = mergedVal;
@@ -170,30 +169,33 @@
       var snapVal = snap.val(), finalVal = null;
       if( snapVal !== null && snapVal !== undefined ) {
          if( path.isJoinedChild() ) {
-            if( util.isObject(snapVal) ) {
-               finalVal = snapVal;
-            }
-            else {
-               var key = findPrimitiveKey(path);
-               finalVal = {};
-               finalVal[key] = snapVal;
-            }
+            finalVal = createChildValue(path, snapVal);
          }
          else {
             // if this is the joined parent, then we check each child to see if it's a primitive
             finalVal = {};
             snap.forEach(function(ss) {
-               finalVal[ss.name()] = createValue(path.childPath(ss.ref(), ss.name()), ss);
+               finalVal[ss.name()] = createChildValue(path, ss.val());
             });
          }
       }
       return finalVal;
    }
 
-   function findPrimitiveKey(path) {
-      var keyMap = path.getKeyMap();
-      if( keyMap['.value'] ) { return keyMap['.value']; }
-      else { return path.name(); }
+   function createChildValue(path, data) {
+      var finalVal = null, keyMap = path.getKeyMap();
+      if( !util.isEmpty(data) ) {
+         finalVal = {};
+         util.each(keyMap, function(toKey, fromKey) {
+            if( fromKey === '.value' ) {
+               finalVal[toKey] = data;
+            }
+            else if( !util.isEmpty(data[fromKey]) ) {
+               finalVal[toKey] = data[fromKey];
+            }
+         });
+      }
+      return finalVal;
    }
 
    function mergeValue(sortIndex, valueParts) {
@@ -294,23 +296,47 @@
     */
    join.buildSnapshot = function(rec, callback, context) {
       //todo this can't handle the parent joins correctly if they have dynamic paths :(
-      var snap;
-      if( rec.currentValue !== undefined ) {
-         snap = {
-            value: function(callback) {
-               callback(new join.JoinedSnapshot(rec, rec.currentValue));
-            },
-            ref: function() {
-               return rec;
-            }
-         }
-      }
-      else {
-         snap = new SnapshotBuilder(rec);
-      }
+      var snap = new SnapshotBuilder(rec);
       if( callback ) {
          snap.value.apply(snap, util.toArray(arguments).slice(1));
       }
       return snap;
+   };
+
+   /**
+    * @param {JoinedSnapshot} rec
+    * @param data
+    * @param {JoinedSnapshot} [childSnap]
+    * @returns {*}
+    */
+   join.sortSnapshotData = function(rec, data, childSnap) {
+      var out = data;
+      if( rec.joinedParent ) {
+         if( !util.isEmpty(data) ) {
+            out = {};
+            util.each(rec.paths, function(path) {
+               util.each(path.getKeyMap(), function(key, fromKey) {
+                  if( fromKey === '.value' ) {
+                     out[key] = data;
+                  }
+                  else if( !util.isEmpty(data[key]) ) {
+                     out[key] = data[key];
+                  }
+               });
+            });
+         }
+      }
+      else if( rec.sortedChildKeys ) {
+         out = {};
+         util.each(rec.sortedChildKeys, function(key) {
+            if( childSnap && childSnap.name() === key && childSnap.val() !== undefined ) {
+               out[key] = childSnap.val();
+            }
+            else if( !util.isEmpty(data[key]) ) {
+               out[key] = data[key];
+            }
+         });
+      }
+      return util.isEmpty(out)? null : out;
    };
 })(exports, fb);

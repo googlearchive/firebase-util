@@ -9,9 +9,9 @@
   },
   "main": "firebase-utils.js",
   "scripts": {
-     "test": "grunt test",
-     "make": "grunt make",
-     "watch": "grunt watch"
+    "test": "grunt test",
+    "make": "grunt make",
+    "watch": "grunt watch"
   },
   "repository": {
     "type": "git",
@@ -34,6 +34,8 @@
     "grunt-mocha-test": "~0.7.0",
     "chai": "~1.8.0",
     "JQDeferred": "~1.9.1",
-    "firebase-token-generator": "~0.1.4"
+    "firebase-token-generator": "~0.1.4",
+    "sinon-chai": "~2.4.0",
+    "sinon": "~1.7.3"
   }
 }

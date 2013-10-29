@@ -3,7 +3,7 @@
    var util = fb.pkg('util');
    var join = fb.pkg('join');
 
-   function PathLoader(rec, paths) {
+   function PathLoader(paths) {
       var countNeeded;
       var countCompleted = 0;
       var waiting = [];
@@ -17,14 +17,16 @@
          }
       };
 
-      init();
+      countNeeded = paths.length;
+      util.each(paths, addPath);
 
-      function addPath(pathProps) {
-         rec._addPath(new join.Path(pathProps, pathLoaded));
+      function addPath(path) {
+         path.observe('keyMapLoaded', pathLoaded);
       }
 
       function pathLoaded() {
          if( ++countCompleted === countNeeded ) {
+            reconcilePathKeys(paths);
             util.each(waiting, notify);
          }
       }
@@ -32,23 +34,31 @@
       function notify(parts) {
          parts[0].call(parts[1]||null);
       }
+   }
 
-      function init() {
-         if( paths[0] instanceof join.JoinedRecord ) {
-            rec.joinedParent = paths[0];
-            countNeeded = rec.joinedParent.paths.length;
-            util.each(rec.joinedParent.paths, function(parentPath) {
-               // the child paths are merged as a union which is very appropriate
-               // for a child of the joined path where we'll want all the data, and not a subset
-               // also, there's no keyMap to load; yay!
-               rec._addPath(parentPath.childPath(rec, paths[1]));
-            }, rec);
-         }
-         else {
-            countNeeded = paths.length;
-            util.each(paths, addPath);
-         }
-      }
+   /**
+    * Okay, so the idea here is that key conflicts have to be resolved. The method we've picked for this
+    * is that the last path wins. Basically, each additional path "extends" the prior one jQuery style.
+    *
+    * Now this method prevents the need for every point where we merge or reconcile data to look through
+    * every path to see which ones have the key, and which one should win if more than one contains it.
+    *
+    * Instead, we just remove them directly from the paths.
+    *
+    * @param paths
+    */
+   function reconcilePathKeys(paths) {
+      var foundKeys = {};
+      util.each(paths.slice(0).reverse(), function(path) {
+         util.each(path.getKeyMap(), function(toKey, fromKey) {
+            if( util.has(foundKeys, toKey) ) {
+               path.removeConflictingKey(fromKey, foundKeys[toKey]);
+            }
+            else {
+               foundKeys[toKey] = path;
+            }
+         });
+      });
    }
 
    join.PathLoader = PathLoader;

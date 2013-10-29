@@ -38,16 +38,14 @@ else {
 
    util.extend = function(){
       var args = util.toArray(arguments);
-      var recurse = args[0] === true;
-      recurse && args.shift();
-      for(var i= 1, len=args.length; i < len; i++) {
-         for(var key in args[i]) {
-            if(args[i].hasOwnProperty(key)) {
-               args[0][key] = recurse && util.isObject(args[0][key])? util.extend(true, args[0][key], args[i][key]) : args[i][key];
-            }
-         }
-      }
-      return args[0];
+      var recurse = args[0] === true && args.shift();
+      var out = args.shift();
+      util.each(args, function(o) {
+         util.isObject(o) && util.each(o, function(v,k) {
+            out[k] = recurse && util.isObject(out[k])? util.extend(true, out[k], v) : v;
+         });
+      });
+      return out;
    };
 
    util.bind = function(fn, scope) {
