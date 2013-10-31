@@ -73,10 +73,10 @@
                if( obs.matches(event, callback, scope) ) {
                   obs.notifyCancelled(null, event, this);
                   removes.push(obs);
-                  onRemove && onRemove(event, obs);
                }
             }, this);
             removeAll(observers, removes);
+            onRemove && onRemove(event, removes);
          }
       },
 
@@ -105,12 +105,13 @@
          var args = util.toArray(arguments, 1);
          var onEvent = this._observableProps.onEvent;
          util.each(util.isArray(event)? event : [event], function(e) {
-            var observers = this.getObservers(e);
+            var observers = this.getObservers(e), ct = 0;
 //            log('triggering %s for %d observers with args', event, observers.length, args, onEvent);
             util.each(observers, function(obs) {
                obs.notify.apply(obs, args);
+               ct++;
             });
-            onEvent && onEvent.apply(null, [e, observers].concat(args));
+            onEvent && onEvent.apply(null, [e, ct].concat(args));
          }, this);
       }
    };

@@ -48,5 +48,5 @@ and interacting with Firebase quickly. See inline docs for details. Here is a qu
    - **helpers.ref(path)**: create a Firebase reference
    - **helpers.tok(user)**: create a Firebase auth token in format { id: user }
    - **helpers.handle(deferred)**: resolve or reject a deferred object when a standard node.js callback returns (e.g. function(err) {...})
-   - **helpers.debugThisTest()**: temporarily set logging on full blast until this test unit finishes
+   - **helpers.debugThisTest([level][, grep])**: temporarily turn on logging (to 'log' by default) until this test unit finishes
    - **helpers.chain()**: chain several helpers calls together: helpers.chain().sup().set(...).auth(...).get(...).then(...).testDone(...);

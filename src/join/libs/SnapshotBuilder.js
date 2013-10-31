@@ -95,7 +95,8 @@
             }
             else {
                this.valueParts[myIndex] = createValue(path, snap);
-               this._callbackCompleted(snap);
+               //todo remove this defer when test units are done?
+               util.defer(this._callbackCompleted, this);
             }
          }, this);
       },
@@ -108,6 +109,7 @@
          deferredDisposable(this.subs, path.ref(), 'value', function(snap) {
 //            log('_loadUnion: completed "%s" with value "%j"', path.toString(), snap.val());
             this.valueParts[myIndex] = createValue(path, snap);
+            //todo remove this defer when test units are done?
             util.defer(this._callbackCompleted, this);
          }, this);
       },
@@ -304,7 +306,7 @@
    };
 
    /**
-    * @param {JoinedSnapshot} rec
+    * @param {JoinedRecord} rec
     * @param data
     * @param {JoinedSnapshot} [childSnap]
     * @returns {*}

@@ -51,10 +51,18 @@
 
    "ordered": {
       "set1": {
-         "one": { }
+         "one":   { ".value": 1, ".priority": 1 },
+         "two":   { ".value": 2, ".priority": 2 },
+         "three": { ".value": 3, ".priority": 3 },
+         "four":  { ".value": 4, ".priority": 4 },
+         "five":  { ".value": 5, ".priority": 5 }
       },
       "set2": {
-
+         "one":   { ".value": 11, ".priority": 11 },
+         "two":   { ".value": 22, ".priority": 22 },
+         "three": { ".value": 33, ".priority": 33 },
+         "four":  { ".value": 44, ".priority": 44 },
+         "five":  { ".value": 55, ".priority": 55 }
       }
    }
 }

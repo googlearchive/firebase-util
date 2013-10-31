@@ -126,7 +126,7 @@ helpers.tok = function(user) {
  * @param {String|RegExp} [grep]
  */
 helpers.debugThisTest = function(level, grep) {
-   revertLogging = fb.log.logLevel(level||'debug', grep);
+   revertLogging = fb.log.logLevel(level||'log', grep);
 };
 var revertLogging;
 

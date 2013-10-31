@@ -20,11 +20,7 @@
    Observer.prototype = {
       notify: function() {
          var args = util.toArray(arguments);
-         // defer here so no locally cached data causes out-of-order operations
-         // better safe than sorry
-//         util.defer(function() {
-            this.fn.apply(this.context||null, args);
-//         }, this);
+         this.fn.apply(this.context||null, args);
       },
 
       matches: function(event, fn, context) {

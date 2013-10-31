@@ -3,6 +3,7 @@ var expect = require('chai').expect;
 var fb = require('../firebase-utils.js')._ForTestingOnly;
 var helpers = require('./util/test-helpers.js');
 var data = require('./util/data.join.json');
+var Firebase = require('firebase');
 
 describe('join.JoinedRecord', function() {
    var JoinedRecord = fb.join.JoinedRecord;
@@ -87,10 +88,9 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should merge data in order paths were added', function(done) {
-         helpers.debugThisTest();
          new JoinedRecord(helpers.ref('account'), helpers.ref('profile')).on('value', function(snap) {
             snap.ref().off();
-            expect(snap.val()).to.deep.equal({
+            expect(snap.val()).to.eql({
                "bruce": {
                   "email": "bruce@lee.com",
                   "name": "Bruce Lee",
@@ -111,7 +111,7 @@ describe('join.JoinedRecord', function() {
       it('should put primitives into field named by path', function(done) {
          new JoinedRecord(helpers.ref('unions/fruit'), helpers.ref('unions/legume')).on('value', function(snap) {
             snap.ref().off();
-            expect(snap.val()).to.deep.equal({
+            expect(snap.val()).to.eql({
                a: { fruit: "apple" },
                b: { fruit: "banana", legume: "baked beans" },
                c: { legume: "chickpeas" },
@@ -127,7 +127,7 @@ describe('join.JoinedRecord', function() {
             helpers.ref('unions/legume')
          ).on('value', function(snap) {
             snap.ref().off();
-            expect(snap.val()).to.deep.equal({
+            expect(snap.val()).to.eql({
                a: { 'フルーツ': "apple" },
                b: { 'フルーツ': "banana", legume: "baked beans" },
                c: { legume: "chickpeas" },
@@ -137,11 +137,28 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should call "child_added" for all pre-loaded recs');
+      //todo-test
+      it.skip('should call "child_added" for all pre-loaded recs', function(done) {
+         var keys;
+         var rec = new JoinedRecord(helpers.ref('account'), helpers.ref('profile'));
+
+         function fn(snap) {
+            expect(snap.name()).to.equal(keys.shift());
+            keys.length === 0 && done();
+         }
+
+         fb.log('_____________?');//debug
+         rec.once('value', function(snap) {
+            fb.log('child_added__________');//debug
+            keys = fb.util.keys(snap.val());
+            // wait for the recs to load, then try child_added against them
+            rec.on('child_added', fn);
+         });
+      });
 
       it('should call "value" on a child_added event', function(done) {
          function setVal(snap) {
-            expect(snap.val()).to.deep.equal({
+            expect(snap.val()).to.eql({
                "bruce": {
                   "email": "bruce@lee.com",
                   "name": "Bruce Lee",
@@ -161,7 +178,7 @@ describe('join.JoinedRecord', function() {
 
          function verify(snap) {
             snap.ref().off();
-            expect(snap.val()).to.deep.equal({
+            expect(snap.val()).to.eql({
                "bruce": {
                   "email": "bruce@lee.com",
                   "name": "Bruce Lee",
@@ -212,7 +229,9 @@ describe('join.JoinedRecord', function() {
 
       it('should accept paths that don\'t exist (that just return null)');
 
-      it('should return null if any intersecting path is null');
+      it('should return null if any intersecting path is null if joined parent');
+
+      it('should return null if any intersecting path is null if joined child');
 
       it('should return only children in all intersecting paths');
 
@@ -221,6 +240,14 @@ describe('join.JoinedRecord', function() {
       it('should sort data according to first sortBy path');
 
       it('should invoke the cancel callback for all listeners if canceled');
+
+      it('should work with only child_added callback');
+
+      it('should work with only child_changed callback');
+
+      it('should work with only child_removed callback');
+
+      it('should work with only child_moved callback');
 
       it('should return a regular snap if called on child');
 
@@ -233,6 +260,8 @@ describe('join.JoinedRecord', function() {
       it('should work with "child_changed" if called on child');
 
       it('should work with "child_moved" if called on child');
+
+      it('should not behave unexpectedly if add followed immediately by remove event');
    });
 
    describe('#off', function() {
@@ -244,21 +273,106 @@ describe('join.JoinedRecord', function() {
   });
 
    describe('#once', function() {
-      it('should return a JoinedSnapshot');
+      it('should return a JoinedSnapshot', function(done) {
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile')).once('value', function(snap) {
+            expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
+            done();
+         });
+      });
 
-      it('should return a regular snap if called on a child');
+      it('should work if called when value is already cached', function(done) {
+         var rec = new JoinedRecord(helpers.ref('account'), helpers.ref('profile'));
+         rec.once('value', function(snap1) {
+            rec.once('value', function(snap2) {
+               expect(snap2.val()).to.eql(snap1.val());
+               done();
+            })
+         });
+      });
 
-      it('should work for "value"');
+      it('should get called exactly one time', function(done){
+         var ct = 0, adds = 0;
+         var rec = new JoinedRecord(helpers.ref('account'), helpers.ref('profile'));
+         rec.once('value', function() { ct++; });
 
-      it('should work for "child_added"');
+         function next() {
+            if( ++adds === 3 ) {
+               setTimeout(function() {
+                  expect(ct).to.equal(1);
+                  done();
+               }, 100);
+            }
+         }
 
-      it('should work for "child_removed"');
+         helpers.set('account/john', {email: 'john@john.com'}).then(next);
+         helpers.set('account/mandy', {email: 'mandy@mandy.com'}).then(next);
+         helpers.set('account/mary', {email: 'mary@mary.com'}).then(next);
 
-      it('should work for "child_changed"');
+      });
 
-      it('should work for "child_removed"');
+      it('should return a regular snap at the right child path if called on a child', function() {
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile'))
+            .child('kato/name').once('value', function(snap) {
+               expect(snap.ref()).to.be.instanceOf(Firebase);
+               expect(snap.name()).to.equal('name');
+               expect(snap.ref().parent().parent().name()).to.equal('profile');
+               expect(snap.val()).to.equal('Michael Wulf');
+            })
+      });
 
-      it('should get called exactly one time');
+      it('should work for "value"', function(done) {
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile'))
+            .once('value', function(snap) {
+               expect(snap.val()).to.eql({
+                  "bruce": {
+                     "email": "bruce@lee.com",
+                     "name": "Bruce Lee",
+                     "nick": "Little Phoenix",
+                     "style": "Jeet Kune Do"
+                  },
+                  "kato": {
+                     "email": "wulf@firebase.com",
+                     "name": "Michael Wulf",
+                     "nick": "Kato",
+                     "style": "Kung Fu"
+                  }
+               });
+               done();
+            });
+      });
+
+      it('should work for "child_added"', function(done) {
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile'))
+            .once('child_added', function(snap) {
+               expect(snap.name()).to.equal('bruce');
+               done();
+            });
+      });
+
+      it('should work for "child_removed"', function(done) {
+         var rec = new JoinedRecord(helpers.ref('account'), helpers.ref('profile'));
+         rec.once('child_removed', function(snap) {
+               expect(snap.name()).to.equal('bruce');
+               done();
+            });
+         rec.once('value', function() {
+            helpers.ref('account/bruce').remove();
+            helpers.ref('profile/bruce').remove();
+         });
+      });
+
+      it('should work for "child_changed"', function(done) {
+         new JoinedRecord(helpers.ref('account'), helpers.ref('profile'))
+            .once('child_changed', function(snap) {
+               expect(snap.name()).to.equal('bruce');
+               done();
+            });
+         helpers.ref('account/bruce/email').set('brucie@wushu.com');
+      });
+
+      it('should work for "child_moved"');
+
+      it('should load dynamic paths');
   });
 
    describe('#child', function() {
