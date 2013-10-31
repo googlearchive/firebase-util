@@ -51,7 +51,7 @@
                this._eventTriggered('value', 1, snap);
             }
             else {
-               this.pathLoader.done(function() {
+               this.pathsLoaded(function() {
                   this._myValueChanged();
                }, this);
             }
@@ -129,25 +129,25 @@
       startAt:         function() { throw new Error('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into Firebase.Util.join'); },
       transaction:     function() { throw new Error('transactions not supported on JoinedRecord'); },
 
+      pathsLoaded: function(callback, scope) {
+         this.pathLoader.done(callback, scope);
+      },
+
       _monitorEvent: function(eventType) {
          if( this.getObservers(eventType).length === 1 ) {
-            var isInit = this.getObservers().length === 1;
-            this.pathLoader.done(function() {
-               if( this.hasObservers(eventType) ) {
+            this.pathsLoaded(function() {
+               paths = this.joinedParent || !this.intersections.length? this.paths : this.intersections;
+               if( this.hasObservers(eventType) && !paths[0].hasObservers(eventType) ) {
                   var paths;
                   (this.joinedParent? log.debug : log)('Now observing event "%s" for JoinedRecord(%s)', eventType, this.name());
                   if( this.joinedParent ) {
-                     paths = this.paths;
                      util.call(paths, 'observe', eventType, this._pathNotification, this);
                   }
-                  else if( isInit ) {
+                  else if( !paths[0].hasObservers() ) {
                      log.info('My first observer attached, loading my joined data and Firebase connections for JoinedRecord(%s)', this.name());
-                     paths = this.intersections.length? this.intersections : this.paths;
-                     this.pathLoader.done(function() {
-                        // this is the first observer, so start up our path listeners
-                        util.each(paths, function(path) {
-                           path.observe(eventsToMonitor(this, path), this._pathNotification, this);
-                        }, this);
+                     // this is the first observer, so start up our path listeners
+                     util.each(paths, function(path) {
+                        path.observe(eventsToMonitor(this, path), this._pathNotification, this);
                      }, this);
                   }
                }
@@ -157,9 +157,9 @@
 
       _stopMonitoringEvent: function(eventType, obsList) {
          var obsCountRemoved = obsList.length;
-         this.pathLoader.done(function() {
+         this.pathsLoaded(function() {
             if( obsCountRemoved && !this.hasObservers(eventType) ) {
-               (this.joinedParent? log.debug : log)('No more observers%s for JoinedRecord(%s)', eventType? ' of "'+eventType+'"' : '', this.name());
+               (this.joinedParent? log.debug : log)('Stopped observing %s events on JoinedRecord(%s)', eventType? '"'+eventType+'"' : '', this.name());
                if( this.joinedParent ) {
                   util.call('paths', 'stopObserving', eventType, this._pathNotification, this);
                }
@@ -182,7 +182,7 @@
       // that are controlling when a record gets created and processed
       _pathNotification: function(path, event, childName, mappedVals, prevChild, childSnap) {
          var rec;
-         log.debug('Received "%s" from Path(%s): %j', event, path.toString(), this.joinedParent? mappedVals:childSnap.val());
+         log.debug('Received "%s" from Path(%s): %j', event, path, this.joinedParent? mappedVals:childSnap.val());
 
          if( this.joinedParent ) {
             // most of the child record events are just pretty much a passthrough
@@ -309,16 +309,16 @@
       },
 
       // only applicable to the parent joined path
-      _addChildRec: function(rec, prevName) {
+      _addChildRec: function(rec, prevName, skipValueSet) {
          this._assertIsParent('_addChildRec');
          var childName = rec.name();
          if( rec.currentValue !== null && !this._isChildLoaded(childName) ) {
-            log.debug('Added child rec %s to JoinedRecord(%s)', rec, this.name());
+            log.debug('Added child rec %s to JoinedRecord(%s) after %s', rec, this.name(), prevName);
             // the record is new and has already loaded its value and no intersection path returned null,
             // so now we can add it to our child recs
             var nextRec = this._addRecAfter(rec, prevName);
             this.childRecs[childName] = rec;
-            if( this._isValueLoaded() ) {
+            if( this._isValueLoaded() && !util.has(this.currentValue, childName) ) {
                // we only store the currentValue on this record if somebody is monitoring it,
                // otherwise we have to perform a wasteful on('value',...) for all my join paths each
                // time there is a change
@@ -388,6 +388,9 @@
             if( toY === -1 ) {
                toY = len;
             }
+            else {
+               toY++;
+            }
          }
          rec.prevChildName = toY > 0? this.sortedChildKeys[toY-1] : null;
          this.sortedChildKeys.splice(toY, 0, rec.name());
@@ -433,9 +436,7 @@
       // only applicable to child paths
       _myValueChanged: function() {
          join.buildSnapshot(this).value(function(snap) {
-            if( this._setMyValue(snap.val()) ) {
-               this.joinedParent || this._loadCachedChildren();
-            }
+            this._setMyValue(snap.val());
          }, this);
       },
 
@@ -448,6 +449,7 @@
          if( !util.isEqual(newValue, this.currentValue) ) {
             this.priorValue = this.currentValue;
             this.currentValue = newValue;
+            this.joinedParent || this._loadCachedChildren();
             this.triggerEvent('value', makeSnap(this));
             return true;
          }
@@ -482,7 +484,7 @@
       _loadCachedChildren: function() {
          this._assertIsParent('_loadCachedChildren');
          var prev = null;
-         this.sortedChildKeys = [];
+//         this.sortedChildKeys = [];
          util.each(this.currentValue, function(v, k) {
             if( !this._isChildLoaded(k) ) {
                var rec = this.child(k);

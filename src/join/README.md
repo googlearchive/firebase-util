@@ -38,7 +38,7 @@ For example, given this data:
       foo: {a: 1, b: 2},
       bar: {a: 100, b: 200}
    },
-   path1: {
+   path2: {
       foo: {c: 3},
       bar: {c: 300}
    }

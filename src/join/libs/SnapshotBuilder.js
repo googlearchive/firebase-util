@@ -61,14 +61,14 @@
          // should only be called exactly once
          if( this.state !== 'loaded' ) {
             this.state = 'loaded';
-            util.each(this.subs, function(s) { s(); });
+            util.call(this.subs);
             this.subs = null;
             this.snapshot = new join.JoinedSnapshot(this.rec, mergeValue(this.pendingPaths.sortIndex, this.valueParts));
 //            log('Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val());
             if( this.pendingPaths.dynamics.length ) {
                log('%d dynamic paths were not included in this snapshot', this.pendingPaths.dynamics.length);
             }
-            util.defer(this._notify, this);
+            this._notify();
          }
       },
 
@@ -96,7 +96,7 @@
             else {
                this.valueParts[myIndex] = createValue(path, snap);
                //todo remove this defer when test units are done?
-               util.defer(this._callbackCompleted, this);
+               this._callbackCompleted();
             }
          }, this);
       },
@@ -110,7 +110,7 @@
 //            log('_loadUnion: completed "%s" with value "%j"', path.toString(), snap.val());
             this.valueParts[myIndex] = createValue(path, snap);
             //todo remove this defer when test units are done?
-            util.defer(this._callbackCompleted, this);
+            this._callbackCompleted();
          }, this);
       },
 
@@ -247,10 +247,10 @@
       // load methods have even been called, causing some issues with the counters
       // so we defer to ensure everything is counted
       util.defer(function() {
-         ref.once(event, fn, context);
          subs.push(function() {
             ref.off(event, fn, context);
          });
+         ref.once(event, fn, context);
       });
    }
 
@@ -328,11 +328,11 @@
             });
          }
       }
-      else if( rec.sortedChildKeys ) {
+      else {
          out = {};
          util.each(rec.sortedChildKeys, function(key) {
-            if( childSnap && childSnap.name() === key && childSnap.val() !== undefined ) {
-               out[key] = childSnap.val();
+            if( childSnap && childSnap.name() === key ) {
+               util.isEmpty(childSnap.val()) || (out[key] = childSnap.val());
             }
             else if( !util.isEmpty(data[key]) ) {
                out[key] = data[key];

@@ -204,7 +204,10 @@ else {
       var args = util.toArray(arguments, 2);
       var res = [];
       util.each(list, function(o) {
-         o && typeof(o[methodName]) === 'function' && res.push(o[methodName].apply(o, args));
+         if( typeof(o) === 'function' && !methodName ) {
+            return res.push(o.apply(null, args));
+         }
+         return util.isObject(o) && typeof(o[methodName]) === 'function' && res.push(o[methodName].apply(o, args));
       });
       return res;
    };

@@ -125,14 +125,31 @@ helpers.tok = function(user) {
  * @param {String|int} [level]
  * @param {String|RegExp} [grep]
  */
-helpers.debugThisTest = function(level, grep) {
-   revertLogging = fb.log.logLevel(level||'log', grep);
-};
-var revertLogging;
+helpers.debugThisTest = (function() {
+   var revertLogging;
+   afterEach(function() {
+      revertLogging && revertLogging();
+   });
 
-afterEach(function() {
-   revertLogging && revertLogging();
-});
+   return function(level, grep) {
+      revertLogging = fb.log.logLevel(level||'log', grep);
+   }
+})();
+
+/**
+ * Turns off a Firebase or JoinedRecord reference after test completes (anything with an off() function)
+ */
+helpers.turnOffAfterTest = (function() {
+   var revertRefs = [];
+   afterEach(function() {
+      fb.util.call(revertRefs, 'off');
+      revertRefs = [];
+   });
+
+   return function(ref) {
+      revertRefs.push(ref);
+   }
+})();
 
 /**
  * Makes all helpers methods return promise objects and allows them to be chained

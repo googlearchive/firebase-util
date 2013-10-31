@@ -81,7 +81,7 @@
 
       // see the reconcilePaths() method in PathLoader.js
       removeConflictingKey: function(fromKey, owningPath) {
-         log.info('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, fromKey, this.getKeyMap()[fromKey], owningPath);
+         log('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, fromKey, this.getKeyMap()[fromKey], owningPath);
          delete this.props.keyMap[fromKey];
       },
 
@@ -104,6 +104,7 @@
       },
 
       _observerAdded: function(event) {
+         log('_observerAdded %s %s', event, this.name());//debug
          if( event === 'keyMapLoaded' ) {
             if( this.props.keyMap !== null ) {
                this._finishedKeyMap();
@@ -130,7 +131,7 @@
          if( !this.isJoinedChild() || event === 'value' || this.hasKey(snap.name()) ) {
             var mappedVals = mapValues(this.getKeyMap(), snap.val());
             if( mappedVals !== null || event !== 'child_added' ) {
-//               log('Path(%s/%s)::sendEvent(%s, %j, %s) to %d observers', this.name(), snap.name(), event, mappedVals, prevChild, this.getObservers(event).length);
+               log('Path(%s/%s)::sendEvent(%s, %j, %s) to %d observers', this.name(), snap.name(), event, mappedVals, prevChild, this.getObservers(event).length);
                util.defer(function() {
                   this.triggerEvent(event, this, event, snap.name(), mappedVals, prevChild, snap);
                }, this);
@@ -153,7 +154,7 @@
                }, this);
             }
             else {
-               throw new Error('No keyMap found for path "'+this.toString()+'"; must be declared for all dynamic paths');
+               throw new Error('No keyMap found for path "'+this.toString()+'"'+(this.isDynamic()? '; must be declared for all dynamic paths' : '. If you are calling child() on a joined path, you may need to wait for the keyMap to load by using pathsLoaded(), or by declaring it manually'));
             }
          }
          else {
