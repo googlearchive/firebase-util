@@ -23,6 +23,10 @@ else {
 
    var util = fb.pkg('util');
 
+   util.isDefined = function(v) {
+      return v !== undefined;
+   };
+
    util.isObject = function(v) {
       return v !== null && typeof(v) === 'object';
    };
@@ -232,13 +236,13 @@ else {
          var isA = util.isArray(a);
          var isB = util.isArray(b);
          if( isA || isB ) {
-            return isA && isB && a.length === b.length && !util.has(a, function(v, i) {
+            return isA && isB && a.length === b.length && !util.contains(a, function(v, i) {
                return !util.isEqual(v, b[i]);
             });
          }
          else {
             return util.isEqual(util.keys(a).sort(), util.keys(b).sort())
-               && !util.has(a, function(v, k) { return !util.isEqual(v, b[k]) });
+               && !util.contains(a, function(v, k) { return !util.isEqual(v, b[k]) });
          }
       }
       else {

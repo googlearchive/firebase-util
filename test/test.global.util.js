@@ -298,7 +298,7 @@ describe('global.js', function() {
    });
 
    describe('#isEqual', function() {
-      it('should return false for null vs {}', function() {
+      it('should return false for null vs object', function() {
          expect(util.isEqual(null, {})).to.be.false;
       });
 
@@ -314,15 +314,23 @@ describe('global.js', function() {
          expect(util.isEqual(null, null)).to.be.true;
       });
 
-      it('should return true for {} vs {}', function() {
+      it('should return true for two empty objects', function() {
          expect(util.isEqual({}, {})).to.be.true;
       });
 
-      it('should return true for {foo: "ffoo", bar: "barr"} vs {bar: "barr", foo: "ffoo"}', function() {
+      it('should return false for two obects with diff values of same type', function() {
+         expect(util.isEqual({foo: 'foo', bar: 'bar'}, {foo: 'ffoo', bar: 'bar'})).to.be.false;
+      });
+
+      it('should return false for two obects with same value of diff types (string vs number)', function() {
+         expect(util.isEqual({foo: 1, bar: 2}, {foo: 1, bar: "2"})).to.be.false;
+      });
+
+      it('should return true if keys are in diff order for an object', function() {
          expect(util.isEqual({foo: "ffoo", bar: "barr"}, {bar: "barr", foo: "ffoo"})).to.be.true;
       });
 
-      it('should return true for {foo: "ffoo", bar: {barr: "barr"}} vs {bar: {barr: "barr"}, foo: "ffoo"}', function() {
+      it('should return true for nested equal objects', function() {
          expect(util.isEqual({foo: "ffoo", bar: {barr: "barr"}}, {bar: {barr: "barr"}, foo: "ffoo"})).to.be.true;
       });
 
@@ -330,25 +338,34 @@ describe('global.js', function() {
          expect(util.isEqual([], [])).to.be.true;
       });
 
-      it('should return true for [1, 2, [3, 4]] vs [1, 2, [3, 4]]', function() {
+      it('should return true for nested equal arrays', function() {
          expect(util.isEqual([1, 2, [3, 4]], [1, 2, [3, 4]])).to.be.true;
       });
 
-      it('should return false for [1, 2, [3, "4"]] vs [1, 2, [3, 4]]', function() {
-         expect(util.isEqual([1, 2, [3, 4]], [1, 2, [3, 4]])).to.be.true;
+      it('should return false for diff values of same type in an array', function() {
+         expect(util.isEqual([1], [2])).to.be.false;
       });
 
-      it('should return true for 1,1', function() {
+      it('should return false for nested arrays with values of diff types (string vs number)', function() {
+         expect(util.isEqual([1, 2, [3, 4]], [1, 2, [3, "4"]])).to.be.false;
+      });
+
+      it('should return true for two equal integers', function() {
          expect(util.isEqual(1,1)).to.be.true;
       });
 
-      it('should return false for 1,"1"', function() {
+      it('should return false for two diff integers', function() {
+         expect(util.isEqual(1,2)).to.be.false;
+      });
+
+      it('should return false for primitives of diff type (string vs number)', function() {
          expect(util.isEqual(1,"1")).to.be.false;
       });
 
-      it('should return false for [1] vs {0: 1}', function() {
-         expect(util.isEqual([1], {0: 1})).to.be.false;
+      it('should return false for object vs array, even if same keys/vals', function() {
+         expect(util.isEqual({0: 1}, [1])).to.be.false;
       });
+
    });
 
    describe('#has', function() {

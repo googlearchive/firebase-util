@@ -10,57 +10,50 @@
     * @private
     * @constructor
     */
-   function Path(props) {
+   function Path(props, parent) {
       this._super(this, EVENTS, util.bindAll(this, { onAdd: this._observerAdded, onRemove: this._observerRemoved }));
       this.subs = [];
-      this.props = buildPathProps(props);
-      this.resolveFn = null;
+      this.joinedParent = parent;
+      this.props = buildPathProps(props, parent);
+      // map of dynamic fields that have to be loaded separately, see _buildKeyMap() and _parseData()
+      this.dynamicChildPaths = {};
       if( !this.props.pathName ) {
-         throw new Error('No pathName found; '+(this.props.ref && !this.props.ref.name()? 'path cannot be set to the Firebase root' : 'must be declared for dynamic paths'));
+         throw new Error('No pathName found; path cannot be set to Firebase root');
       }
-      this._buildKeyMap();
+      if( parent ) {
+         this._loadKeyMapFromParent(parent);
+      }
+      else {
+         this._buildKeyMap();
+      }
    }
 
    Path.prototype = {
-      child: function(key, snap) {
-         if( this.isJoinedChild() ) {
-            // the keymap can rename things, so when it does, we need to find the original
-            // paths that we're trying to load
-            key = this.sourceKey(key);
+      child: function(key) {
+         if( this._isDynamicChild(key) ) {
+            return this.dynamicChildPaths[key];
          }
-         return this.props.childFn(key, snap);
-      },
-
-      /**
-       * @param {JoinedRecord} childRec
-       * @param {String} childKey
-       */
-      childPath: function(childRec, childKey) {
-         // try to resolve the child path with an empty snapshot
-         // but if the child method (i.e. it's a dynamic path and needs
-         // the snapshot data) returns null, then we will set up
-         // a resolve function which will have to be fulfilled before
-         // this path is valid (see SnapshotBuilder._tryToResolve
-         var opts = {
-            ref: this.child(childKey, new join.EmptySnap(childRec, childKey)),
-            keyMap: this.props.keyMap,
-            isJoinedChild: true,
-            pathName: this.props.pathName
-         };
-         opts.ref || delete opts.ref;
-         var childPath = new Path(opts);
-         if( !childPath.ref() ) {
-            childPath.resolveFn = function(snap) {
-               return childPath.child(childKey, snap);
-            };
+         else {
+            return new Path(this.ref().child(key), this);
          }
-         return childPath;
       },
 
       name: function() { return this.props.pathName; },
-      toString: function() { return this.ref()? this.ref().toString() : '[dynamic path:'+this.name()+']'; },
+      toString: function() { return this.ref().toString(); },
 
-      isDynamic: function() { return !this.ref(); },
+      loadData: function(doneCallback, context) {
+         util.defer(function() {
+            this.ref().once('value', function(snap) {
+               if( this.isJoinedChild() ) {
+                  this._parseRecord(snap.val(), doneCallback, context);
+               }
+               else {
+                  this._parseRecordSet(snap.val(), doneCallback, context);
+               }
+            }, this)
+         }, this);
+      },
+
       isIntersection: function() { return this.props.intersects; },
       isSortBy: function() { return this.props.sortBy; },
       setSortBy: function(b) { this.props.sortBy = b; },
@@ -76,23 +69,13 @@
          });
          return res;
       },
-      isUnresolved: function() { return this.resolveFn !== null; },
-      isJoinedChild: function() { return this.props.isJoinedChild; },
+
+      isJoinedChild: function() { return !!this.joinedParent; },
 
       // see the reconcilePaths() method in PathLoader.js
       removeConflictingKey: function(fromKey, owningPath) {
          log('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, fromKey, this.getKeyMap()[fromKey], owningPath);
          delete this.props.keyMap[fromKey];
-      },
-
-      tryResolve: function(snap) {
-         var ref = this.resolveFn(snap);
-         if( ref ) {
-            this.props.ref = ref;
-            this.resolveFn = null;
-            this.props.pathName = ref.name;
-         }
-         return !!ref;
       },
 
       /**
@@ -103,14 +86,34 @@
          return this.props.keyMap || {};
       },
 
+      _loadKeyMapFromParent: function(parent) {
+         if( parent.isJoinedChild() ) {
+            this.props.keyMap = { '.value': '.value' };
+            this._finishedKeyMap();
+         }
+         else {
+            parent.observe('keyMapLoaded', function(keyMap) {
+               this.props.keyMap = keyMap;
+               this._finishedKeyMap();
+            }, this);
+         }
+      },
+
       _observerAdded: function(event) {
-         log('_observerAdded %s %s', event, this.name());//debug
+         event === 'keyMapLoaded' || log.debug('Added "%s" observer to Path(%s), I have %d observers for this event', event, this.name(), this.getObservers(event).length); //debug
+         //todo monitor dynamic keyMap entries for added/removed/value/etc
+         //todo
+         //todo
+         //todo
+         //todo
+         //todo
+         //todo
          if( event === 'keyMapLoaded' ) {
-            if( this.props.keyMap !== null ) {
+            if( this.props.keyMap ) {
                this._finishedKeyMap();
             }
          }
-         else if( !this.isDynamic() && !this.subs[event] ) {
+         else if( !this.subs[event] ) {
             var fn = util.bind(this._sendEvent, this, event);
             this.subs[event] = this.props.ref.on(event, fn, function(err) {
                log.error(err);
@@ -119,6 +122,7 @@
       },
 
       _observerRemoved: function(event) {
+         event === 'keyMapLoaded' || log.debug('Removed "%s" observer from Path(%s), I have %d observers for this event', event, this.name(), this.getObservers(event).length);
          if( !this.hasObservers(event) && this.subs[event] ) {
             this.props.ref.off(event, this.subs[event]);
             delete this.subs[event];
@@ -129,21 +133,38 @@
          // the hasKey here is critical because we only trigger events for children
          // which are part of our keyMap on the child records (the joined parent gets all, of course)
          if( !this.isJoinedChild() || event === 'value' || this.hasKey(snap.name()) ) {
-            var mappedVals = mapValues(this.getKeyMap(), snap.val());
-            if( mappedVals !== null || event !== 'child_added' ) {
-               log('Path(%s/%s)::sendEvent(%s, %j, %s) to %d observers', this.name(), snap.name(), event, mappedVals, prevChild, this.getObservers(event).length);
+            if( event === 'value' ) {
+               this.loadData(fn, this);
+            }
+            else if( this._isDynamicChild(snap.name())) {
+               this.dynamicChildPaths[snap.name()].loadData(fn, this);
+            }
+            else {
                util.defer(function() {
-                  this.triggerEvent(event, this, event, snap.name(), mappedVals, prevChild, snap);
+                  fn.call(this, mapValues(this.getKeyMap(), snap.val()));
                }, this);
             }
          }
+
+         function fn(data) {
+            if( util.isEmpty(data) ) { data = null; }
+            if( data !== null || util.contains(['child_removed', 'value'], event) ) {
+               //               log('Path(%s/%s)::sendEvent(%s, %s%j, %s) to %d observers', this.ref().parent().name(), this.name(), event, event==='value'? '' : snap.name()+': ', data, prevChild, this.getObservers(event).length);
+               this.triggerEvent(event, this, event, snap.name(), data, prevChild, snap);
+            }
+         }
+      },
+
+      _isDynamicChild: function(key) {
+         return util.has(this.dynamicChildPaths, key);
       },
 
       // this should only ever be called on the master JoinedRecord
       // child joins should already have a key map provided when childPath() is called
       _buildKeyMap: function(cb) {
-         if( !util.isObject(this.props.keyMap) ) {
-            if( !this.isDynamic() && !this.isJoinedChild() ) {
+         var km = this.props.keyMap;
+         if( !util.isObject(km) ) {
+            if( !this.isJoinedChild() ) {
                this.props.ref.limit(1).once('value', function(outerSnap) {
                   var self = this;
                   outerSnap.forEach(function(snap) {
@@ -153,11 +174,15 @@
                   cb && cb(this);
                }, this);
             }
-            else {
-               throw new Error('No keyMap found for path "'+this.toString()+'"'+(this.isDynamic()? '; must be declared for all dynamic paths' : '. If you are calling child() on a joined path, you may need to wait for the keyMap to load by using pathsLoaded(), or by declaring it manually'));
-            }
          }
          else {
+            var dynamicPaths = this.dynamicChildPaths;
+            util.each(km, function(v, k) {
+               if( util.isObject(v) ) {
+                  km[k] = k;
+                  dynamicPaths[k] = new Path(v);
+               }
+            });
             this._finishedKeyMap();
             cb && cb(this);
          }
@@ -167,7 +192,7 @@
          if( util.isEmpty(this.props.keyMap) ) {
             log.warn('The path "%s" is empty! You either need to add at least one data record into the path or declare a keyMap. No data will be written to or read from this path :(', this);
          }
-         this.triggerEvent('keyMapLoaded');
+         this.triggerEvent('keyMapLoaded', this.props.keyMap);
          this.stopObserving('keyMapLoaded');
       },
 
@@ -184,6 +209,46 @@
          }
          log.info('Loaded keyMap for Path(%s) from child record "%s": %j', this.toString(), snap.name(), km);
          return b;
+      },
+
+      _parseRecord: function(data, callback, scope) {
+         //todo set up a queue here
+         var out = {}, fns = [], dynamicPaths = this.dynamicChildPaths;
+         if( !util.isEmpty(data) ) {
+            util.each(this.getKeyMap(), function(toKey, fromKey) {
+               if( this._isDynamicChild(fromKey) ) {
+                  //todo make dynamic keys a path too, then they can accept args just like a parent
+                  //todo such as keyMaps, etc, and and even have their own dynamic keys!
+                  fns.push(function(cb) {
+                     dynamicPaths[fromKey].loadData(function(data) {
+                        data !== null && (out[toKey] = data);
+                        cb();
+                     });
+                  });
+               }
+               else if( fromKey === '.value' ) {
+                  out[toKey] = data;
+               }
+               else if( util.has(data, fromKey) ) {
+                  out[toKey] = data[fromKey];
+               }
+            }, this);
+         }
+         util.createQueue(fns)(callback, scope, util.isEmpty(out)? null : out);
+         return callback;
+      },
+
+      _parseRecordSet: function(data, callback, scope) {
+         var out = {}, fns = [], self = this;
+         util.each(data, function(v,k) {
+            fns.push(function(cb) {
+               self._parseRecord(v, function(childData) {
+                  childData === null || (out[k] = childData);
+                  cb();
+               })
+            })
+         });
+         util.createQueue(fns)(callback, scope, util.isEmpty(out)? null : out);
       }
    };
 
@@ -209,7 +274,7 @@
       return out;
    }
 
-   function buildPathProps(props) {
+   function buildPathProps(props, parent) {
       if( props instanceof Firebase ) {
          props = propsFromRef(props);
       }
@@ -225,7 +290,6 @@
          keyMap: null,
          sortBy: false,
          pathName: null,
-         isJoinedChild: false,
          callback: function(path, event, snap, prevChild) {}
       }, props);
 
@@ -236,6 +300,9 @@
       if( util.isArray(out.keyMap) ) {
          out.keyMap = arrayToMap(out.keyMap);
       }
+
+      out.pathName = (parent? parent.name().replace(/.*\//, '')+'/' : '') + out.ref.name();
+
       return out;
    }
 
@@ -248,14 +315,8 @@
    }
 
    function propsFromHash(props) {
-      var addOpts = {};
-      if( typeof(props.ref) === 'function' ) {
-         addOpts = { ref: null, childFn: props.ref };
-      }
-      else {
-         addOpts = propsFromRef(props.ref);
-      }
-      return util.extend({}, props, addOpts, props.pathName? {pathName: props.pathName} : {});
+      var addOpts = propsFromRef(props.ref);
+      return util.extend({}, props, addOpts);
    }
 
    function propsFromRef(ref) {
@@ -263,8 +324,7 @@
          ref: ref,
          childFn: function(key) {
             return ref.child(key);
-         },
-         pathName: ref.name()
+         }
       }
    }
 

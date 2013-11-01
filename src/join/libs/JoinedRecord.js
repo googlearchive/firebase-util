@@ -21,9 +21,10 @@
       this.loadingChildRecs = {};
       this.priorValue = undefined;
       this.currentValue = undefined;
+      this.currentPriority = null;
       this.prevChildName  = null;
       this.intersections = [];
-      this._loadPaths(util.toArray(arguments));
+      this.queue = util.createQueue([this._loadPaths(util.toArray(arguments))]);
       this.refName = makeRefName(this);
    }
 
@@ -42,23 +43,22 @@
             cancelCallback = null;
          }
 
-         var obs = this.observe(eventType, callback, context, cancelCallback);
-
-         if( eventType === 'value' ) {
-            if( this._isValueLoaded() ) {
-               var snap = makeSnap(this);
-               obs.notify(snap);
-               this._eventTriggered('value', 1, snap);
-            }
-            else {
-               this.pathsLoaded(function() {
+         this.queue(function() {
+            var obs = this.observe(eventType, callback, context, cancelCallback);
+            if( eventType === 'value' ) {
+               if( this._isValueLoaded() ) {
+                  var snap = makeSnap(this);
+                  obs.notify(snap);
+                  this._eventTriggered('value', 1, snap);
+               }
+               else {
                   this._myValueChanged();
-               }, this);
+               }
             }
-         }
-         else if( eventType === 'child_added' && this.joinedParent ) {
-            this._notifyExistingRecsAdded(obs);
-         }
+            else if( eventType === 'child_added' && this.joinedParent ) {
+               this._notifyExistingRecsAdded(obs);
+            }
+         }, this);
       },
 
       off: function(eventType, callback, context) {
@@ -86,10 +86,7 @@
       child: function(childPath) {
          var ref;
          var parts = childPath.split('/'), firstPart = parts.shift();
-         if( this.joinedParent ) {
-            ref = this._findFirebaseRefForChild(firstPart)
-         }
-         else if( this._isChildLoaded(firstPart) ) {
+         if( this._isChildLoaded(firstPart) ) {
             // I already have this child record loaded so just return it
             ref = this._getJoinedChild(firstPart);
          }
@@ -104,7 +101,7 @@
       },
 
       parent:          function() {
-         return this.joinedParent || this.sortPath.ref().parent();
+         return this.joinedParent || this.sortPath.parent();
       },
 
       name: function() {
@@ -129,13 +126,9 @@
       startAt:         function() { throw new Error('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into Firebase.Util.join'); },
       transaction:     function() { throw new Error('transactions not supported on JoinedRecord'); },
 
-      pathsLoaded: function(callback, scope) {
-         this.pathLoader.done(callback, scope);
-      },
-
       _monitorEvent: function(eventType) {
          if( this.getObservers(eventType).length === 1 ) {
-            this.pathsLoaded(function() {
+            this.queue(function() {
                paths = this.joinedParent || !this.intersections.length? this.paths : this.intersections;
                if( this.hasObservers(eventType) && !paths[0].hasObservers(eventType) ) {
                   var paths;
@@ -157,7 +150,7 @@
 
       _stopMonitoringEvent: function(eventType, obsList) {
          var obsCountRemoved = obsList.length;
-         this.pathsLoaded(function() {
+         this.queue(function() {
             if( obsCountRemoved && !this.hasObservers(eventType) ) {
                (this.joinedParent? log.debug : log)('Stopped observing %s events on JoinedRecord(%s)', eventType? '"'+eventType+'"' : '', this.name());
                if( this.joinedParent ) {
@@ -180,9 +173,13 @@
 
       // this should never be called by a dynamic path, only by primary paths
       // that are controlling when a record gets created and processed
-      _pathNotification: function(path, event, childName, mappedVals, prevChild, childSnap) {
+      _pathNotification: function(path, event, childName, mappedVals, prevChild, snap) {
          var rec;
-         log.debug('Received "%s" from Path(%s): %j', event, path, this.joinedParent? mappedVals:childSnap.val());
+         log.debug('Received "%s" from Path(%s): %s%j', event, path.name(), event==='value'?'' : childName+': ', this.joinedParent? mappedVals:snap.val());
+
+         if( path === this.sortPath && event === 'value' ) {
+            this.currentPriority = snap.getPriority();
+         }
 
          if( this.joinedParent ) {
             // most of the child record events are just pretty much a passthrough
@@ -191,7 +188,7 @@
                   this._myValueChanged();
                   break;
                default:
-                  this.triggerEvent(event, childSnap);
+                  this.triggerEvent(event, makeSnap(this.child(childName), snap.val()));
             }
          }
          else {
@@ -224,8 +221,14 @@
 
       // must be called before any on/off events
       _loadPaths: function(pathArgs) {
+         // it's extremely important that all the paths are immediately added
+         // even though their keyMaps may load some time in the future, as the
+         // child() method depends on their existing so that ops like new JoinedRecord(...).child('a/b/c')
+         // will work without blowing up (if the paths don't exist, then child() will fail here)
+         // however, the Path class internally checks to see if the parent's keyMap has resolved
+         // before resolving the childrens' so the timing of the keyMaps is not critical
          util.each(buildPaths(this, pathArgs), this._addPath, this);
-         this.pathLoader = new join.PathLoader(this.paths);
+         var pathLoader = new join.PathLoader(this.paths);
          if( this.sortPath ) {
             if( !util.isEmpty(this.intersections) && !this.sortPath.isIntersection() ) {
                log.warn('Sort path cannot be set to a non-intersecting path as this makes no sense; using the first intersecting path instead in JoinedRecord(%s)', this.name());
@@ -236,14 +239,13 @@
             this.sortPath = this.intersections[0];
          }
          else {
-            this.sortPath = util.find(this.paths, function(path) {
-               return !path.isDynamic();
-            });
+            this.sortPath = this.paths[0];
          }
 
          if( !this.sortPath ) {
             throw new Error('No valid Firebase refs provided (must provide at least one actual Firebase ref');
          }
+         return util.bind(pathLoader.done, pathLoader);
       },
 
       // must be called before any on/off events
@@ -278,6 +280,7 @@
          if( !isLoading && !this._isChildLoaded(childName) ) {
             // the record is new: not currently loading and not loaded before
             if( !rec._isValueLoaded() ) {
+               log.debug('Preloading value for child %s in prep to add it to JonedRecord(%s)', rec.name(), this.name());
                // the record has no value yet, so we fetch it and then we call _addChildRec again
                this.loadingChildRecs[childName] = prevName;
                rec.once('value', function() {
@@ -365,7 +368,7 @@
                this._removeChildRec(snap.ref());
             }
             else if( this._isValueLoaded() ) {
-               if( !snap.isEqual(this.currentValue[snap.name()]) ) {
+               if( this.currentValue === null || !snap.isEqual(this.currentValue[snap.name()]) ) {
                   this._setMyValue(join.sortSnapshotData(this, this.currentValue, snap));
                   this.triggerEvent('child_changed', snap);
                }
@@ -520,22 +523,21 @@
 
    util.inherit(JoinedRecord, util.Observable);
 
+   // only useful for parent joined paths
    function eventsToMonitor(rec, path) {
       var events = [];
-      if( !path.isDynamic() ) {
-         if( path.isIntersection() || !rec.intersections.length ) {
-            events.push('child_added');
-         }
-         if( path === rec.sortPath ) {
-            events.push('child_moved');
-         }
+      if( path.isIntersection() || !rec.intersections.length ) {
+         events.push('child_added');
+      }
+      if( path === rec.sortPath ) {
+         events.push('child_moved');
       }
       return events.length? events : null;
    }
 
    function makeSnap(rec, val) {
       if( arguments.length === 1 ) { val = rec.currentValue; }
-      return new join.JoinedSnapshot(rec, val);
+      return new join.JoinedSnapshot(rec, val, rec.currentPriority);
    }
 
    function buildPaths(rec, paths) {
@@ -545,7 +547,7 @@
          // passes the parent JoinedRecord (paths[0]) and a key name (paths[1])
          rec.joinedParent = paths[0];
          builtPaths = util.map(rec.joinedParent.paths, function(parentPath) {
-            return parentPath.childPath(rec, paths[1]);
+            return parentPath.child(paths[1]);
          });
       }
       else {

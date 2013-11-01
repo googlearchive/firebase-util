@@ -4,7 +4,6 @@ var fb = require('../firebase-utils.js')._ForTestingOnly;
 var helpers = require('./util/test-helpers.js');
 var data = require('./util/data.join.json');
 var Firebase = require('firebase');
-Firebase.enableLogging(true);
 
 describe('join.JoinedRecord', function() {
    var JoinedRecord = fb.join.JoinedRecord;
@@ -14,26 +13,6 @@ describe('join.JoinedRecord', function() {
    });
 
    afterEach(helpers.unauth);
-
-   describe('<constructor>', function() {
-      it('should throw an error if there are no Firebase refs (cannot all be dynamic functions)', function() {
-         expect(function() {
-            newJoinedRecord({ref: function() {}, keyMap: { hello: 'world' }, pathName: 'test'});
-         }).to.throw(Error, /no valid Firebase/i);
-      });
-
-      it('should throw an error if passed a dynamic ref and there is no pathName', function() {
-         expect(function() {
-            newJoinedRecord({ref: function() {}, keyMap: { foo: 'bar' }});
-         }).to.throw(Error, /pathName/);
-      });
-
-      it('should throw an error if passed a dynamic ref and there is no keyMap', function() {
-         expect(function() {
-            newJoinedRecord({ref: function() {}, pathName: 'test'});
-         }).to.throw(Error, /keyMap/);
-      });
-   });
 
    describe('#auth', function() {
       it('should invoke callback with err if not successful', function(done) {
@@ -80,8 +59,9 @@ describe('join.JoinedRecord', function() {
    });
 
    describe('#on', function() {
-      it('should return a JoinedSnapshot on parent', function(done) {
-         newJoinedRecord('account/kato').on('value', function(snap) {
+      it('should return a JoinedSnapshot', function(done) {
+         newJoinedRecord('account').on('value', function(snap) {
+            snap.ref().off();
             expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
             done();
          });
@@ -89,6 +69,7 @@ describe('join.JoinedRecord', function() {
 
       it('should merge data in order paths were added', function(done) {
          newJoinedRecord('account', 'profile').on('value', function(snap) {
+            snap.ref().off();
             expect(snap.val()).to.eql({
                "bruce": {
                   "email": "bruce@lee.com",
@@ -107,8 +88,75 @@ describe('join.JoinedRecord', function() {
          });
       });
 
+      it('should invoke child_added if add to empty path', function(done) {
+         var rec = newJoinedRecord({ ref: helpers.ref('empty_path/one'), keyMap: ['a', 'b']}, {ref: helpers.ref('empty_path/two'), keyMap: ['c', 'd']});
+         rec.on('child_added', function(snap) {
+            snap.ref().off();
+            expect(snap.name()).to.equal('foo');
+            expect(snap.val()).to.eql({c: 'c'});
+            done();
+         });
+         rec.once('value', function(snap) {
+            expect(snap.val()).to.be.null;
+            helpers.ref('empty_path/two/foo/c').set('c');
+         });
+      });
+
+      it('should invoke child_removed on remove', function(done) {
+         var rec = newJoinedRecord('account', 'profile');
+         rec.on('child_removed', function(snap) {
+            snap.ref().off();
+            expect(snap.name()).to.equal('kato');
+            expect(snap.val()).to.eql({
+               "email": "wulf@firebase.com",
+               "name": "Michael Wulf",
+               "nick": "Kato",
+               "style": "Kung Fu"
+            });
+            done();
+         });
+         rec.once('value', function(snap) {
+            helpers.ref('account/kato').remove();
+            helpers.ref('profile/kato').remove();
+         });
+      });
+
+      it.only('should invoke child_changed on change', function(done) {
+         helpers.debugThisTest('debug', /^(Removed|Added|Received)/);
+         var rec = newJoinedRecord('account', 'profile');
+         rec.on('child_changed', function(snap) {
+            snap.ref().off();
+            expect(snap.name()).to.equal('kato');
+            expect(snap.val()).to.eql({
+               "email": "wulf@firebase.com",
+               "name": "Michael Wulf",
+               "nick": "Kato!",
+               "style": "Kung Fu"
+            });
+            done();
+         });
+         rec.once('value', function(snap) {
+            console.log('value', snap.val());
+            helpers.ref('profile/kato/nick').set('Kato!');
+         });
+      });
+
+      it('should invoke child_moved on move', function(done) {
+         var rec = newJoinedRecord('ordered/set1', 'ordered/set2');
+         rec.on('child_moved', function(snap) {
+            snap.ref().off();
+            expect(snap.name()).to.equal('three');
+            expect(snap.getPriority()).to.equal(25);
+            done();
+         });
+         rec.once('value', function(snap) {
+            helpers.ref('ordered/set1/three').setPriority(25);
+         });
+      });
+
       it('should put primitives into field named by path', function(done) {
          newJoinedRecord('unions/fruit', 'unions/legume').on('value', function(snap) {
+            snap.ref().off();
             expect(snap.val()).to.eql({
                a: { fruit: "apple" },
                b: { fruit: "banana", legume: "baked beans" },
@@ -124,6 +172,7 @@ describe('join.JoinedRecord', function() {
             {ref: helpers.ref('unions/fruit'), keyMap: {'.value': 'フルーツ'}},
             'unions/legume'
          ).on('value', function(snap) {
+            snap.ref().off();
             expect(snap.val()).to.eql({
                a: { 'フルーツ': "apple" },
                b: { 'フルーツ': "banana", legume: "baked beans" },
@@ -172,6 +221,7 @@ describe('join.JoinedRecord', function() {
          }
 
          function verify(snap) {
+            snap.ref().off();
             expect(snap.val()).to.eql({
                "bruce": {
                   "email": "bruce@lee.com",
@@ -224,15 +274,14 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should call "value" on a child_changed event', function(done) {
-         helpers.debugThisTest('debug');
          var ref = newJoinedRecord('profile', 'account'), fn = step1;
          function step1(snap) {
-            console.log('step1____', snap.val()); //debug
             fn = step2;
             helpers.ref('profile/kato/nick').set('Kato!');
          }
          function step2(snap) {
-            expect(snap.val()).keys('kato');
+            snap.ref().off();
+            expect(snap.val()).keys(['bruce', 'kato']);
             expect(snap.val().kato.nick).to.equal('Kato!');
             done();
          }
@@ -241,7 +290,20 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should call "value" on a child_moved event');
+      it('should call "value" on a child_moved event', function(done) {
+         var ref = newJoinedRecord('ordered/set1', 'ordered/set2'), fn = step1;
+         function step1() {
+            fn = step2;
+            helpers.ref('ordered/set1/2').setPriority(10);
+         }
+         function step2(snap) {
+            snap.ref().off();
+            expect(snap.val()).keys(['one', 'three', 'four', 'five', 'two']);
+            expect(snap.val().kato.nick).to.equal('Kato!');
+            done();
+         }
+         ref.on('value', function(snap) { fn(snap); });
+      });
 
       it('should be union if no intersecting paths are declared');
 
@@ -290,6 +352,8 @@ describe('join.JoinedRecord', function() {
       it('should work with "child_moved" if called on child');
 
       it('should not behave unexpectedly if add followed immediately by remove event');
+
+      it('should return correct value if a dynamic key is put into the fieldMap');
    });
 
    describe('#off', function() {
@@ -341,15 +405,14 @@ describe('join.JoinedRecord', function() {
          helpers.set('account/mary', {email: 'mary@mary.com'}).then(next);
       });
 
-      it('should return a regular snap at the right child path if called on a child', function() {
+      it('should return a JoinedRecord at the right child path if called on a child', function(done) {
          var rec = newJoinedRecord('account', 'profile');
-         rec.pathsLoaded(function() {
-            rec.child('kato/name').once('value', function(snap) {
-               expect(snap.ref()).to.be.instanceOf(Firebase);
-               expect(snap.name()).to.equal('name');
-               expect(snap.ref().parent().parent().name()).to.equal('profile');
-               expect(snap.val()).to.equal('Michael Wulf');
-            })
+         rec.child('kato/name').once('value', function(snap) {
+            expect(snap.ref()).to.be.instanceOf(JoinedRecord);
+            expect(snap.name()).to.equal('name');
+            expect(snap.ref().parent().parent().name()).to.equal('[account][profile]');
+            expect(snap.val()).to.equal('Michael Wulf');
+            done();
          });
       });
 
@@ -405,8 +468,8 @@ describe('join.JoinedRecord', function() {
 
       it('should work for "child_moved"');
 
-      it('should load dynamic paths');
-  });
+      it('should return correct value if a dynamic key is put into the fieldMap');
+   });
 
    describe('#child', function() {
       it('should be tested');

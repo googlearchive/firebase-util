@@ -49,16 +49,20 @@ We could do any of these ops:
 
 ```javascript
    var fb = new Firebase(URL);
+
+   // all your paths are belong to us
    var ref = Firebase.Util.join( fb.child('path1'), fb.child('path2') )
 
    ref.child('foo').set({a: 11, c: 33});
-   // path1: { foo: {a: 11 /* b removed! */}, ... }, path2: { foo: {c: 33}, ... }
+   // sets path1/foo to: {a: 11 /* b removed! */}
+   // sets path2/foo to: {c: 33}
 
-   ref..child('foo').update({b: 'hello'});
-   // path1: { foo: {a: 1, b: "hello"}, ... }, path2: { foo: {c: 3}, ... }
+   ref.child('foo').update({b: 'hello'});
+   // updates path1/foo to: {a: 1, b: "hello"}
+   // leaves path2/foo alone: {c: 3}
 
    ref.remove();
-   // path1: { /* foo removed! */, ... }, path2: { /* foo removed! */, ... }
+   // removes both path1/foo and path2/foo
 
    ref.push({a: 1000, b: 2000, c: 3000});
    // path1: { "-0xBAF...": {a: 1000, b: 2000}, ...}, path2: {"-0xBAF...": {c: 3000}, ...}
@@ -91,81 +95,23 @@ ref.child(123).set({ car: "Ford Mustang", truck: "Ford Studebaker" });
 // in Firebase: { car: {123: "Ford Mustang"}, truck: {123: "Ford Studebaker"} }
 ```
 
-Conflicting field names can be resolved by adding a `.value` key to the `keyMap` property, [see key maps](#keymaps):
+But what if we had two conflicting paths like this?
+
+{
+   model/car: { 123: "Ford GT" }
+   year/car:  { 123: "1986" }
+}
+
+The conflicting path names can be resolved using the `keyMap` property ([see key maps](#keymaps)):
 
 ```javascript
 ver ref = Firebase.Util.join(
-   {ref: new Firebase('INSTANCE/car'), keyMap: {'.value': 'foo'}},
-   new Firebase('INSTANCE/truck')
+   {ref: new Firebase('INSTANCE/model/car'), keyMap: {'.value': 'model'}},
+   {ref: new Firebase('INSTANCE/year/car'), keyMap: {'.value': 'year'}}
 )
 
 ref.once('value', ...);
-// results: { 123: {foo: "Ford GT", truck: "Ford F150"} }
-```
-
-<a name="dynamic_path_names"></a>
-## Dynamic Path Names
-
-To include records from paths which don't have matching key hierarchies, a mapping function can be provided in place
-of the Firebase ref. It will be called after all non-dynamic paths are loaded and merged, and given a snapshot containing
- the merged record.
-
-A dynamic path must meet this criteria:
- - must be passed as part of a [config hash](#configuration_options)
- - must be accompanied by a [keyMap](#keymaps) and a pathName
- - cannot depend on any data from other dynamic paths
- - must be accompanied by at least one Firebase reference which is not dynamic;
- - can never be considered as criteria for intersections or unions (the dynamic data is simply appended after they resolve)
-
-A dynamic path will be passed a snapshot containing data from all other dynamic paths (which are loaded first). If it cannot determine an appropriate path for the record, then it may return null instead of a Firebase ref (the dynamic data will not be included).
-
-For example, given this data structure:
-
-```javascript
-{
-   account: {
-      kato: {
-          email: "wulf@firebase.com",
-          member_since: "2013"
-      }
-   },
-
-   profile: {
-      "kato": {
-          name: "Michael Wulf",
-          nick: "Kato",
-          style: "Kung Fu"
-      }
-   },
-
-   styles: {
-       "Kung Fu": {
-          description: "Chinese system based on physical exercises involving animal mimicry"
-       }
-   }
-}
-```
-
-We could use this join:
-
-```javascript
-Firebase.Util.join(
-    new Firebase('INSTANCE/account'),
-    new Firebase('INSTANCE/profile'),
-    {
-       ref: function(recordId, snapshot) {
-          var style = snapshot.val().style;
-          if( style ) {
-            return new Firebase('INSTANCE/styles/'+style+'/description');
-          }
-          else {
-            return null; // skipped for this record
-          }
-       },
-       pathName: 'styles',
-       keyMap: [ 'description' ]
-    }
-);
+// results: { 123: { model: "Ford GT", year: "1986"} }
 ```
 
 <a name="keymaps"></a>
@@ -228,6 +174,65 @@ Note that, because we declared a keyMap for the first ref, but didn't include em
 Thus, a keymap could also be used to filter data added into the join. Be careful using this in conjunction with update()
 or set()!
 
+<a name="dynamic_path_names"></a>
+## Dynamic Path Names
+
+To include records from paths which don't have matching key hierarchies, a Firebase ref can
+be put into the keyMap. It will be loaded when the source path is loaded and its contents put into the key.
+
+For example, given this data structure:
+
+```javascript
+{
+   account: {
+      kato: {
+          email: "wulf@firebase.com",
+          member_since: "2013"
+      }
+   },
+
+   profile: {
+      "kato": {
+          name: "Michael Wulf",
+          nick: "Kato",
+          style: "Kung Fu"
+      }
+   },
+
+   styles: {
+       "Kung Fu": {
+          description: "Chinese system based on physical exercises involving animal mimicry"
+       }
+   }
+}
+```
+
+We could use this join:
+
+```javascript
+var ref = Firebase.Util.join(
+    new Firebase('INSTANCE/account'),
+    {
+       ref: new Firebase('INSTANCE/profile'),
+       keyMap: {
+          name: 'name',
+          style: new Firebase('INSTANCE/styles')
+       }
+    }
+);
+
+ref.on('value', ...);
+// {
+//    kato: {
+//       email: "wulf@firebase.com",
+//       member_since: "2013",
+//       name:  "Michael Wulf",
+//       nick:  "Kato",
+//       style: { ".id": "Kung Fu", description: "Chinese system based on physical exercises involving animal mimicry" }
+//    }
+// }
+```
+
 <a name="queries"></a>
 ## Queries: limit, startAt, and endAt
 
@@ -236,8 +241,8 @@ The desired behavior is very difficult to define in a global manner. (Feel free 
 with some applicable use cases! wulf@firebase.com)
 
 You can use query operations on a Firebase reference before passing it into the join/union/intersection methods. However,
- this probably only makes for intersecting paths, and probably only if exactly one path has these constraints. Otherwise,
- results are likely to contain senseless and disconnected data.
+ this probably only makes sense for intersecting paths, and probably only if exactly one path has these constraints. Otherwise,
+ results are likely to contain logically senseless unions of unmatched data.
 
 ```javascript
 var indexRef = new Firebase('URL/index_path').limit(10);
@@ -251,7 +256,7 @@ The `paths` elements passed to the FirebaseJoin constructor contain a Firebase r
 The hash is structured as follows:
 
    - **ref**: {Firebase|Function} (required!) ref to the parent path for this set of records
-   - **intersects**: {boolean} defaults to false, if true the join will only contain records that exist in this path
+   - **intersects**: {boolean} defaults to false, if true the join will only contain records that exist for (i.e. intersect) this path
    - **sortBy**: {boolean} sort records using this path's data?
    - **keyMap**: {Array|Object} map fields specific to each Firebase ref, see [key maps](#keymaps)
 

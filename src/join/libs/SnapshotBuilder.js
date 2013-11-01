@@ -1,5 +1,4 @@
 (function(exports, fb) {
-   var undefined;
    var util = fb.pkg('util');
    var log  = fb.pkg('log');
    var join = fb.pkg('join');
@@ -23,7 +22,6 @@
       this.callbacksReceived = 0;
       this.state = 'unloaded';
       this.snapshot = null;
-      this.subs = [];
       this.pendingPaths = groupPaths(rec.paths, rec.sortPath);
    }
 
@@ -34,6 +32,7 @@
        */
       value: function(callback, context) {
          this.observers.push(util.toArray(arguments));
+         //todo use util.createQueue?
          if( this.state === 'loaded' ) {
             this._notify();
          }
@@ -61,13 +60,8 @@
          // should only be called exactly once
          if( this.state !== 'loaded' ) {
             this.state = 'loaded';
-            util.call(this.subs);
-            this.subs = null;
             this.snapshot = new join.JoinedSnapshot(this.rec, mergeValue(this.pendingPaths.sortIndex, this.valueParts));
 //            log('Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val());
-            if( this.pendingPaths.dynamics.length ) {
-               log('%d dynamic paths were not included in this snapshot', this.pendingPaths.dynamics.length);
-            }
             this._notify();
          }
       },
@@ -85,16 +79,16 @@
          var myIndex = parts[1];
          this.callbacksExpected++;
 //         log('_loadIntersection: initialized "%s"', path.toString());
-         deferredDisposable(this.subs, path.ref(), 'value', function(snap) {
+         path.loadData(function(data, priority) {
 //            log('SnapshotBuilder._loadIntersection completed "%s" with value "%j"', path.toString(), snap.val());
-            if( snap.val() === null ) {
+            if( data === null ) {
                // all intersected values must be present or the total value is null
                // so we can abort the load here and send out notifications
                this.valueParts = [];
                this._finalize();
             }
             else {
-               this.valueParts[myIndex] = createValue(path, snap);
+               this.valueParts[myIndex] = data;
                //todo remove this defer when test units are done?
                this._callbackCompleted();
             }
@@ -105,100 +99,19 @@
          var path = parts[0];
          var myIndex = parts[1];
          this.callbacksExpected++;
-//         log('_loadUnion: initialized "%s"', path.toString());
-         deferredDisposable(this.subs, path.ref(), 'value', function(snap) {
-//            log('_loadUnion: completed "%s" with value "%j"', path.toString(), snap.val());
-            this.valueParts[myIndex] = createValue(path, snap);
-            //todo remove this defer when test units are done?
+         path.loadData(function(data, priority) {
+            this.valueParts[myIndex] = data;
             this._callbackCompleted();
          }, this);
       },
 
       _callbackCompleted: function() {
          if( this.callbacksExpected === ++this.callbacksReceived) {
-            if( this.pendingPaths.dynamics.length ) {
-               // when all the intersect and join ops are retrieved, try resolving any dynamic paths
-               this._resolveDynamicPaths(new join.JoinedSnapshot(this.rec, mergeValue(this.pendingPaths.sortIndex, this.valueParts)));
-            }
-
-            if( this.callbacksExpected === this.callbacksReceived ) {
-               // either all dynamic paths are resolved or cannot be resolved,
-               // so it's time to call this mission completed
-               this._finalize();
-            }
+            // so it's time to call this mission completed
+            this._finalize();
          }
-      },
-
-      _resolveDynamicPaths: function(newestSnap) {
-         // try to resolve any dynamic paths which depend on data from the unions/intersections
-         newestSnap && util.each(this.pendingPaths.dynamics, function(parts) {
-            this._tryToResolve(parts, newestSnap);
-         }, this);
-      },
-
-      _tryToResolve: function(parts, snap) {
-         var path = parts[0];
-         if( !path.isJoinedChild() ) {
-            this._mergeDynamicChildren(parts);
-         }
-         else if( path.tryResolve(snap) ) {
-            removeItem(this.pendingPaths.dynamics, parts);
-            if( path.isIntersection() ) {
-               this._loadIntersection(parts);
-            }
-            else {
-               this._loadUnion(parts);
-            }
-         }
-         else {
-            log.info('Could not resolve dynamic path "%s" for snapshot "%j"', path, snap.val());
-         }
-      },
-
-      _mergeDynamicChildren: function(parts) {
-         var path = parts[0];
-         var idx = parts[1];
-         this.callbacksExpected++;
-         mergeDynamicVal(path, this.valueParts, util.bind(function(mergedVal) {
-            this.valueParts[idx] = mergedVal;
-            this.callbacksReceived++;
-            this._callbackCompleted();
-         }, this));
       }
    };
-
-   function createValue(path, snap) {
-      var snapVal = snap.val(), finalVal = null;
-      if( snapVal !== null && snapVal !== undefined ) {
-         if( path.isJoinedChild() ) {
-            finalVal = createChildValue(path, snapVal);
-         }
-         else {
-            // if this is the joined parent, then we check each child to see if it's a primitive
-            finalVal = {};
-            snap.forEach(function(ss) {
-               finalVal[ss.name()] = createChildValue(path, ss.val());
-            });
-         }
-      }
-      return finalVal;
-   }
-
-   function createChildValue(path, data) {
-      var finalVal = null, keyMap = path.getKeyMap();
-      if( !util.isEmpty(data) ) {
-         finalVal = {};
-         util.each(keyMap, function(toKey, fromKey) {
-            if( fromKey === '.value' ) {
-               finalVal[toKey] = data;
-            }
-            else if( !util.isEmpty(data[fromKey]) ) {
-               finalVal[toKey] = data[fromKey];
-            }
-         });
-      }
-      return finalVal;
-   }
 
    function mergeValue(sortIndex, valueParts) {
       var out = util.extend({}, valueParts[sortIndex]);
@@ -212,14 +125,7 @@
       var out = { intersects: [], unions: [], dynamics: [], expect: 0, sortIndex: 0 };
 
       util.each(paths, function(path) {
-         // child paths which are unresolved can be resolved after we fetch
-         if( !path.isDynamic() ) {
-            pathParts(out, sortPath, path);
-         }
-         else {
-            // parent paths which are unresolved are a bit more tricky, store them separately (see _resolveDynamicPaths)
-            out.dynamics.push(path);
-         }
+         pathParts(out, sortPath, path);
       });
 
       return out;
@@ -233,61 +139,6 @@
       var parts = [path, pendingPaths.expect++];
       if( path.isIntersection() ) { pendingPaths.intersects.push(parts); }
       else { pendingPaths.unions.push(parts); }
-   }
-
-   function removeItem(list, item) {
-      var i = util.indexOf(list, item);
-      if( i > -1 ) {
-         list.splice(i, 1);
-      }
-   }
-
-   function deferredDisposable(subs, ref, event, fn, context) {
-      // if Firebase data is cached locally, this method could return before all the
-      // load methods have even been called, causing some issues with the counters
-      // so we defer to ensure everything is counted
-      util.defer(function() {
-         subs.push(function() {
-            ref.off(event, fn, context);
-         });
-         ref.once(event, fn, context);
-      });
-   }
-
-   function mergeDynamicVal(path, valParts, callback) {
-      var recsNeeded = 0, recsLoaded = 0, keysFound = {}, mergedVal = {};
-
-      util.each(valParts, loadKeysFrom);
-
-      function loadKeysFrom(valPart) {
-         util.each(valPart, function(v, k) {
-            if( !util.has(keysFound, k) ) {
-               keysFound[k] = true;
-               var ref = path.child(k);
-               ref && getRec(k, ref);
-            }
-         });
-      }
-
-      function getRec(key, ref) {
-         recsNeeded++;
-         // prevent synchronous callbacks from Firebase from causing it
-         // to complete before the next part to load has been counted
-         util.defer(function() {
-            ref.once('value', function(snap) {
-               doneLoadingRec(key, snap.val());
-            });
-         });
-      }
-
-      function doneLoadingRec(key, val) {
-         if( val !== null ) {
-            mergedVal[key] = val;
-         }
-         if( ++recsLoaded === recsNeeded ) {
-            callback(mergedVal);
-         }
-      }
    }
 
    /**
@@ -313,8 +164,8 @@
     */
    join.sortSnapshotData = function(rec, data, childSnap) {
       var out = data;
-      if( rec.joinedParent ) {
-         if( !util.isEmpty(data) ) {
+      if( !util.isEmpty(data) ) {
+         if( rec.joinedParent ) {
             out = {};
             util.each(rec.paths, function(path) {
                util.each(path.getKeyMap(), function(key, fromKey) {
@@ -327,17 +178,17 @@
                });
             });
          }
-      }
-      else {
-         out = {};
-         util.each(rec.sortedChildKeys, function(key) {
-            if( childSnap && childSnap.name() === key ) {
-               util.isEmpty(childSnap.val()) || (out[key] = childSnap.val());
-            }
-            else if( !util.isEmpty(data[key]) ) {
-               out[key] = data[key];
-            }
-         });
+         else {
+            out = {};
+            util.each(rec.sortedChildKeys, function(key) {
+               if( childSnap && childSnap.name() === key ) {
+                  util.isEmpty(childSnap.val()) || (out[key] = childSnap.val());
+               }
+               else if( !util.isEmpty(data[key]) ) {
+                  out[key] = data[key];
+               }
+            });
+         }
       }
       return util.isEmpty(out)? null : out;
    };
