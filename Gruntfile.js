@@ -72,8 +72,8 @@ module.exports = function(grunt) {
    grunt.loadNpmTasks('grunt-notify');
    grunt.loadNpmTasks('grunt-mocha-test');
 
-   grunt.registerTask('make', ['concat', 'uglify', 'test']);
-   grunt.registerTask('test', ['mochaTest']);
+   grunt.registerTask('make', ['concat', 'uglify']);
+   grunt.registerTask('test', ['make', 'mochaTest']);
 
-   grunt.registerTask('default', ['make', 'watch']);
+   grunt.registerTask('default', ['make', 'test', 'watch']);
 };

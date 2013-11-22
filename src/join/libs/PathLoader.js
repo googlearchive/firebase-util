@@ -43,7 +43,7 @@
     * Now this method prevents the need for every point where we merge or reconcile data to look through
     * every path to see which ones have the key, and which one should win if more than one contains it.
     *
-    * Instead, we just remove them directly from the paths.
+    * Instead, we just remove them directly from the paths when they load.
     *
     * @param paths
     */

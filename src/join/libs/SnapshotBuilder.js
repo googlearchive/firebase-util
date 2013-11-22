@@ -1,4 +1,5 @@
 (function(exports, fb) {
+   var undefined;
    var util = fb.pkg('util');
    var log  = fb.pkg('log');
    var join = fb.pkg('join');
@@ -60,7 +61,14 @@
          // should only be called exactly once
          if( this.state !== 'loaded' ) {
             this.state = 'loaded';
-            this.snapshot = new join.JoinedSnapshot(this.rec, mergeValue(this.pendingPaths.sortIndex, this.valueParts));
+            var dat = null;
+            if( !this.rec.joinedParent && this.pendingPaths.intersects.length ) {
+               dat = mergeIntersections(this.pendingPaths, this.valueParts);
+            }
+            else {
+               dat = mergeValue(this.pendingPaths.sortIndex, this.valueParts);
+            }
+            this.snapshot = new join.JoinedSnapshot(this.rec, dat);
 //            log('Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val());
             this._notify();
          }
@@ -79,8 +87,8 @@
          var myIndex = parts[1];
          this.callbacksExpected++;
 //         log('_loadIntersection: initialized "%s"', path.toString());
-         path.loadData(function(data, priority) {
-//            log('SnapshotBuilder._loadIntersection completed "%s" with value "%j"', path.toString(), snap.val());
+         path.loadData(function(data) {
+//            log('SnapshotBuilder._loadIntersection completed "%s" with value "%j"', path.toString(), data);
             if( data === null ) {
                // all intersected values must be present or the total value is null
                // so we can abort the load here and send out notifications
@@ -99,7 +107,8 @@
          var path = parts[0];
          var myIndex = parts[1];
          this.callbacksExpected++;
-         path.loadData(function(data, priority) {
+         path.loadData(function(data) {
+//            log('SnapshotBuilder._loadUnion completed "%s" with value "%j"', path.toString(), data);
             this.valueParts[myIndex] = data;
             this._callbackCompleted();
          }, this);
@@ -112,6 +121,26 @@
          }
       }
    };
+
+   function mergeIntersections(paths, valueParts) {
+      var ikeys = util.map(paths.intersects, function(parts) { return parts[1]; });
+      var out = {};
+      util.each(valueParts[paths.sortIndex], function(v, k) {
+         if( noEmptyIntersections(ikeys, valueParts, k) ) {
+            var parts = util.map(valueParts, function(part) {
+               return util.isObject(part)? part[k] : null;
+            });
+            out[k] = mergeValue(paths.sortIndex, parts);
+         }
+      });
+      return util.isEmpty(out)? null : out;
+   }
+
+   function noEmptyIntersections(intersectKeys, valueParts, recordKey) {
+      return util.find(intersectKeys, function(key) {
+         return !util.isObject(valueParts[key]) || util.isEmpty(valueParts[key][recordKey]);
+      }) === undefined;
+   }
 
    function mergeValue(sortIndex, valueParts) {
       var out = util.extend({}, valueParts[sortIndex]);

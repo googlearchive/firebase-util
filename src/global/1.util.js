@@ -153,6 +153,28 @@ else {
       return (list.indexOf || indexOf).call(list, item);
    };
 
+   util.remove = function(list, item) {
+      var res = false;
+      if( util.isArray(list) ) {
+         var i = util.indexOf(list, item);
+         if( i > -1 ) {
+            list.splice(i, 1);
+            res = true;
+         }
+      }
+      else if( util.isObject(list) ) {
+         var key;
+         for (key in list) {
+            if (list.hasOwnProperty(key) && item === list[key]) {
+               res = true;
+               delete list[key];
+               break;
+            }
+         }
+      }
+      return res;
+   };
+
    /**
     * Invoke a function after a setTimeout(..., 0), to help convert synch callbacks to async ones.
     * Additional args after `scope` will be passed to the fn when it is invoked
@@ -211,7 +233,7 @@ else {
          if( typeof(o) === 'function' && !methodName ) {
             return res.push(o.apply(null, args));
          }
-         return util.isObject(o) && typeof(o[methodName]) === 'function' && res.push(o[methodName].apply(o, args));
+         util.isObject(o) && typeof(o[methodName]) === 'function' && res.push(o[methodName].apply(o, args));
       });
       return res;
    };
@@ -220,14 +242,17 @@ else {
     * Determine if two variables are equal. They must be:
     *  - of the same type
     *  - arrays must be same length and all values pass isEqual()
+    *  - arrays must be in same order
     *  - objects must contain the same keys and their values pass isEqual()
+    *  - object keys do not have to be in same order unless objectsSameOrder === true
     *  - primitives must pass ===
     *
     * @param a
     * @param b
+    * @param {boolean} [objectsSameOrder]
     * @returns {boolean}
     */
-   util.isEqual = function(a, b) {
+   util.isEqual = function(a, b, objectsSameOrder) {
       if( a === b ) { return true; }
       else if( typeof(a) !== typeof(b) ) {
          return false;
@@ -241,7 +266,9 @@ else {
             });
          }
          else {
-            return util.isEqual(util.keys(a).sort(), util.keys(b).sort())
+            var aKeys = objectsSameOrder? util.keys(a) : util.keys(a).sort();
+            var bKeys = objectsSameOrder? util.keys(b) : util.keys(b).sort();
+            return util.isEqual(aKeys, bKeys)
                && !util.contains(a, function(v, k) { return !util.isEqual(v, b[k]) });
          }
       }

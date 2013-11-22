@@ -41,7 +41,7 @@
       exportVal:   function() { throw new Error('Nobody implemented me :('); },
 
       isEqual: function(val) {
-         return util.isEqual(this.data, this._loadData(val));
+         return util.isEqual(this.data, this._loadData(val), true);
       },
 
       _loadData: function(data) {

@@ -215,6 +215,48 @@ describe('global.js', function() {
       });
    });
 
+   describe('#remove', function() {
+      it('should remove existing item from array', function() {
+         var list = ['a', 'b', 'c', 'd', 'e'];
+         expect(util.remove(list, 'c')).to.be.true;
+         expect(list).to.eql(['a', 'b', 'd', 'e']);
+      });
+
+      it('should remove item from 0 index', function() {
+         var list = ['a', 'b', 'c', 'd', 'e'];
+         expect(util.remove(list, 'a')).to.be.true;
+         expect(list).to.eql(['b', 'c', 'd', 'e']);
+      });
+
+      it('should remove item from last index', function() {
+         var list = ['a', 'b', 'c', 'd', 'e'];
+         expect(util.remove(list, 'e')).to.be.true;
+         expect(list).to.eql(['a', 'b', 'c', 'd']);
+      });
+
+      it('should not remove non-existent item from array', function() {
+         var list = ['a', 'b', 'c', 'd', 'e'];
+         expect(util.remove(list, 'f')).to.be.false;
+         expect(list).to.eql(['a', 'b', 'c', 'd', 'e']);
+      });
+
+      it('should remove existing item from an object', function() {
+         var list = {a: 1, b: 2, c: 3, d: 4, e: 5};
+         expect(util.remove(list, 3)).to.be.true;
+         expect(list).to.eql({a: 1, b: 2, d: 4, e: 5});
+      });
+
+      it('should not remove non-existent item from an object', function() {
+         var list = {a: 1, b: 2, c: 3, d: 4, e: 5};
+         expect(util.remove(list, 0)).to.be.false;
+         expect(list).to.eql({a: 1, b: 2, c: 3, d: 4, e: 5});
+      });
+
+      it('should not fail if passed null', function() {
+         expect(util.remove(null, 5)).to.be.false;
+      })
+   });
+
    describe('#isEmpty', function() {
       it('returns true for empty array', function() {
          expect(util.isEmpty([])).to.be.true;

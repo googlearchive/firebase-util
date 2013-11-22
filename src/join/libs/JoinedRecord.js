@@ -45,19 +45,7 @@
 
          this.queue(function() {
             var obs = this.observe(eventType, callback, context, cancelCallback);
-            if( eventType === 'value' ) {
-               if( this._isValueLoaded() ) {
-                  var snap = makeSnap(this);
-                  obs.notify(snap);
-                  this._eventTriggered('value', 1, snap);
-               }
-               else {
-                  this._myValueChanged();
-               }
-            }
-            else if( eventType === 'child_added' && this.joinedParent ) {
-               this._notifyExistingRecsAdded(obs);
-            }
+            this._triggerPreloadedEvents(eventType, obs);
          }, this);
       },
 
@@ -73,11 +61,11 @@
          }
 
          var fn = function(snap, prevChild) {
-            this.off(eventType, fn, this);
             if( typeof(callback) === util.Observer )
                callback.notify(snap, prevChild);
             else
                callback.call(context, snap, prevChild);
+            this.off(eventType, fn, this);
          };
 
          this.on(eventType, fn, failureCallback, this);
@@ -114,6 +102,7 @@
       update:          function(value, onComplete) {},
       remove:          function(onComplete) {},
       push:            function(value, onComplete) {},
+
       root:            function() { return this.sortPath.ref().root(); },
       ref:             function() { return this; },
 
@@ -121,9 +110,9 @@
 
       //////// methods that are not allowed
       onDisconnect:    function() { throw new Error('onDisconnect() not supported on JoinedRecord'); },
-      limit:           function() { throw new Error('limit not supported on JoinedRecord; try calling limit() on ref before passing into Firebase.Util'); },
-      endAt:           function() { throw new Error('endAt not supported on JoinedRecord; try calling endAt() on ref before passing into Firebase.Util'); },
-      startAt:         function() { throw new Error('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into Firebase.Util.join'); },
+      limit:           function() { throw new Error('limit not supported on JoinedRecord; try calling limit() on ref before passing into join'); },
+      endAt:           function() { throw new Error('endAt not supported on JoinedRecord; try calling endAt() on ref before passing into join'); },
+      startAt:         function() { throw new Error('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into join'); },
       transaction:     function() { throw new Error('transactions not supported on JoinedRecord'); },
 
       _monitorEvent: function(eventType) {
@@ -154,11 +143,12 @@
             if( obsCountRemoved && !this.hasObservers(eventType) ) {
                (this.joinedParent? log.debug : log)('Stopped observing %s events on JoinedRecord(%s)', eventType? '"'+eventType+'"' : '', this.name());
                if( this.joinedParent ) {
-                  util.call('paths', 'stopObserving', eventType, this._pathNotification, this);
+                  util.call(this.paths, 'stopObserving', eventType, this._pathNotification, this);
                }
                else if( !this.hasObservers() ) {
                   log.info('My last observer detached, releasing my joined data and Firebase connections, JoinedRecord(%s)', this.name());
                   // nobody is monitoring this event anymore, so we'll stop monitoring the path now
+                  // and clear all our cached info (reset to nothing)
                   var paths = this.intersections.length? this.intersections : this.paths;
                   util.call(paths, 'stopObserving');
                   var oldRecs = this.childRecs;
@@ -171,14 +161,29 @@
          }, this);
       },
 
-      // this should never be called by a dynamic path, only by primary paths
-      // that are controlling when a record gets created and processed
-      _pathNotification: function(path, event, childName, mappedVals, prevChild, snap) {
+      /**
+       * This is the primary callback used by each Path to notify us that a change has occurred.
+       *
+       * For a joined child (a record with an id), this monitors all events and triggers them directly
+       * from here.
+       *
+       * But for a joined parent (the master paths where we are fetching joined records from), this method monitors
+       * only child_added and child_moved events. Everything else is triggered by watching the child records directly.
+       *
+       * @param {join.Path} path
+       * @param {String} event
+       * @param {String} childName
+       * @param mappedVals
+       * @param {String|null|undefined} prevChild
+       * @param {int|null|undefined} priority
+       * @private
+       */
+      _pathNotification: function(path, event, childName, mappedVals, prevChild, priority) {
          var rec;
-         log.debug('Received "%s" from Path(%s): %s%j', event, path.name(), event==='value'?'' : childName+': ', this.joinedParent? mappedVals:snap.val());
+         log.debug('Received "%s" from Path(%s): %s%s %j', event, path.name(), event==='value'?'' : childName+': ', prevChild === undefined? '' : '->'+prevChild, mappedVals);
 
          if( path === this.sortPath && event === 'value' ) {
-            this.currentPriority = snap.getPriority();
+            this.currentPriority = priority;
          }
 
          if( this.joinedParent ) {
@@ -188,7 +193,7 @@
                   this._myValueChanged();
                   break;
                default:
-                  this.triggerEvent(event, makeSnap(this.child(childName), snap.val()));
+                  this.triggerEvent(event, makeSnap(this.child(childName), mappedVals));
             }
          }
          else {
@@ -200,7 +205,8 @@
                   }
                   break;
                case 'child_moved':
-                  if( this.sortPath === path && this._isChildLoaded(childName) ) {
+                  if( this.sortPath === path ) {
+                     rec.currentPriority = priority;
                      this._moveChildRec(rec, prevChild);
                   }
                   break;
@@ -264,10 +270,13 @@
       },
 
       /**
-       * Called when a child_added event occurs on a Path I monitor.
-       * @param path
-       * @param rec
-       * @param prevName
+       * Called when a child_added event occurs on a Path I monitor. This does not necessarily result
+       * in a child record. But it does result in immediately loading all the joined paths and determining
+       * if the record is complete enough to add.
+       *
+       * @param {join.Path} path
+       * @param {JoinedRecord} rec
+       * @param {String|null} prevName
        * @returns {*}
        * @private
        */
@@ -280,7 +289,7 @@
          if( !isLoading && !this._isChildLoaded(childName) ) {
             // the record is new: not currently loading and not loaded before
             if( !rec._isValueLoaded() ) {
-               log.debug('Preloading value for child %s in prep to add it to JonedRecord(%s)', rec.name(), this.name());
+               log.debug('Preloading value for child %s in prep to add it to JoinedRecord(%s)', rec.name(), this.name());
                // the record has no value yet, so we fetch it and then we call _addChildRec again
                this.loadingChildRecs[childName] = prevName;
                rec.once('value', function() {
@@ -312,7 +321,7 @@
       },
 
       // only applicable to the parent joined path
-      _addChildRec: function(rec, prevName, skipValueSet) {
+      _addChildRec: function(rec, prevName) {
          this._assertIsParent('_addChildRec');
          var childName = rec.name();
          if( rec.currentValue !== null && !this._isChildLoaded(childName) ) {
@@ -427,8 +436,8 @@
 
                if( toY !== fromX ) {
 //               log('Join::child_moved %s -> %s (%s)', rec.name(), prevChild, this);
-                  this.sortedChildKeys.splice(toY, 0, this.sortedChildKeys.splice(fromX, 1));
-                  rec.prevChildName = prevChild;
+                  this.sortedChildKeys.splice(toY, 0, this.sortedChildKeys.splice(fromX, 1)[0]);
+                  rec.prevChildName = toY > 0? this.sortedChildKeys[toY-1] : null;
                   this._isChildLoaded(rec) && this.triggerEvent('child_moved', makeSnap(rec), prevChild);
                   this._setMyValue(join.sortSnapshotData(this, this.currentValue));
                }
@@ -449,7 +458,7 @@
        * @private
        */
       _setMyValue: function(newValue) {
-         if( !util.isEqual(newValue, this.currentValue) ) {
+         if( !util.isEqual(this.currentValue, newValue, true) ) {
             this.priorValue = this.currentValue;
             this.currentValue = newValue;
             this.joinedParent || this._loadCachedChildren();
@@ -487,7 +496,6 @@
       _loadCachedChildren: function() {
          this._assertIsParent('_loadCachedChildren');
          var prev = null;
-//         this.sortedChildKeys = [];
          util.each(this.currentValue, function(v, k) {
             if( !this._isChildLoaded(k) ) {
                var rec = this.child(k);
@@ -499,25 +507,40 @@
          }, this);
       },
 
-      _findFirebaseRefForChild: function(keyName) {
-         var ref;
-         // if this is the child of a join path, then its children are just regular Firebase refs
-         // so we can just try to find the correct source for the key and call child() on that ref
-         ref = util.find(this.paths, function(path) {
-            return path.hasKey(keyName);
-         });
-         if( ref ) {
-            ref = ref.child(keyName);
-         }
-         if( !ref ) {
-            log.warn('Key "%s" not found in any of my joined paths (is it in your keyMap?); I am returning a child ref from the first joined path, which may not be what you wanted', keyName);
-            ref = this.sortPath.ref().child(keyName);
-         }
-         return ref;
-      },
-
       _assertIsParent: function(fnName) {
          if( this.joinedParent ) { throw new Error(fnName+'() should only be invoked for parent records'); }
+      },
+
+      /**
+       * Since some records may already be cached locally when value or child_added listeners are attached,
+       * we trigger any preloaded data for them immediately to comply with Firebase behavior.
+       * @param {String} eventType
+       * @param {util.Observer} obs
+       * @private
+       */
+      _triggerPreloadedEvents: function(eventType, obs) {
+         if( this._isValueLoaded() ) {
+            if( eventType === 'value' ) {
+               var snap = makeSnap(this);
+               obs.notify(snap);
+               this._eventTriggered('value', 1, snap);
+            }
+            else if( eventType === 'child_added' ) {
+               if( this.joinedParent ) {
+                  var prev = null;
+                  fb.util.keys(this.currentValue, function(k) {
+                     obs.notify(makeSnap(this.child(k)), prev);
+                     prev = k;
+                  });
+               }
+               else {
+                  this._notifyExistingRecsAdded(obs);
+               }
+            }
+         }
+         else if( eventType === 'value' ) {
+            this._myValueChanged();
+         }
       }
    };
 

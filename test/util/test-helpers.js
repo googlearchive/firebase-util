@@ -1,16 +1,15 @@
-
-var startedAt = new Date().getTime();
-var JQDeferred = require('JQDeferred');
-var Firebase = require('firebase');
 var URL = process.env.FIREBASE_TEST_URL;
 var SECRET = process.env.FIREBASE_TEST_SECRET;
-var fb = require('../../firebase-utils.js')._ForTestingOnly;
-var TokGen = new (require('firebase-token-generator'))(SECRET);
 if( !URL || !SECRET ) {
    throw new Error('Please declare environment variables FIREBASE_TEST_URL and FIREBASE_TEST_SECRET before invoking test units.');
 }
-var FB = new Firebase(URL);
 
+var JQDeferred = require('JQDeferred');
+var Firebase = require('firebase');
+var FB = new Firebase(URL);
+var TokGen = new (require('firebase-token-generator'))(SECRET);
+
+var fb = require('../../firebase-utils.js')._ForTestingOnly;
 var helpers = exports;
 
 /**
@@ -148,6 +147,7 @@ helpers.turnOffAfterTest = (function() {
 
    return function(ref) {
       revertRefs.push(ref);
+      return ref;
    }
 })();
 

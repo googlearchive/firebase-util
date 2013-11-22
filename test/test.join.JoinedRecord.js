@@ -1,9 +1,11 @@
 
-var expect = require('chai').expect;
+var sinonChai = require('sinon-chai');
+var expect = require('chai').use(sinonChai).expect;
+var sinon = require('sinon');
 var fb = require('../firebase-utils.js')._ForTestingOnly;
 var helpers = require('./util/test-helpers.js');
 var data = require('./util/data.join.json');
-var Firebase = require('firebase');
+var JQDeferred = require('JQDeferred');
 
 describe('join.JoinedRecord', function() {
    var JoinedRecord = fb.join.JoinedRecord;
@@ -13,6 +15,24 @@ describe('join.JoinedRecord', function() {
    });
 
    afterEach(helpers.unauth);
+
+   describe('<constructor>', function() {
+      it('should accept a single path', function(done) {
+         new JoinedRecord(helpers.ref('account')).once('value', function(snap) {
+            snap.ref().off();
+            expect(snap.val()).keys(['bruce', 'kato']);
+            done();
+         })
+      });
+
+      it('should accept paths that don\'t exist (that just return null)', function(done) {
+         new JoinedRecord({ref: helpers.ref('notrealz/a/z/a/z/a'), keyMap: ['abc']}).once('value', function(snap) {
+            snap.ref().off();
+            expect(snap.val()).to.be.null;
+            done();
+         });
+      });
+   });
 
    describe('#auth', function() {
       it('should invoke callback with err if not successful', function(done) {
@@ -121,8 +141,7 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it.only('should invoke child_changed on change', function(done) {
-         helpers.debugThisTest('debug', /^(Removed|Added|Received)/);
+      it('should invoke child_changed on change', function(done) {
          var rec = newJoinedRecord('account', 'profile');
          rec.on('child_changed', function(snap) {
             snap.ref().off();
@@ -136,7 +155,6 @@ describe('join.JoinedRecord', function() {
             done();
          });
          rec.once('value', function(snap) {
-            console.log('value', snap.val());
             helpers.ref('profile/kato/nick').set('Kato!');
          });
       });
@@ -194,6 +212,7 @@ describe('join.JoinedRecord', function() {
 
          rec.once('value', function(snap) {
             keys = fb.util.keys(snap.val());
+            expect(keys).length.greaterThan(0);
             // wait for the recs to load, then try child_added against them
             rec.on('child_added', fn);
          });
@@ -294,38 +313,175 @@ describe('join.JoinedRecord', function() {
          var ref = newJoinedRecord('ordered/set1', 'ordered/set2'), fn = step1;
          function step1() {
             fn = step2;
-            helpers.ref('ordered/set1/2').setPriority(10);
+            helpers.ref('ordered/set1/two').setPriority(10);
          }
          function step2(snap) {
             snap.ref().off();
             expect(snap.val()).keys(['one', 'three', 'four', 'five', 'two']);
-            expect(snap.val().kato.nick).to.equal('Kato!');
+            expect(snap.val()['two']).to.eql({set1: 2, set2: 22});
             done();
          }
          ref.on('value', function(snap) { fn(snap); });
       });
 
-      it('should be union if no intersecting paths are declared');
+      it('should be union if no intersecting paths are declared', function(done) {
+         var ref = newJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie');
+         ref.on('value', function(snap) {
+            snap.ref().off();
+            expect(snap.val()).keys(['a', 'b', 'c', 'd', 'e']);
+            done();
+         });
+      });
 
-      it('should not call child_added until all intersecting paths exist');
+      it('should call "child_added" for any preloaded records when on() is declared', function(done) {
+         var ref = newJoinedRecord('account', 'profile'), vals = ['bruce', 'kato'];
+         ref.on('child_added', function(snap) {
+            expect(snap.name()).to.equal(vals.shift());
+            if( vals.length === 0 ) {
+               setTimeout(done, 100);
+            }
+         });
+      });
 
-      it('should call child_removed if any intersecting paths is removed');
+      it('should not call child_removed until last path is removed if a union', function(done) {
+         var ref = newJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie'), ready = false;
+         ref.on('child_removed', function(snap) {
+            ref.off();
+            if( !ready ) {
+               console.error('child_removed event, but still existing unions', snap.name(), snap.val());
+               throw new Error('child_removed event, but still existing unions');
+            }
+            else {
+               done();
+            }
+         });
 
-      it('should call child_added for any preloaded records when on() is declared');
+         function rem(path) {
+            return JQDeferred(function(def) {
+               helpers.set(path, null).then(function() {
+                  setTimeout(def.resolve, 10); // give a little wait for events to be fired
+               });
+            });
+         }
 
-      it('should not call child_removed until last path is removed if a union');
+         ref.once('value', function() {
+            rem('unions/fruit/b')
+               .then(rem.bind(null, 'unions/legume/b'))
+               .done(function() { ready = true; })
+               .then(rem.bind(null, 'unions/veggie/b'));
+         });
+      });
 
-      it('should accept a single path');
+      it('"value" should return null if any intersecting path is null and is a joined parent', function(done) {
+         var ref = newIntersection(['unions/fruit', 'unions/legume', {ref: helpers.ref('unions/notrealz'), keyMap: ['abc']}]);
+         ref.once('value', function(snap) {
+            expect(snap.val()).to.be.null;
+            done();
+         })
+      });
 
-      it('should accept paths that don\'t exist (that just return null)');
+      it('"value" should return null if any intersecting path is null and is a joined child', function(done) {
+         var ref = newIntersection(['unions/fruit', 'unions/legume', 'unions/veggie']);
+         ref.child('d').on('value', function(snap) {
+            expect(snap.val()).to.be.null;
+            done();
+         })
+      });
 
-      it('should return null if any intersecting path is null if joined parent');
+      it('"value" should only include children which exist in all intersecting paths', function(done) {
+         var ref = newIntersection(['unions/fruit', 'unions/legume', 'unions/veggie']);
+         ref.on('value', function(snap) {
+            expect(snap.val()||{}).keys(['b']);
+            done();
+         })
+      });
 
-      it('should return null if any intersecting path is null if joined child');
+      it('should not call child_added until all intersecting paths exist', function(done) {
+         helpers.set('unions', { fruit: {aa: 'aa'}, legume: {bb: 'bb'}, veggie: {cc: 'cc'} }).then(function() {
+            var ref = newIntersection(['unions/fruit', 'unions/legume'], ['unions/veggie']);
 
-      it('should return only children in all intersecting paths');
+            var keys = false;
+            ref.on('child_added', function(snap) {
+               if( keys === false ) {
+                  console.error('snap received but is not a proper intersection', snap.val());
+                  throw new Error('should not call child_added yet :(');
+               }
+               else {
+                  expect(snap.val()).keys(keys);
+               }
+            });
 
-      it('should merge data from a dynamic path (function)');
+            function nextKeys(newKeys, path, data) {
+               return JQDeferred(function(def) {
+                  keys = newKeys;
+                  helpers.set('unions/'+path, data).done(function() {
+                     setTimeout(function() {
+                        def.resolve();
+                     }, 10);
+                  });
+               });
+            }
+
+            nextKeys(false, 'fruit/a', 'apple')
+               .then(nextKeys.bind(null, false, 'fruit/b', 'banana'))
+               .then(nextKeys.bind(null, false, 'legume/c', 'chickpeas'))
+               .then(nextKeys.bind(null, false, 'legume/d', 'dry-roasted-peanuts'))
+               .then(nextKeys.bind(null, ['b'], 'veggie/b', 'broccoli'))
+               .then(nextKeys.bind(null, ['b'], 'veggie/c', 'carrot'))
+               .always(done);
+         });
+      });
+
+      it('should call child_removed if any intersecting path is removed', function(done) {
+         var ref = newIntersection(['unions/fruit', 'unions/legume'], ['unions/veggie']);
+         ref.on('child_removed', function(snap) {
+            expect(snap.name()).to.equal('b');
+            done();
+         });
+         ref.once('value', function(snap) {
+            expect(snap.val()).keys(['b']);
+            helpers.ref('unions/legume/b').remove();
+         });
+      });
+
+      it('should merge data from a dynamic keyMap ref', function(done) {
+         var ref = newJoinedRecord('account', {ref: helpers.ref('profile'), keyMap: {
+            name: 'name',
+            nick: 'nick',
+            style: helpers.ref('styles')
+         }});
+
+         ref.on('value', function(snap) {
+            expect(snap.val()).keys(['bruce', 'kato']);
+            expect(snap.val().kato).to.eql({
+               email: 'wulf@firebase.com',
+               name: 'Michael Wulf',
+               nick: 'Kato',
+               style: {
+                  "description": "Chinese system based on physical exercises involving animal mimicry"
+               }
+            });
+            done();
+         });
+      });
+
+      it('should only call "value" once when using dynamic keyMap ref', function(done) {
+         var spy = sinon.spy();
+         var ref = newJoinedRecord('account', {ref: helpers.ref('profile'), keyMap: {
+            name: 'name',
+            nick: 'nick',
+            style: helpers.ref('styles')
+         }});
+
+         ref.on('value', spy);
+
+         ref.once('value', function() {
+            setTimeout(function() {
+               expect(spy).calledOnce;
+               done();
+            }, 500);
+         })
+      });
 
       it('should sort data according to first sortBy path');
 
@@ -506,7 +662,7 @@ describe('join.JoinedRecord', function() {
 
       it('should trigger "child_moved" on next record');
 
-      it('should work with dynamic paths');
+      it('should work with dynamic keyMap paths');
   });
 
    describe('#push', function() {
@@ -584,6 +740,28 @@ describe('join.JoinedRecord', function() {
       var rec = construct(JoinedRecord, args);
       helpers.turnOffAfterTest(rec);
       return rec;
+   }
+
+   /**
+    * Create a record with intersects: true for any string values
+    * @param {Array} intersects
+    * @param {Array} [unions]
+    * @returns {*}
+    */
+   function newIntersection(intersects, unions) {
+      intersects = fb.util.map(intersects, function(x) {
+         if( typeof(x) === 'string' ) {
+            return {
+               intersects: true,
+               ref: helpers.ref(x)
+            };
+         }
+         else {
+            x.intersects = true;
+            return x;
+         }
+      });
+      return newJoinedRecord.apply(null, [].concat(intersects, unions||[]));
    }
 
    // credits: http://stackoverflow.com/questions/1606797/use-of-apply-with-new-operator-is-this-possible
