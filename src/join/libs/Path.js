@@ -95,9 +95,13 @@
          }
          else if( !this.subs[event] ) {
             var fn = util.bind(this._sendEvent, this, event);
+            var self = this;
+//            console.log('_observerAdded', event, this.name()); //debug
             this.subs[event] = this.props.ref.on(event, fn, function(err) {
+               console.log('aborted thingy', event, this.name(), err);
                log.error(err);
-            });
+               this.abortObservers(err);
+            }, this);
             if( event === 'value' ) {
                this._startDynamicListeners();
             }
@@ -143,6 +147,7 @@
          }
          else if( !this.isJoinedChild() ) {
             util.defer(util.bind(fn, this, mapValues(this.getKeyMap(), snap.val())));
+//            fn.call(this, mapValues(this.getKeyMap(), snap.val()));
          }
          else if( this.hasKey(snap.name()) ) {
             if( this._isDynamicChild(snap.name())) {
@@ -150,6 +155,7 @@
             }
             else {
                util.defer(util.bind(fn, this, snap.val()));
+//               fn.call(this, snap.val());
             }
          }
 
@@ -204,13 +210,6 @@
       },
 
       _loadKeyMapFromParent: function(parent) {
-         //todo
-         //todo
-         //todo
-         //todo
-         //todo
-         //todo this doesn't actually work; dynamic paths are lost after the first child() event is fired
-         //todo probably because isJoinedChild is true and this doesn't create the dynamic paths correctly
          if( parent.isJoinedChild() ) {
             this.props.keyMap = { '.value': '.value' };
             this._finishedKeyMap();
@@ -218,7 +217,7 @@
          else {
             this.props.intersects = parent.isIntersection();
             parent.observe('keyMapLoaded', function(keyMap) {
-               this.dynamicChildPaths = getDynamicPaths(this.ref().name(), parent.dynamicChildPaths);
+               this.dynamicChildPaths = cloneDynamicPaths(parent.dynamicChildPaths);
                this.props.keyMap = keyMap;
                this._finishedKeyMap();
             }, this);
@@ -253,7 +252,6 @@
          var out = {}, fns = [], dynamicPaths = this.dynamicChildPaths;
          var data = snap.val();
          if( !util.isEmpty(data) ) {
-            log('_parseRecord', this.getKeyMap(), util.keys(this.dynamicChildPaths), data);
             util.each(this.getKeyMap(), function(toKey, fromKey) {
                if( this._isDynamicChild(fromKey) ) {
                   if( util.has(data, fromKey) && !util.isEmpty(data[fromKey]) ) {
@@ -363,10 +361,10 @@
       }
    }
 
-   function getDynamicPaths(recordKey, paths) {
+   function cloneDynamicPaths(paths) {
       var out = {};
       util.each(paths, function(p, k) {
-         out[k] = p.child(recordKey);
+         out[k] = new Path(p.props);
       });
       return out;
    }

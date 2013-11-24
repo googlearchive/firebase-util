@@ -62,7 +62,18 @@
          "two":   { ".value": 22, ".priority": 22 },
          "three": { ".value": 33, ".priority": 33 },
          "four":  { ".value": 44, ".priority": 44 },
-         "five":  { ".value": 55, ".priority": 55 }
+         "five":  { ".value": 0, ".priority": 0 }
+      }
+   },
+
+   "secured": {
+      "foo": {
+         "one": 1,
+         "two": 2
+      },
+      "bar": {
+         "one": 1,
+         "three": 3
       }
    }
 }

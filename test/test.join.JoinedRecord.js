@@ -79,7 +79,15 @@ describe('join.JoinedRecord', function() {
    });
 
    describe('#on', function() {
-      it('should return a JoinedSnapshot', function(done) {
+      it('should return the callback function', function() {
+         var fn = sinon.stub();
+         var rec = newJoinedRecord('account', 'profile');
+         var res = rec.on('value', fn);
+         expect(res).to.equal(fn);
+         rec.off();
+      });
+
+      it('should pass a JoinedSnapshot to the callback', function(done) {
          newJoinedRecord('account').on('value', function(snap) {
             snap.ref().off();
             expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
@@ -155,7 +163,9 @@ describe('join.JoinedRecord', function() {
             done();
          });
          rec.once('value', function(snap) {
-            helpers.ref('profile/kato/nick').set('Kato!');
+            setTimeout(function() {
+               helpers.ref('profile/kato/nick').set('Kato!');
+            }, 100);
          });
       });
 
@@ -479,37 +489,217 @@ describe('join.JoinedRecord', function() {
             setTimeout(function() {
                expect(spy).calledOnce;
                done();
-            }, 500);
+            }, 100);
          })
       });
 
-      it('should sort data according to first sortBy path');
+      it('should sort data according to first sortBy path', function(done) {
+         var ref = newJoinedRecord('ordered/set1', {ref: helpers.ref('ordered/set2'), sortBy: true});
+         ref.on('value', function(snap) {
+            expect(snap.val()).keys(['five', 'one', 'two', 'three', 'four']);
+            done();
+         });
+      });
 
-      it('should invoke the cancel callback for all listeners if canceled');
+      // can't test cancel callback because set on security rules isn't working from bash/PowerShell
+      it.skip('should invoke the cancel callback for all listeners if canceled', function(done) {
+         var oldRules;
+         afterEach(function(done) {
+            oldRules && helpers.chain()
+               .rest('.settings/rules', 'PUT', oldRules)
+               .testDone(done);
+         });
+         var success = function(k, snap) { console.log(k, snap.val()); };
+         var cancel = fb.util.map([1, 2, 3], function() { return sinon.spy(); });
+         helpers.chain()
+            .sup()
+            .then(function() {
+               return JQDeferred(function(def) {
+                  var ref = newJoinedRecord('secured/foo', 'secured/bar');
+                  fb.util.each(cancel, function(c, k) {
+                     ref.on('value', success.bind(null, k), c);
+                  });
+                  ref.once('value', function() {
+                     console.log('DONE LOADING'); //debug
+                     def.resolve();
+                  });
+               })
+            })
+            .then(function() {
+               return helpers.rest('.settings/rules');
+            })
+            .then(function(status, rules) {
+               console.log('got rules', status, rules, JSON.stringify(rules));//debug
 
-      it('should work with only child_added callback');
+               oldRules = fb.util.extend(true, {}, rules);
+               rules.secured = { ".read": false, ".write": false };
 
-      it('should work with only child_changed callback');
 
-      it('should work with only child_removed callback');
+               return helpers.rest('.settings/rules', 'PUT', rules);
+            })
+            .done(function() {
+               console.log('DONE'); //debug
+               fb.util.each(cancel, function(spy) {
+                  expect(spy).calledOnce;
+               });
+            })
+            .always(done);
+      });
 
-      it('should work with only child_moved callback');
+      it('should work with only child_added callback', function(done) {
+         var ref = newJoinedRecord('account', 'profile');
+         ref.on('child_added', function(snap) {
+            ref.off(); // we only want one
+            expect(snap.name()).to.equal('bruce');
+            done();
+         });
+      });
 
-      it('should return a regular snap if called on child');
+      it('should work with only child_changed callback', function(done) {
+         newJoinedRecord('account', 'profile')
+            .on('child_changed', function(snap) {
+               expect(snap.name()).to.equal('kato');
+               done();
+            });
+         helpers.chain().sup().get(null).then(function(val) { // preload
+            setTimeout(function() {
+               helpers.set('profile/kato/nick', 'Kato!');
+            }, 10);
+         });
+      });
 
-      it('should work with "value" if called on child');
+      it('should work with only child_removed callback', function(done) {
+         newJoinedRecord('account', 'profile')
+            .on('child_removed', function(snap) {
+               expect(snap.name()).to.equal('kato');
+               done();
+            });
+         helpers.chain().sup().get(null).then(function() { // preload
+            setTimeout(function() {
+               helpers.set('profile/kato', null);
+               helpers.set('account/kato', null);
+            }, 10);
+         });
+      });
 
-      it('should work with "child_added" if called on child');
+      it('should work with only child_moved callback', function(done) {
+         newJoinedRecord('ordered/set1', 'ordered/set2')
+            .on('child_moved', function(snap) {
+               expect(snap.name()).to.equal('two');
+               done();
+            });
+         helpers.chain().sup().get('ordered').then(function() { // preload
+            setTimeout(function() {
+               helpers.ref('ordered/set1/two').setPriority(99);
+            }, 10)
+         });
+      });
 
-      it('should work with "child_removed" if called on child');
+      it('should return a JoinedSnapshot if called on a child record\'s field', function(done) {
+         newJoinedRecord('account', 'profile')
+            .child('kato/nick')
+            .on('value', function(snap) {
+               expect(snap).instanceOf(fb.join.JoinedSnapshot);
+               expect(snap.ref()).instanceOf(JoinedRecord);
+               done();
+            });
+      });
 
-      it('should work with "child_changed" if called on child');
+      it('should contain correct value if called on a child record\'s field', function(done) {
+         newJoinedRecord('account', 'profile')
+            .child('kato/nick')
+            .on('value', function(snap) {
+               expect(snap.val()).to.equal('Kato');
+               done();
+            });
+      });
 
-      it('should work with "child_moved" if called on child');
+      it('should work with "value" if called on child', function(done) {
+         newJoinedRecord('account', 'profile')
+            .child('kato')
+            .on('value', function(snap) {
+               expect(snap.val()).to.eql({
+                  "email": "wulf@firebase.com",
+                  "name": "Michael Wulf",
+                  "nick": "Kato",
+                  "style": "Kung Fu"
+               });
+               done();
+            });
+      });
 
-      it('should not behave unexpectedly if add followed immediately by remove event');
+      it('should work with "child_added" if called on child', function(done) {
+         var ref = newJoinedRecord('account', 'profile').child('kato');
+         ref.on('child_added', function(snap) {
+               ref.off(); // only get one
+               expect(snap.name()).to.equal('email');
+               done();
+            });
+      });
 
-      it('should return correct value if a dynamic key is put into the fieldMap');
+      it('should work with "child_removed" if called on child', function(done) {
+         var ref = newJoinedRecord('account', 'profile').child('bruce');
+         ref.on('child_removed', function(snap) {
+            ref.off(); // only get one
+            expect(snap.name()).to.equal('nick');
+            done();
+         });
+         helpers.ref('profile').once('value', function(){
+            setTimeout(function() {
+               helpers.ref('profile/bruce/nick').remove();
+            }, 50);
+         });
+      });
+
+      it('should work with "child_changed" if called on child', function(done) {
+         var ref = newJoinedRecord('account', 'profile').child('bruce');
+         ref.on('child_changed', function(snap) {
+            ref.off();
+            expect(snap.name()).to.equal('nick');
+            expect(snap.val()).to.equal('littledragon');
+            done();
+         });
+         helpers.ref('profile').once('value', function(){
+            setTimeout(function() {
+               helpers.ref('profile/bruce/nick').set('littledragon');
+            }, 50);
+         });
+      });
+
+      it('should work with "child_moved" if called on child', function(done) {
+         var ref = newJoinedRecord('account', 'profile').child('bruce');
+         ref.on('child_moved', function(snap) {
+            ref.off(); // only get one
+            expect(snap.name()).to.equal('name');
+            done();
+         });
+         helpers.ref('profile').once('value', function(){
+            setTimeout(function() {
+               helpers.ref('profile/bruce/name').setPriority(10);
+            }, 50);
+         });
+      });
+
+      it('should not behave unexpectedly if add followed immediately by remove event', function(done) {
+         var valueSpy = sinon.spy(), addedSpy = sinon.spy(), removedSpy = sinon.spy();
+         var ref = newJoinedRecord('account', 'profile');
+         helpers.chain().sup().get(null).then(function(){
+            setTimeout(function() {
+               ref.on('value', valueSpy);
+               ref.on('child_removed', removedSpy);
+               ref.on('child_added', addedSpy);
+               helpers.chain().set('account/sue', {email: 'sue@sue.com'}).set('account/sue', null).then(function() {
+                  setTimeout(function() {
+                     ref.off();
+                     expect(valueSpy).calledTwice;
+                     expect(addedSpy).calledThrice;
+                     expect(removedSpy).calledOnce;
+                     done();
+                  }, 100);
+               });
+            }, 50);
+         });
+      });
    });
 
    describe('#off', function() {
@@ -521,7 +711,15 @@ describe('join.JoinedRecord', function() {
   });
 
    describe('#once', function() {
-      it('should return a JoinedSnapshot', function(done) {
+      it('should return the callback function', function() {
+         var fn = sinon.stub();
+         var rec = newJoinedRecord('account', 'profile');
+         var res = rec.once('value', fn);
+         expect(res).to.equal(fn);
+         rec.off();
+      });
+
+      it('should pass callback a JoinedSnapshot', function(done) {
          newJoinedRecord('account', 'profile').once('value', function(snap) {
             expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
             done();
@@ -542,17 +740,17 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should get called exactly one time', function(done){
-         var ct = 0, adds = 0;
-         var rec = newJoinedRecord('account', 'profile');
-         rec.once('value', function() { ct++; });
+         var spy = sinon.spy(), adds = 0;
+         newJoinedRecord('account', 'profile')
+            .once('value', spy);
 
          function next() {
             if( ++adds === 3 ) {
                // add some extra time to make sure there are no additional calls
                setTimeout(function() {
-                  expect(ct).to.equal(1);
+                  expect(spy).calledOnce;
                   done();
-               }, 100);
+               }, 50);
             }
          }
 
@@ -614,12 +812,14 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should work for "child_changed"', function(done) {
-         newJoinedRecord('account', 'profile')
-            .once('child_changed', function(snap) {
+         var rec = newJoinedRecord('account', 'profile');
+         rec.once('child_changed', function(snap) {
                expect(snap.name()).to.equal('bruce');
                done();
             });
-         helpers.ref('account/bruce/email').set('brucie@wushu.com');
+         rec.once('value', function() {
+            helpers.ref('account/bruce/email').set('brucie@wushu.com');
+         });
       });
 
       it('should work for "child_moved"');

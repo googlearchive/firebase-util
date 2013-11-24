@@ -36,6 +36,7 @@
     "JQDeferred": "~1.9.1",
     "firebase-token-generator": "~0.1.4",
     "sinon-chai": "~2.4.0",
-    "sinon": "~1.7.3"
+    "sinon": "~1.7.3",
+    "request": "~2.27.0"
   }
 }

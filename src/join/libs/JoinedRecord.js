@@ -47,6 +47,7 @@
             var obs = this.observe(eventType, callback, context, cancelCallback);
             this._triggerPreloadedEvents(eventType, obs);
          }, this);
+         return callback;
       },
 
       off: function(eventType, callback, context) {
@@ -67,8 +68,8 @@
                callback.call(context, snap, prevChild);
             this.off(eventType, fn, this);
          };
-
          this.on(eventType, fn, failureCallback, this);
+         return callback;
       },
 
       child: function(childPath) {
@@ -293,16 +294,20 @@
                // the record has no value yet, so we fetch it and then we call _addChildRec again
                this.loadingChildRecs[childName] = prevName;
                rec.once('value', function() {
-                  // the prevName may have been updated while we were fetching the value so we use
-                  // the cached one here instead of the prevName argument
-                  var prev = this.loadingChildRecs[childName];
-                  rec.prevChildName = prev;
-                  delete this.loadingChildRecs[childName];
-                  this._addChildRec(rec, prev);
+                  // if the loadingChildRecs entry has been deleted, then the record was immediately removed
+                  // after adding it, so don't do anything here, just ignore it
+                  if( util.has(this.loadingChildRecs, childName) ) {
+                     // the prevName may have been updated while we were fetching the value so we use
+                     // the cached one here instead of the prevName argument
+                     var prev = this.loadingChildRecs[childName];
+                     rec.prevChildName = prev;
+                     delete this.loadingChildRecs[childName];
+                     this._addChildRec(rec, prev);
+                  }
                }, this);
             }
             else {
-               this._addChildRec(rec, prevName)
+               this._addChildRec(rec, prevName);
             }
          }
          else if( path === this.sortPath ) {
@@ -328,7 +333,7 @@
             log.debug('Added child rec %s to JoinedRecord(%s) after %s', rec, this.name(), prevName);
             // the record is new and has already loaded its value and no intersection path returned null,
             // so now we can add it to our child recs
-            var nextRec = this._addRecAfter(rec, prevName);
+            var nextRec = this._placeRecAfter(rec, prevName);
             this.childRecs[childName] = rec;
             if( this._isValueLoaded() && !util.has(this.currentValue, childName) ) {
                // we only store the currentValue on this record if somebody is monitoring it,
@@ -337,7 +342,7 @@
                this._setMyValue(join.sortSnapshotData(this, this.currentValue, makeSnap(rec)));
             }
             this.triggerEvent('child_added', makeSnap(rec));
-            nextRec && this.triggerEvent('child_moved', makeSnap(nextRec), childName);
+//            nextRec && this.triggerEvent('child_moved', makeSnap(nextRec), childName);
             rec.on('value', this._updateChildRec, this);
          }
          return rec;
@@ -347,24 +352,30 @@
       _removeChildRec: function(rec) {
          this._assertIsParent('_removeChildRec');
          var childName = rec.name();
-         rec.stopObserving(null, this._updateChildRec, this);
+         rec.off(null, this._updateChildRec, this);
          if( this._isChildLoaded(rec) ) {
             log.debug('Removed child rec %s from JoinedRecord(%s)', rec, this.name());
             var i = util.indexOf(this.sortedChildKeys, childName);
-            rec.off('value', this._updateChildRec, this);
+//            rec.off('value', this._updateChildRec, this);
             if( i > -1 ) {
                this.sortedChildKeys.splice(i, 1);
-               if( i < this.sortedChildKeys.length ) {
-                  var nextRec = this.child(this.sortedChildKeys[i]);
-                  this.triggerEvent('child_moved', makeSnap(nextRec), i > 0? this.sortedChildKeys[i-1] : null);
-               }
+//               if( i < this.sortedChildKeys.length ) {
+//                  var nextRec = this.child(this.sortedChildKeys[i]);
+//                  nextRec && this.triggerEvent('child_moved', makeSnap(nextRec), i > 0? this.sortedChildKeys[i-1] : null);
+//               }
             }
             delete this.childRecs[childName];
             if( this._isValueLoaded() ) {
-               delete this.currentValue[childName];
-               this.triggerEvent('value', makeSnap(this));
+               var newValue = util.extend({}, this.currentValue);
+               delete newValue[childName];
+               this._setMyValue(newValue);
             }
             this.triggerEvent('child_removed', makeSnap(rec, rec.priorValue));
+         }
+         else if( util.has(this.loadingChildRecs, childName) ) {
+            // the record is still loading and has already been deleted, so deleting this
+            // will call _pathAddEvent to abort when it gets through the load process
+            delete this.loadingChildRecs[childName];
          }
          return rec;
       },
@@ -373,24 +384,25 @@
       _updateChildRec: function(snap) {
          this._assertIsParent('_updateChildRec');
          if( this._isChildLoaded(snap.name()) ) {
+            // if the child's on('value') listener returns null, then the record has effectively been removed
             if( snap.val() === null ) {
                this._removeChildRec(snap.ref());
             }
-            else if( this._isValueLoaded() ) {
-               if( this.currentValue === null || !snap.isEqual(this.currentValue[snap.name()]) ) {
+            // the first on('value', ...) event will be superfluous, an exact duplicate of the child_added
+            // event, so don't retrigger it here, instead, wait for the priorValue to be set so we know
+            // it's a legit change event
+            else if( snap.ref().priorValue !== undefined ) {
+               if( this._isValueLoaded() ) {
                   this._setMyValue(join.sortSnapshotData(this, this.currentValue, snap));
-                  this.triggerEvent('child_changed', snap);
                }
-            }
-            else {
                this.triggerEvent('child_changed', snap);
             }
          }
       },
 
       // only applicable to parent join path
-      _addRecAfter: function(rec, prevChild) {
-         this._assertIsParent('_addRecAfter');
+      _placeRecAfter: function(rec, prevChild) {
+         this._assertIsParent('_placeRecAfter');
          var toY, len = this.sortedChildKeys.length, res = null;
          if( !prevChild || len === 0 ) {
             toY = 0;
@@ -410,9 +422,9 @@
             var nextKey = this.sortedChildKeys[toY+1];
             var nextRec = this._getJoinedChild(nextKey);
             nextRec.prevChildName = rec.name();
-            if( this._isChildLoaded(nextRec) ) {
-               res = this.triggerEvent('child_moved', makeSnap(nextRec), rec.name());
-            }
+//            if( this._isChildLoaded(nextRec) ) {
+//               res = this.triggerEvent('child_moved', makeSnap(nextRec), rec.name());
+//            }
          }
          return res;
       },
@@ -483,10 +495,17 @@
          }
       },
 
+      /**
+       * Not all triggered events are routed through this method, because sometimes observers
+       * are directly notified, instead of calling this.triggerHandler(). Have a look at
+       * _triggerPreloadedEvents() for an example (when a new observer is added and we
+       * have cached data, we trigger child_added and value for all the local events, but
+       * only on that new observer and no existing observers)
+       * @private
+       */
       _eventTriggered: function(event, obsCount, snap, prevChild) {
          var fn = obsCount? log : log.debug;
          fn('"%s" (%s%s) sent to %d observers for JoinedRecord(%s)', event, snap.name(), prevChild? '->'+prevChild : '', obsCount, this.name());
-         log.debug(snap.val());
       },
 
       _getJoinedChild: function(keyName) {
@@ -523,7 +542,6 @@
             if( eventType === 'value' ) {
                var snap = makeSnap(this);
                obs.notify(snap);
-               this._eventTriggered('value', 1, snap);
             }
             else if( eventType === 'child_added' ) {
                if( this.joinedParent ) {
@@ -539,6 +557,7 @@
             }
          }
          else if( eventType === 'value' ) {
+            // trigger a 'value' event as soon as my data loads
             this._myValueChanged();
          }
       }

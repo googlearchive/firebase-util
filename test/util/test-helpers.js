@@ -1,10 +1,12 @@
 var URL = process.env.FIREBASE_TEST_URL;
 var SECRET = process.env.FIREBASE_TEST_SECRET;
+
 if( !URL || !SECRET ) {
    throw new Error('Please declare environment variables FIREBASE_TEST_URL and FIREBASE_TEST_SECRET before invoking test units.');
 }
 
 var JQDeferred = require('JQDeferred');
+var request = require('request');
 var Firebase = require('firebase');
 var FB = new Firebase(URL);
 var TokGen = new (require('firebase-token-generator'))(SECRET);
@@ -68,7 +70,7 @@ helpers.sup = function(path) {
  * @param {Function} [done] optionally call this method when finished
  */
 helpers.reset = function(json, done) {
-   return helpers.chain().sup().set(null, json).testDone(done||function(err) { err && fb.log.error(err); });
+   return helpers.chain().sup().set(null, json).unauth().testDone(done||function(err) { err && fb.log.error(err); });
 };
 
 /**
@@ -82,13 +84,14 @@ helpers.handle = function(deferred) {
    var args = Array.prototype.slice.call(arguments, 1);
    return function(err) {
       var cbargs = Array.prototype.slice.call(arguments, 1);
-      if( err ) { deferred.reject(err); }
+      if( err ) { console.error(err); deferred.reject(err); }
       else { deferred.resolve.apply(deferred, args.concat(cbargs)); }
    }
 };
 
 /**
- * Authenticate to Firebase by creating a token in the format { id: user }
+ * Authenticate to Firebase by creating a token in the format { id: user }. The
+ * auth is revoked after this test case completes.
  *
  * @param {String} user
  * @param {Array|String} path (arrays joined joined with /)
@@ -96,6 +99,7 @@ helpers.handle = function(deferred) {
  */
 helpers.auth = function(user, path) {
    return JQDeferred(function(def) {
+      doAfterTest(helpers.unauth, helpers);
       var ref = helpers.ref(path);
       ref.auth( helpers.tok(user), helpers.handle(def, ref) );
    });
@@ -118,38 +122,49 @@ helpers.tok = function(user) {
 };
 
 /**
+ * Send a REST API call and get the response
+ */
+helpers.rest = function(path, method, data) {
+   return JQDeferred(function(def) {
+      var out = {
+         uri: buildUrl(path),
+         method: method||'GET'
+      };
+      if( data ) { out.data = data }
+
+      request(out, handleResponse);
+
+      function handleResponse(error, response, body) {
+         if( error || response.statusCode !== 200 ) {
+            console.error(error);
+            def.reject(error || new Error((body && body.error) || 'bad status code '+response.statusCode));
+         }
+         else {
+            def.resolve(response.statusCode, body);
+         }
+      }
+   });
+};
+
+/**
  * Turns on fb.log reporting until the test unit completes (automagically reverted to what it was before the test).
- * The log level defaults to 'debug'
+ * The log level defaults to 'log'
  *
  * @param {String|int} [level]
  * @param {String|RegExp} [grep]
  */
-helpers.debugThisTest = (function() {
-   var revertLogging;
-   afterEach(function() {
-      revertLogging && revertLogging();
-   });
-
-   return function(level, grep) {
-      revertLogging = fb.log.logLevel(level||'log', grep);
-   }
-})();
+helpers.debugThisTest = function(level, grep) {
+   doAfterTest(fb.log.logLevel(level||'log', grep));
+};
 
 /**
- * Turns off a Firebase or JoinedRecord reference after test completes (anything with an off() function)
+ * Turns off a Firebase or JoinedRecord reference after test finishes, regardless of whether it
+ * fails or succeeds. (Can be called on anything with an off() function)
  */
-helpers.turnOffAfterTest = (function() {
-   var revertRefs = [];
-   afterEach(function() {
-      fb.util.call(revertRefs, 'off');
-      revertRefs = [];
-   });
-
-   return function(ref) {
-      revertRefs.push(ref);
-      return ref;
-   }
-})();
+helpers.turnOffAfterTest = function(ref) {
+   doAfterTest(fb.util.bind(ref.off, ref));
+   return ref;
+};
 
 /**
  * Makes all helpers methods return promise objects and allows them to be chained
@@ -211,3 +226,23 @@ function wrapFn(chain, fn) {
       }));
    }
 }
+
+function buildUrl(path) {
+   var p = URL;
+   if( !p.match(/\/$/) ) {
+      p += '/';
+   }
+   return p + path + '.json?auth='+SECRET;
+}
+
+var doAfterTest = (function(util) {
+   var subs = [];
+   afterEach(function() {
+      util.call(subs);
+      subs = [];
+   });
+
+   return function(fn, context) {
+      subs.push(util.bind.apply(null, util.toArray(arguments)));
+   }
+})(fb.util);

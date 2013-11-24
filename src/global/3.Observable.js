@@ -81,6 +81,26 @@
       },
 
       /**
+       * Turn off all observers and call cancel callbacks with an error
+       * @param {String} error
+       * @returns {*}
+       */
+      abortObservers: function(error) {
+         console.log('abortObservers', error); //debug
+         var removes = [];
+         var onRemove = this._observableProps.onRemove;
+         util.each(util.keys(this._observableProps.observers), function() {
+            var observers = this.getObservers();
+            util.each(observers, function(obs) {
+               obs.notifyCancelled(error, event, this);
+               removes.push(obs);
+            }, this);
+            removeAll(observers, removes);
+            onRemove && onRemove(event, removes);
+         }, this);
+      },
+
+      /**
        * @param {String|Array} [event]
        * @returns {*}
        */
