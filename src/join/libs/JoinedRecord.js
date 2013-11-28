@@ -24,17 +24,22 @@
       this.currentPriority = null;
       this.prevChildName  = null;
       this.intersections = [];
-      this.queue = util.createQueue([this._loadPaths(util.toArray(arguments))]);
-      this.refName = makeRefName(this);
+      this.refName = null;
+      this.rootRef = null;
+      this.queue = this._loadPaths(util.toArray(arguments));
    }
 
    JoinedRecord.prototype = {
       auth: function(authToken, onComplete, onCancel) {
-         return this.sortPath.ref().auth(authToken, onComplete, onCancel);
+         this.queue.done(function() {
+            this.sortPath.ref().auth(authToken, onComplete, onCancel);
+         }, this);
       },
 
       unauth: function() {
-         return this.sortPath.ref().unauth();
+         this.queue.done(function() {
+            this.sortPath.ref().unauth();
+         }, this);
       },
 
       on: function(eventType, callback, cancelCallback, context) {
@@ -42,16 +47,17 @@
             context = cancelCallback;
             cancelCallback = null;
          }
-
-         this.queue(function() {
-            var obs = this.observe(eventType, callback, context, cancelCallback);
+         this.queue.done(function() {
+            var obs = this.observe(eventType, callback, wrapFailCallback(cancelCallback), context);
             this._triggerPreloadedEvents(eventType, obs);
          }, this);
          return callback;
       },
 
       off: function(eventType, callback, context) {
-         this.stopObserving(eventType, callback, context);
+         this.queue.done(function() {
+            this.stopObserving(eventType, callback, context);
+         }, this);
          return this;
       },
 
@@ -74,7 +80,7 @@
 
       child: function(childPath) {
          var ref;
-         var parts = childPath.split('/'), firstPart = parts.shift();
+         var parts = (childPath+'').split('/'), firstPart = parts.shift();
          if( this._isChildLoaded(firstPart) ) {
             // I already have this child record loaded so just return it
             ref = this._getJoinedChild(firstPart);
@@ -90,35 +96,51 @@
       },
 
       parent:          function() {
-         return this.joinedParent || this.sortPath.parent();
+         if( !this.joinedParent ) {
+            throw new fb.NotSupportedError('Cannot call parent() on a joined record');
+         }
+         return this.joinedParent;
       },
 
       name: function() {
          return this.refName;
       },
 
-      set:             function(value, onComplete) {},
+      set:             function(value, onComplete) {
+         this.queue.done(function() {
+            var q = util.createQueue();
+            util.each(this.paths, function(path) {
+               q.addCriteria(function(cb) {
+                  path.pickAndSet(value, function(err) {
+                     cb(err);
+                  });
+               });
+            });
+            q.handler(onComplete);
+         }, this);
+      },
+
       setWithPriority: function(value, priority, onComplete) {},
       setPriority:     function(priority, onComplete) {},
       update:          function(value, onComplete) {},
       remove:          function(onComplete) {},
       push:            function(value, onComplete) {},
 
-      root:            function() { return this.sortPath.ref().root(); },
+      root:            function() { return this.rootRef; },
       ref:             function() { return this; },
 
       toString: function() { return '['+util.map(this.paths, function(p) { return p.toString(); }).join('][')+']'; },
 
       //////// methods that are not allowed
-      onDisconnect:    function() { throw new Error('onDisconnect() not supported on JoinedRecord'); },
-      limit:           function() { throw new Error('limit not supported on JoinedRecord; try calling limit() on ref before passing into join'); },
-      endAt:           function() { throw new Error('endAt not supported on JoinedRecord; try calling endAt() on ref before passing into join'); },
-      startAt:         function() { throw new Error('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into join'); },
-      transaction:     function() { throw new Error('transactions not supported on JoinedRecord'); },
+      onDisconnect:    function() { throw new fb.NotSupportedError('onDisconnect() not supported on JoinedRecord'); },
+      limit:           function() { throw new fb.NotSupportedError('limit not supported on JoinedRecord; try calling limit() on ref before passing into join'); },
+      endAt:           function() { throw new fb.NotSupportedError('endAt not supported on JoinedRecord; try calling endAt() on ref before passing into join'); },
+      startAt:         function() { throw new fb.NotSupportedError('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into join'); },
+      transaction:     function() { throw new fb.NotSupportedError('transactions not supported on JoinedRecord'); },
 
       _monitorEvent: function(eventType) {
          if( this.getObservers(eventType).length === 1 ) {
-            this.queue(function() {
+            this.queue.done(function() {
                paths = this.joinedParent || !this.intersections.length? this.paths : this.intersections;
                if( this.hasObservers(eventType) && !paths[0].hasObservers(eventType) ) {
                   var paths;
@@ -130,7 +152,9 @@
                      log.info('My first observer attached, loading my joined data and Firebase connections for JoinedRecord(%s)', this.name());
                      // this is the first observer, so start up our path listeners
                      util.each(paths, function(path) {
-                        path.observe(eventsToMonitor(this, path), this._pathNotification, this);
+                        util.each(eventsToMonitor(this, path), function(event) {
+                           path.observe(event, this._pathNotification, this._pathCancelled, this);
+                        }, this)
                      }, this);
                   }
                }
@@ -140,7 +164,7 @@
 
       _stopMonitoringEvent: function(eventType, obsList) {
          var obsCountRemoved = obsList.length;
-         this.queue(function() {
+         this.queue.done(function() {
             if( obsCountRemoved && !this.hasObservers(eventType) ) {
                (this.joinedParent? log.debug : log)('Stopped observing %s events on JoinedRecord(%s)', eventType? '"'+eventType+'"' : '', this.name());
                if( this.joinedParent ) {
@@ -157,6 +181,7 @@
                   util.each(oldRecs, this._removeChildRec, this);
                   this.sortedChildKeys = [];
                   this.currentValue = undefined;
+                  this.priorValue = undefined;
                }
             }
          }, this);
@@ -215,8 +240,6 @@
          }
       },
 
-      notifyCancelled: function() {}, // nothing to do, required by Observer interface
-
       _isValueLoaded: function() {
          return this.currentValue !== undefined;
       },
@@ -226,48 +249,44 @@
          return this._getJoinedChild(key) !== undefined;
       },
 
-      // must be called before any on/off events
-      _loadPaths: function(pathArgs) {
-         // it's extremely important that all the paths are immediately added
-         // even though their keyMaps may load some time in the future, as the
-         // child() method depends on their existing so that ops like new JoinedRecord(...).child('a/b/c')
-         // will work without blowing up (if the paths don't exist, then child() will fail here)
-         // however, the Path class internally checks to see if the parent's keyMap has resolved
-         // before resolving the childrens' so the timing of the keyMaps is not critical
-         util.each(buildPaths(this, pathArgs), this._addPath, this);
-         var pathLoader = new join.PathLoader(this.paths);
-         if( this.sortPath ) {
-            if( !util.isEmpty(this.intersections) && !this.sortPath.isIntersection() ) {
-               log.warn('Sort path cannot be set to a non-intersecting path as this makes no sense; using the first intersecting path instead in JoinedRecord(%s)', this.name());
-               this.sortPath = this.intersections[0];
-            }
-         }
-         else if( !util.isEmpty(this.intersections) ) {
-            this.sortPath = this.intersections[0];
-         }
-         else {
-            this.sortPath = this.paths[0];
-         }
-
-         if( !this.sortPath ) {
-            throw new Error('No valid Firebase refs provided (must provide at least one actual Firebase ref');
-         }
-         return util.bind(pathLoader.done, pathLoader);
+      _pathCancelled: function(err) {
+         err && this.abortObservers(err);
       },
 
       // must be called before any on/off events
-      _addPath: function(path) {
-         this.paths.push(path);
-         if( this.sortPath ) {
-            path.props.setSortBy(false);
+      _loadPaths: function(pathArgs) {
+         this._assertHasPaths(pathArgs);
+         var paths, childKey, pathSearch;
+
+         if( pathArgs[0] instanceof join.JoinedRecord ) {
+            // occurs when loading child paths from a JoinedRecord, which
+            // passes the parent JoinedRecord (paths[0]) and a key name (paths[1])
+            this.joinedParent = pathArgs[0];
+            childKey = this.refName = pathArgs[1];
+            paths = this.joinedParent.paths;
+            // when we load a child of a child, it's not possible to determine which
+            // branch the child comes off of until after the parent loads its keys
+            // so we do a little dance magic here to determine which parent it comes from
+            pathSearch = !!this.joinedParent.joinedParent && pathArgs.length > 1;
          }
-         else if( path.isSortBy() ) {
-            this.sortPath = path;
+         else {
+            paths = pathArgs;
          }
-         if( path.isIntersection() ) {
-            this.intersections.push(path);
-         }
-         return path;
+
+         var pathLoader = new join.PathLoader(this.joinedParent, paths, childKey, pathSearch);
+         this.refName = pathLoader.refName;
+         this.rootRef = pathLoader.rootRef;
+         this.paths = pathLoader.finalPaths;
+         this.intersections = pathLoader.intersections;
+
+         return util
+            .createQueue()
+            .chain(pathLoader)
+            .done(function() {
+               this.sortPath = pathLoader.sortPath;
+            }, this)
+            .done(this._assertSortPath, this)
+            .fail(function(err) { throw err; });
       },
 
       /**
@@ -560,6 +579,21 @@
             // trigger a 'value' event as soon as my data loads
             this._myValueChanged();
          }
+      },
+
+      _assertHasPaths: function(paths) {
+         if( !paths || !paths.length ) {
+            throw new Error('Cannot construct a JoinedRecord without at least 1 path');
+         }
+      },
+
+      _assertSortPath: function() {
+         if( !this.sortPath ) {
+            throw new Error('Cannot construct a JoinedRecord without at least 1 valid path');
+         }
+         if( !util.isEmpty(this.intersections) && !this.sortPath.isIntersection() ) {
+            throw new Error(util.printf('Sort path cannot be set to a non-intersecting path as this makes no sense', this.name()));
+         }
       }
    };
 
@@ -582,26 +616,10 @@
       return new join.JoinedSnapshot(rec, val, rec.currentPriority);
    }
 
-   function buildPaths(rec, paths) {
-      var builtPaths;
-      if( paths[0] instanceof join.JoinedRecord ) {
-         // occurs when loading child paths from a JoinedRecord, which
-         // passes the parent JoinedRecord (paths[0]) and a key name (paths[1])
-         rec.joinedParent = paths[0];
-         builtPaths = util.map(rec.joinedParent.paths, function(parentPath) {
-            return parentPath.child(paths[1]);
-         });
+   function wrapFailCallback(fn) {
+      return function(err) {
+         if( err ) { fn(err); }
       }
-      else {
-         builtPaths = util.map(paths, function(props) {
-            return props instanceof join.Path? props : new join.Path(props);
-         });
-      }
-      return builtPaths;
-   }
-
-   function makeRefName(rec) {
-      return rec.joinedParent? rec.sortPath.ref().name() : '['+util.map(rec.paths, function(p) { return p.name(); }).join('][')+']';
    }
 
    /** add JoinedRecord to package

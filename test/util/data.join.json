@@ -1,34 +1,36 @@
 {
-   "account": {
-      "bruce": {
-         "email": "bruce@lee.com",
-         "name": "bruce"
+   "users": {
+      "account": {
+         "bruce": {
+            "email": "bruce@lee.com",
+            "name": "bruce"
+         },
+         "kato": {
+            "email": "wulf@firebase.com",
+            "name": "kato"
+         }
       },
-      "kato": {
-         "email": "wulf@firebase.com",
-         "name": "kato"
-      }
-   },
 
-   "profile": {
-      "bruce": {
-         "name": "Bruce Lee",
-         "nick": "Little Phoenix",
-         "style": "Jeet Kune Do"
+      "profile": {
+         "bruce": {
+            "name": "Bruce Lee",
+            "nick": "Little Phoenix",
+            "style": "Jeet Kune Do"
+         },
+         "kato": {
+            "name": "Michael Wulf",
+            "nick": "Kato",
+            "style": "Kung Fu"
+         }
       },
-      "kato": {
-         "name": "Michael Wulf",
-         "nick": "Kato",
-         "style": "Kung Fu"
-      }
-   },
 
-   "styles": {
-      "Kung Fu": {
-         "description": "Chinese system based on physical exercises involving animal mimicry"
-      },
-      "Jeet Kune Do": {
-         "description": "Eclectic/hybrid style of no style and philosophy of life founded by martial artist Bruce Lee with direct, non-classical, and straightforward movements."
+      "styles": {
+         "Kung Fu": {
+            "description": "Chinese system based on physical exercises involving animal mimicry"
+         },
+         "Jeet Kune Do": {
+            "description": "Eclectic/hybrid style of no style and philosophy of life founded by martial artist Bruce Lee with direct, non-classical, and straightforward movements."
+         }
       }
    },
 
@@ -75,5 +77,9 @@
          "one": 1,
          "three": 3
       }
-   }
+   },
+
+   "secured_read_allowed": true,
+   "secured_write_allowed": true
+
 }

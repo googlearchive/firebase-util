@@ -24,7 +24,7 @@
          this._loadKeyMapFromParent(parent);
       }
       else {
-         this._buildKeyMap();
+         this._buildMasterKeyMap();
       }
    }
 
@@ -54,6 +54,23 @@
          }, this);
       },
 
+      pickAndSet: function(data, callback) {
+         if( data === null ) {
+            this.ref().remove(callback);
+         }
+         else if( this.isPrimitive() ) {
+            var key = this.props.keyMap['.value'];
+            var val = util.has(data, key)? data[key] : data;
+            this.ref().set(val, callback);
+         }
+         else if( this.isJoinedChild() ) {
+            this.ref().update(this._pickMyData(data), callback);
+         }
+         else {
+            this.ref().set(util.mapObject(data, this._pickMyData, this), callback);
+         }
+      },
+
       isIntersection: function() { return this.props.intersects; },
       isSortBy: function() { return this.props.sortBy; },
       setSortBy: function(b) { this.props.sortBy = b; },
@@ -72,6 +89,10 @@
 
       isJoinedChild: function() { return !!this.joinedParent; },
 
+      isPrimitive: function() {
+         return util.has(this.getKeyMap(), '.value');
+      },
+
       // see the reconcilePaths() method in PathLoader.js
       removeConflictingKey: function(fromKey, owningPath) {
          log('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, fromKey, this.getKeyMap()[fromKey], owningPath);
@@ -86,6 +107,28 @@
          return this.props.keyMap || {};
       },
 
+      eachKey: function(data, callback) {
+         util.each(this.getKeyMap(), function(toKey, fromKey) {
+            if( fromKey === '.value' ) {
+               callback(fromKey, toKey, data);
+            }
+            else {
+               callback(fromKey, toKey, util.has(data, toKey)? data[toKey] : null);
+            }
+         });
+      },
+
+      _pickMyData: function(data, useToKey) {
+         var out = null;
+         if( data !== null ) {
+            out = {};
+            this.eachKey(data, function(fromKey, toKey, value) {
+               out[useToKey? toKey : fromKey] = value;
+            });
+         }
+         return out;
+      },
+
       _observerAdded: function(event) {
          event === 'keyMapLoaded' || log.debug('Added "%s" observer to Path(%s), I have %d observers for this event', event, this.name(), this.getObservers(event).length);
          if( event === 'keyMapLoaded' ) {
@@ -96,12 +139,8 @@
          else if( !this.subs[event] ) {
             var fn = util.bind(this._sendEvent, this, event);
             var self = this;
-//            console.log('_observerAdded', event, this.name()); //debug
-            this.subs[event] = this.props.ref.on(event, fn, function(err) {
-               console.log('aborted thingy', event, this.name(), err);
-               log.error(err);
-               this.abortObservers(err);
-            }, this);
+//            log('_observerAdded', event, this.name());
+            this.subs[event] = this.props.ref.on(event, fn, this.abortObservers, this);
             if( event === 'value' ) {
                this._startDynamicListeners();
             }
@@ -146,7 +185,7 @@
             this.loadData(fn, this);
          }
          else if( !this.isJoinedChild() ) {
-            util.defer(util.bind(fn, this, mapValues(this.getKeyMap(), snap.val())));
+            util.defer(util.bind(fn, this, this._pickMyData(snap.val(), true)));
 //            fn.call(this, mapValues(this.getKeyMap(), snap.val()));
          }
          else if( this.hasKey(snap.name()) ) {
@@ -174,21 +213,17 @@
 
       // this should only ever be called on the master JoinedRecord
       // child joins should already have a key map provided when childPath() is called
-      _buildKeyMap: function(cb) {
+      _buildMasterKeyMap: function(cb) {
          var km = this.props.keyMap;
          if( !util.isObject(km) ) {
-            //todo can we replace dynamic keyMap loading with just ['.value']? should work and include everything
-            //todo without having to look up the keymap at all!
-            if( !this.isJoinedChild() ) {
-               this.props.ref.limit(1).once('value', function(outerSnap) {
-                  var self = this;
-                  outerSnap.forEach(function(snap) {
-                     return self._loadKeyMapFromSnap(snap);
-                  });
-                  this._finishedKeyMap();
-                  cb && cb(this);
-               }, this);
-            }
+            this.props.ref.limit(1).once('value', function(outerSnap) {
+               var self = this;
+               outerSnap.forEach(function(snap) {
+                  return self._loadKeyMapFromSnap(snap);
+               });
+               this._finishedKeyMap();
+               cb && cb(this);
+            }, this);
          }
          else {
             var dynamicPaths = this.dynamicChildPaths;
@@ -248,14 +283,13 @@
       },
 
       _parseRecord: function(snap, callback, scope) {
-         //todo set up a queue here
-         var out = {}, fns = [], dynamicPaths = this.dynamicChildPaths;
+         var out = {}, q = util.createQueue(), dynamicPaths = this.dynamicChildPaths;
          var data = snap.val();
          if( !util.isEmpty(data) ) {
             util.each(this.getKeyMap(), function(toKey, fromKey) {
                if( this._isDynamicChild(fromKey) ) {
                   if( util.has(data, fromKey) && !util.isEmpty(data[fromKey]) ) {
-                     fns.push(function(cb) {
+                     q.addCriteria(function(cb) {
                         dynamicPaths[fromKey].child(data[fromKey]).loadData(function(data) {
                            data !== null && (out[toKey] = extractValue(data));
                            cb();
@@ -271,23 +305,24 @@
                }
             }, this);
          }
-         util.createQueue(fns)(function() {
+         q.done(function() {
             callback.call(scope, util.isEmpty(out)? null : out, snap);
          });
          return callback;
       },
 
       _parseRecordSet: function(parentSnap, callback, scope) {
-         var out = {}, fns = [], self = this;
+         var out = {}, self = this;
+         var q = util.createQueue();
          parentSnap.forEach(function(recSnap) {
-            fns.push(function(cb) {
+            q.addCriteria(function(cb) {
                self._parseRecord(recSnap, function(childData) {
                   childData === null || (out[recSnap.name()] = childData);
                   cb();
                })
             })
          });
-         util.createQueue(fns)(function() {
+         q.done(function() {
             callback.call(scope, util.isEmpty(out)? null : out, parentSnap);
          });
       }
@@ -297,23 +332,6 @@
 
    /** UTILS
     ***************************************************/
-
-   function mapValues(keyMap, snapVal) {
-      var out = {};
-      if( snapVal !== null ) {
-         if( keyMap['.value'] ) {
-            out[ keyMap['.value'] ] = snapVal;
-         }
-         else if( util.isObject(snapVal) ) {
-            util.each(keyMap, function(fromKey, toKey) {
-               if( !util.isEmpty(snapVal[fromKey]) ) {
-                  out[toKey] = snapVal[fromKey];
-               }
-            });
-         }
-      }
-      return out;
-   }
 
    function buildPathProps(props, parent) {
       if( props instanceof Firebase ) {

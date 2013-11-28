@@ -2,58 +2,120 @@
    var util = fb.pkg('util');
 
    function Queue(criteriaFunctions) {
-      this.needs = criteriaFunctions.length;
+      this.needs = 0;
       this.met = 0;
       this.queued = [];
-      util.each(criteriaFunctions, this._addCriteria, this);
+      this.errors = [];
+      this.criteria = [];
+      this.processing = false;
+      util.each(criteriaFunctions, this.addCriteria, this);
    }
 
    Queue.prototype = {
-      _addCriteria: function(criteriaFn) {
-         var scope = null;
-         if( util.isArray(criteriaFn) ) {
-            scope = criteriaFn[1];
-            criteriaFn = criteriaFn[0];
+      /**
+       * @param {Function} criteriaFn
+       * @param {Object} [scope]
+       */
+      addCriteria: function(criteriaFn, scope) {
+         if( this.processing ) {
+            throw new Error('Cannot call addCriteria() after invoking done(), fail(), or handler() methods');
          }
-         criteriaFn.call(scope, util.bind(this._criteriaMet, this));
-      },
-
-      _criteriaMet: function() {
-         this.met++;
-         if( this.ready() ) {
-            util.each(this.queued, this._run, this);
-         }
-      },
-
-      _runOrStore: function(args) {
-         if( this.ready() ) {
-            this._run(args);
-         }
-         else {
-            this.queued.push(args);
-         }
-      },
-
-      _run: function(args) {
-         args[0].apply(args[1], args.slice(2));
+         this.needs++;
+         this.criteria.push(scope? [criteriaFn, scope] : criteriaFn);
       },
 
       ready: function() {
          return this.needs === this.met;
       },
 
-      addEvent: function(fn, context) {
-         var args = util.toArray(arguments);
-         this._runOrStore(args);
+      done: function(fn, context) {
+         fn && this._runOrStore(function() {
+            this.hasErrors() || fn.call(context);
+         });
+         return this;
+      },
+
+      fail: function(fn, context) {
+         this._runOrStore(function() {
+            this.hasErrors() && fn.apply(context, this.getErrors());
+         });
+         return this;
+      },
+
+      handler: function(fn, context) {
+         this._runOrStore(function() {
+            fn.call(context, this.hasErrors()? this.errors[0] : null);
+         });
+         return this;
+      },
+
+      /**
+       * @param {Queue} queue
+       */
+      chain: function(queue) {
+         this.addCriteria(function(cb) {
+            queue.done(cb).fail(cb);
+         });
+         return this;
+      },
+
+      addError: function(e) {
+         this.errors.push(e);
+      },
+
+      hasErrors: function() {
+         return this.errors.length;
+      },
+
+      getErrors: function() {
+         return this.errors.slice(0);
+      },
+
+      _process: function() {
+         this.processing = true;
+         util.each(this.criteria, this._invokeCriteria, this);
+      },
+
+      _invokeCriteria: function(criteriaFn) {
+         var scope = null;
+         if( util.isArray(criteriaFn) ) {
+            scope = criteriaFn[1];
+            criteriaFn = criteriaFn[0];
+         }
+         try {
+            criteriaFn.call(scope, util.bind(this._criteriaMet, this));
+         }
+         catch(e) {
+            this.addError(e);
+         }
+      },
+
+      _criteriaMet: function(error) {
+         error && this.addError(error);
+         this.met++;
+         if( this.ready() ) {
+            util.each(this.queued, this._run, this);
+         }
+      },
+
+      _runOrStore: function(fn) {
+         this.processing || this._process();
+         if( this.ready() ) {
+            this._run(fn);
+         }
+         else {
+            this.queued.push(fn);
+         }
+      },
+
+      _run: function(fn) {
+         fn.call(this);
       }
    };
 
-   util.createQueue = function(criteriaFns) {
-      var queue = new Queue(criteriaFns);
-      var fn = function(fn, context) {
-         queue.addEvent.apply(queue, util.toArray(arguments));
-      };
-      fn.ready = queue.ready;
-      return fn;
+   util.createQueue = function(criteriaFns, callback) {
+      var q = new Queue(criteriaFns);
+      callback && q.done(callback);
+      return q;
    };
 })(exports, fb);

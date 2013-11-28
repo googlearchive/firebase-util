@@ -23,7 +23,9 @@ var helpers = exports;
  */
 helpers.set = function(path, data) {
    return JQDeferred(function(def) {
-      helpers.ref(path).set(data, helpers.handle(def));
+      helpers.ref(path).set(data, function() {
+         helpers.handle(def)();
+      });
    })
 };
 
@@ -42,13 +44,36 @@ helpers.get = function(path) {
 };
 
 /**
+ * Remove value at a path
+ * @param {Array|String} path (arrays joined joined with /)
+ */
+helpers.remove = function(path) {
+   return JQDeferred(function(def) {
+      helpers.ref(path).remove(helpers.handle(def))
+   });
+};
+
+/**
+ * Set a priority at a given path
+ * @param {Array|String} path (arrays joined joined with /)
+ * @param {String|number} newPri
+ */
+helpers.setPriority = function(path, newPri) {
+   return JQDeferred(function(def) {
+      helpers.ref(path).setPriority(newPri, function(err) {
+         def.resolve();
+      })
+   });
+};
+
+/**
  * Create a Firebase  ref
  *
  * @param {Array|String} path (arrays joined joined with /)
  * @returns {Firebase}
  */
 helpers.ref = function(path) {
-   return path? FB.child(typeof(path)==='string'? path : path.join('/')) : FB;
+   return fb.util.isEmpty(path)? FB : FB.child(fb.util.isArray(path)? path.join('/') : path);
 };
 
 /**
@@ -164,6 +189,50 @@ helpers.debugThisTest = function(level, grep) {
 helpers.turnOffAfterTest = function(ref) {
    doAfterTest(fb.util.bind(ref.off, ref));
    return ref;
+};
+
+/**
+ * Wait a certain length before invoking optional callback.
+ * @param {Function} [callback]
+ * @param {int} [milliseconds] (defaults to 0)
+ */
+helpers.wait = function(callback, milliseconds) {
+   if( typeof(callback) === 'number' ) {
+      milliseconds = callback;
+      callback = null;
+   }
+   return JQDeferred(function(def) {
+      setTimeout(function() {
+         if( callback ) {
+            try {
+               def.resolve(callback());
+            }
+            catch(e) {
+               def.reject(e);
+            }
+         }
+         else {
+            def.resolve();
+         }
+      }, milliseconds||0);
+   })
+};
+
+/**
+ * A wrapper on wait() that defaults to a short pause rather than 0
+ * @param callback
+ */
+helpers.pause = function(callback) {
+   return helpers.wait(callback, 250);
+};
+
+/**
+ * Returns a jquery deferred promise and invokes the callback, passing in the
+ * deferred object for resolve/reject. (mainly useful for chaining)
+ * @param {Function} callback
+ */
+helpers.def = function(callback) {
+   return JQDeferred(callback).promise();
 };
 
 /**

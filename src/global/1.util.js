@@ -78,7 +78,9 @@ else {
    };
 
    /**
-    * Create an array using values returned by an iterator
+    * Create an array using values returned by an iterator. Undefined values
+    * are discarded.
+    *
     * @param vals
     * @param iterator
     * @param scope
@@ -87,7 +89,25 @@ else {
    util.map = function(vals, iterator, scope) {
       var out = [];
       util.each(vals, function(v, k) {
-         out.push(iterator.call(scope||null, v, k));
+         var res = iterator.call(scope||null, v, k, vals);
+         if( res !== undefined ) { out.push(res); }
+      });
+      return out;
+   };
+
+   /**
+    *
+    * @param {Object} list
+    * @param {Function} iterator
+    * @param {Object} [scope]
+    */
+   util.mapObject = function(list, iterator, scope) {
+      var out = {};
+      util.each(list, function(v,k) {
+         var res = iterator.call(scope, v, k, list);
+         if( res !== undefined ) {
+            out[k] = res;
+         }
       });
       return out;
    };
@@ -102,18 +122,28 @@ else {
       if( isArguments(vals) ) { vals = Array.prototype.slice.call(vals, 0); }
       if( util.isArray(vals) ) {
          for(var i = 0, len = vals.length; i < len; i++) {
-            if( iterator.call(scope||null, vals[i], i) === true ) { return vals[i]; }
+            if( iterator.call(scope||null, vals[i], i, vals) === true ) { return vals[i]; }
          }
       }
       else if( util.isObject(vals) ) {
          var key;
          for (key in vals) {
-            if (vals.hasOwnProperty(key) && iterator.call(scope||null, vals[key], key) === true) {
+            if (vals.hasOwnProperty(key) && iterator.call(scope||null, vals[key], key, vals) === true) {
                return vals[key];
             }
          }
       }
       return undefined;
+   };
+
+   util.filter = function(list, iterator, scope) {
+      var out = util.isArray(list) || !util.isObject(list)? [] : {};
+      util.each(list, function(v,k) {
+         if( iterator(v,k,list) ) {
+            out[k] = v;
+         }
+      });
+      return out;
    };
 
    util.has = function(vals, key) {
@@ -143,7 +173,7 @@ else {
          var key;
          for (key in vals) {
             if (vals.hasOwnProperty(key)) {
-               cb.call(scope||null, vals[key], key);
+               cb.call(scope||null, vals[key], key, vals);
             }
          }
       }
@@ -283,6 +313,35 @@ else {
       });
       return methods;
    };
+
+   util.printf = function() {
+      var localArgs = util.toArray(arguments);
+      var template = localArgs.shift();
+      var matches = template.match(/(%s|%d|%j)/g);
+      matches && fb.util.each(matches, function(m) {
+         template = template.replace(m, format(localArgs.shift(), m));
+      });
+      return template;
+   };
+
+   util.noop = function() {};
+
+   function format(v, type) {
+      switch(type) {
+         case '%d':
+            return parseInt(v, 10);
+         case '%j':
+            v =  fb.util.isObject(v)? JSON.stringify(v) : v+'';
+            if(v.length > 500) {
+               v = v.substr(0, 500)+'.../*truncated*/...}';
+            }
+            return v;
+         case '%s':
+            return v + '';
+         default:
+            return v;
+      }
+   }
 
    // a polyfill for Function.prototype.bind (invoke using call or apply!)
    // credits: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind

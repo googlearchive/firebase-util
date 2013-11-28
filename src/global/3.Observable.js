@@ -1,5 +1,4 @@
 (function (exports, fb) {
-   var undefined;
    var log  = fb.pkg('log');
    var util = fb.pkg('util');
 
@@ -12,32 +11,35 @@
    function Observable(eventsMonitored, opts) {
       opts || (opts = {});
       this._observableProps = util.extend(
-         { observers: {}, onAdd: null, onRemove: null, onEvent: null },
-         opts
+         { observers: {}, onAdd: util.noop, onRemove: util.noop, onEvent: util.noop },
+         opts,
+         { eventsMonitored: eventsMonitored }
       );
-      util.each(eventsMonitored, function(key) {
-         this._observableProps.observers[key] = [];
-      }, this);
+      this.resetObservers();
    }
    Observable.prototype = {
       /**
-       * @param {String|Array} event
+       * @param {String} event
        * @param {Function|util.Observer} callback
-       * @param {Object} [scope]
        * @param {Function} [cancelFn]
+       * @param {Object} [scope]
        */
-      observe: function(event, callback, scope, cancelFn) {
-         var eventList = util.isArray(event)? event : [event];
-         var obs = callback instanceof util.Observer? callback : new util.Observer(event, callback, scope, cancelFn);
-         util.each(eventList, function(e) {
-            if( !util.has(this._observableProps.observers, e) ) {
-               log.warn('Observable.observe: invalid event type %s', e);
+      observe: function(event, callback, cancelFn, scope) {
+         var args = util.Args('observe', arguments, 2, 4);
+         event = args.nextFromWarn(this._observableProps.eventsMonitored);
+         if( event ) {
+            callback = args.nextReq('function');
+            cancelFn = args.next('function');
+            scope = args.next('object');
+            var obs = new util.Observer(event, callback, scope, cancelFn);
+            if( !util.has(this._observableProps.observers, event) ) {
+               log.warn('Observable.observe: invalid event type %s', event);
             }
             else {
-               this.getObservers(e).push(obs);
-               this._observableProps.onAdd && this._observableProps.onAdd(e, obs);
+               this._observableProps.observers[event].push(obs);
+               this._observableProps.onAdd(event, obs);
             }
-         }, this);
+         }
          return obs;
       },
 
@@ -50,34 +52,27 @@
       },
 
       /**
-       * @param {String|Array} event
+       * @param {String|Array} events
        * @param {Function|util.Observer} callback
        * @param {Object} [scope]
        */
-      stopObserving: function(event, callback, scope) {
-         if( arguments.length === 1 && (typeof(event) === 'function' || event instanceof util.Observer)) {
-            callback = event;
-            event = null;
-         }
-         if( !event ) { event = util.keys(this._observableProps.observers); }
-         if( util.isArray(event) ) {
-            util.each(event, function(e) {
-               this.stopObserving(e, callback, scope);
-            }, this);
-         }
-         else {
+      stopObserving: function(events, callback, scope) {
+         var args = util.Args('stopObserving', arguments);
+         events = args.next(['array', 'string'], this._observableProps.eventsMonitored);
+         callback = args.next(['function']);
+         scope = args.next(['object']);
+         util.each(events, function(event) {
             var removes = [];
             var observers = this.getObservers(event);
-            var onRemove = this._observableProps.onRemove;
             util.each(observers, function(obs) {
                if( obs.matches(event, callback, scope) ) {
-                  obs.notifyCancelled(null, event, this);
+                  obs.notifyCancelled(null);
                   removes.push(obs);
                }
             }, this);
-            removeAll(observers, removes);
-            onRemove && onRemove(event, removes);
-         }
+            removeAll(this._observableProps.observers[event], removes);
+            this._observableProps.onRemove(event, removes);
+         }, this);
       },
 
       /**
@@ -86,52 +81,47 @@
        * @returns {*}
        */
       abortObservers: function(error) {
-         console.log('abortObservers', error); //debug
          var removes = [];
-         var onRemove = this._observableProps.onRemove;
-         util.each(util.keys(this._observableProps.observers), function() {
-            var observers = this.getObservers();
+         if( this.hasObservers() ) {
+            var observers = this.getObservers().slice();
             util.each(observers, function(obs) {
-               obs.notifyCancelled(error, event, this);
+               obs.notifyCancelled(error);
                removes.push(obs);
             }, this);
-            removeAll(observers, removes);
-            onRemove && onRemove(event, removes);
-         }, this);
+            this.resetObservers();
+            this._observableProps.onRemove(this.event, removes);
+         }
       },
 
       /**
-       * @param {String|Array} [event]
+       * @param {String|Array} [events]
        * @returns {*}
        */
-      getObservers: function(event) {
-         if( !event || util.isArray(event) ) {
-            var out = [];
-            util.each(this._observableProps.observers, function(list, key) {
-               if( !event || util.contains(event, key) ) {
-                  out = out.concat(list);
-               }
-            }, this);
-            return out;
-         }
-         if( !util.has(this._observableProps.observers, event) ) {
-            log.warn('Observable.hasObservers: invalid event type %s', event);
-            return [];
-         }
-         return this._observableProps.observers[event];
+      getObservers: function(events) {
+         events = util.Args('getObservers', arguments).listFrom(this._observableProps.eventsMonitored, true);
+         return getObserversFor(this._observableProps.observers, events);
       },
 
       triggerEvent: function(event) {
-         var args = util.toArray(arguments, 1);
-         var onEvent = this._observableProps.onEvent;
-         util.each(util.isArray(event)? event : [event], function(e) {
-            var observers = this.getObservers(e), ct = 0;
-//            log('triggering %s for %d observers with args', event, observers.length, args, onEvent);
-            util.each(observers, function(obs) {
-               obs.notify.apply(obs, args);
-               ct++;
-            });
-            onEvent && onEvent.apply(null, [e, ct].concat(args));
+         var args = util.Args('triggerEvent', arguments);
+         var events = args.listFromWarn(this._observableProps.eventsMonitored, true);
+         var passThruArgs = args.restAsList();
+         if( events ) {
+            util.each(events, function(e) {
+               var observers = this.getObservers(e), ct = 0;
+   //            log('triggering %s for %d observers with args', event, observers.length, args, onEvent);
+               util.each(observers, function(obs) {
+                  obs.notify.apply(obs, passThruArgs);
+                  ct++;
+               });
+               this._observableProps.onEvent.apply(null, [e, ct].concat(passThruArgs));
+            }, this);
+         }
+      },
+
+      resetObservers: function() {
+         util.each(this._observableProps.eventsMonitored, function(key) {
+            this._observableProps.observers[key] = [];
          }, this);
       }
    };
@@ -143,6 +133,19 @@
             list.splice(i, 1);
          }
       });
+   }
+
+   function getObserversFor(allObservers, events) {
+      var out = [];
+      util.each(events, function(event) {
+         if( !util.has(allObservers, event) ) {
+            log.warn('Observable.hasObservers: invalid event type %s', event);
+         }
+         else if( allObservers[event].length ) {
+            out = out.concat(allObservers[event]);
+         }
+      }, this);
+      return out;
    }
 
    util.Observable = Observable;

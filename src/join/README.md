@@ -374,7 +374,7 @@ a reference to all the joined paths, and providing most of the normal functional
    - **on**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance, dynamic child paths are excluded from 'value' events
    - **once**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance, dynamic child paths are excluded from 'value' events
    - **child**: returns a [JoinedRecord](#api_joinedrecord) instance or a Firebase instance as appropriate
-   - **parent**: if created from JoinedRecord.child(), returns the parent JoinedRecord, otherwise, calls parent() on the first Firebase path in the join
+   - **parent**: if created from JoinedRecord.child(), returns the parent JoinedRecord, otherwise throws an error
    - **name**: for the joined collection, returns a string containing all the merged path names, for a merged child, returns the record's id
    - **set**: see [Writing data](#writing_data)
    - **setWithPriority**: sets priority on all of the paths

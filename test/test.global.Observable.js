@@ -70,35 +70,15 @@ describe('global.Observable.js', function() {
          expect(x).to.equal(y);
       });
 
-      it('should accept util.Observer as the callback', function() {
-         var fn = sinon.spy();
-
-         var obs = new Observable(['test']);
-         obs.observe('test', new fb.util.Observer('test', fn));
-         obs.triggerEvent('test', 'hello');
-
-         expect(fn).to.be.calledWith('hello');
-      });
-
-      it('should accept an array of events', function() {
-         var fn = sinon.spy();
-
-         var obs = new Observable(['a', 'b', 'c', 'd']);
-         obs.observe(['a', 'b', 'c'], fn);
-         obs.triggerEvent(['a', 'b', 'c', 'd']);
-
-         expect(fn).to.be.calledThrice;
-      });
-
       it('should call the cancelFn after stopObserving is invoked', function() {
          var fn = sinon.spy();
          var xfn = function() {};
 
          var obs = new Observable(['test']);
-         obs.observe('test', xfn, null, fn);
+         obs.observe('test', xfn, fn);
          obs.stopObserving('test', xfn);
 
-         expect(fn).to.be.calledWith(null, 'test', obs);
+         expect(fn).to.be.calledWith(null);
       });
    });
 
@@ -110,8 +90,8 @@ describe('global.Observable.js', function() {
          obs.observe('test2', function() {});
          obs.stopObserving();
 
-         expect(obs._observableProps.observers['test1']).to.be.empty;
-         expect(obs._observableProps.observers['test2']).to.be.empty;
+         expect(obs.getObservers('test1')).to.be.empty;
+         expect(obs.getObservers('test2')).to.be.empty;
          expect(obs.getObservers()).to.be.empty;
       });
 
@@ -122,8 +102,8 @@ describe('global.Observable.js', function() {
          obs.observe('test2', function() {});
          obs.stopObserving('test2');
 
-         expect(obs._observableProps.observers['test1']).to.have.length(1);
-         expect(obs._observableProps.observers['test2']).to.be.empty;
+         expect(obs.getObservers('test1')).to.have.length(1);
+         expect(obs.getObservers('test2')).to.be.empty;
       });
 
       it('should remove all events for callback if only passed a callback', function() {
@@ -136,9 +116,9 @@ describe('global.Observable.js', function() {
          obs.observe('test2', fn2);
          obs.stopObserving(fn1);
 
-         expect(obs._observableProps.observers['test1']).to.be.empty;
-         expect(obs._observableProps.observers['test2']).to.have.length(1);
-         expect(obs._observableProps.observers['test2'][0].fn).to.equal(fn2);
+         expect(obs.getObservers('test1')).to.be.empty;
+         expect(obs.getObservers('test2')).to.have.length(1);
+         expect(obs.getObservers('test2')[0].fn).to.equal(fn2);
       });
 
       it('should remove one observer if passed all arguments', function() {
@@ -154,8 +134,8 @@ describe('global.Observable.js', function() {
          obs.observe('test1', a, ctx2);
          obs.stopObserving('test1', a, ctx1);
 
-         expect(obs._observableProps.observers['test2']).to.have.length(1);
-         expect(obs._observableProps.observers['test1']).to.have.length(2);
+         expect(obs.getObservers('test2')).to.have.length(1);
+         expect(obs.getObservers('test1')).to.have.length(2);
       });
 
       it('should accept an array for events', function() {
@@ -169,14 +149,14 @@ describe('global.Observable.js', function() {
          obs.observe('test3', a);
          obs.stopObserving(['test1', 'test2'], a);
 
-         expect(obs._observableProps.observers['test1']).to.have.length(0);
-         expect(obs._observableProps.observers['test2']).to.have.length(1);
-         expect(obs._observableProps.observers['test3']).to.have.length(1);
+         expect(obs.getObservers('test1')).to.have.length(0);
+         expect(obs.getObservers('test2')).to.have.length(1);
+         expect(obs.getObservers('test3')).to.have.length(1);
       });
 
       it('should accept Observer for callback and remove appropriately', function() {
-         var a = new fb.util.Observer(['test1', 'test2'], function() {}),
-             b = new fb.util.Observer(['test1', 'test2'], function() {}),
+         var a = function() {},
+             b = function() {},
              c = function() {};
 
          var obs = new Observable(['test1', 'test2']);
@@ -185,13 +165,17 @@ describe('global.Observable.js', function() {
          obs.observe('test1', c);
          obs.observe('test2', a);
          obs.observe('test2', b);
+
+         expect(obs.getObservers('test1')).to.have.length(3);
+         expect(obs.getObservers('test2')).to.have.length(2);
+
          obs.stopObserving(b);
 
-         expect(obs._observableProps.observers['test1']).to.have.length(2);
-         expect(obs._observableProps.observers['test1'][0]).to.equal(a);
-         expect(obs._observableProps.observers['test1'][1].fn).to.equal(c);
-         expect(obs._observableProps.observers['test2']).to.have.length(1);
-         expect(obs._observableProps.observers['test2'][0]).to.equal(a);
+         expect(obs.getObservers('test1')).to.have.length(2);
+         expect(obs.getObservers('test1')[0].fn).to.equal(a);
+         expect(obs.getObservers('test1')[1].fn).to.equal(c);
+         expect(obs.getObservers('test2')).to.have.length(1);
+         expect(obs.getObservers('test2')[0].fn).to.equal(a);
       });
    });
 
@@ -240,26 +224,25 @@ describe('global.Observable.js', function() {
       });
 
       it('should return an array of all observers if no arguments', function() {
-         var a = new fb.util.Observer(['test1', 'test2'], function() {}),
-             b = new fb.util.Observer(['test1', 'test2'], function() {});
+         var a = function() {},
+             b = function() {};
          var obs = new Observable(['test1', 'test2', 'test3', 'test4']);
          obs.observe('test1', a);
          obs.observe('test1', b);
          obs.observe('test2', a);
          obs.observe('test3', b);
-         var res = obs.getObservers();
+         var res = fb.util.map(obs.getObservers(), function(ob) { return ob.fn });
          expect(res).to.eql([a, b, a, b]);
       });
 
       it('should accept an array of events', function() {
-         var a = new fb.util.Observer(['test1', 'test2'], function() {}),
-             b = new fb.util.Observer(['test1', 'test2'], function() {});
+         var a = function() {}, b = function() {};
          var obs = new Observable(['test1', 'test2', 'test3', 'test4']);
          obs.observe('test1', a);
          obs.observe('test1', b);
          obs.observe('test2', a);
          obs.observe('test3', b);
-         var res = obs.getObservers(['test1', 'test3', 'test4']);
+         var res = fb.util.map(obs.getObservers(['test1', 'test3', 'test4']), function(ob) { return ob.fn });
          expect(res).to.eql([a, b, b]);
       });
 

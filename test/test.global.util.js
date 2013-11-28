@@ -203,6 +203,33 @@ describe('global.js', function() {
          var res = util.map(null, function(v, k) { return 'oops'; });
          expect(res).to.eql([]);
       });
+
+      it('should skip undefined values', function() {
+         var res = util.map([1, 2, undefined, 3], function(v) { return v; });
+         expect(res).to.eql([1, 2, 3]);
+      });
+   });
+
+   describe('#mapObject', function() {
+      it('should map objects', function() {
+         var res = util.mapObject({foo: 'bar'}, function(v, k) { return k+':'+v; });
+         expect(res).to.eql({foo: 'foo:bar'});
+      });
+
+      it('should not mind empty objects', function() {
+         var res = util.mapObject({}, function() { return null; });
+         expect(res).to.eql({});
+      });
+
+      it('should skip undefined values', function() {
+         var res = util.mapObject({a: false, b: null, c: true, d: ''}, function(v,k) { return k === 'c'? undefined : v; });
+         expect(res).to.have.keys(['a', 'b', 'd']);
+      });
+
+      it('should not fail with null', function() {
+         var res = util.mapObject(null, function(v, k) { return 'oops'; });
+         expect(res).to.eql({});
+      });
    });
 
    describe('#indexOf', function() {

@@ -3,41 +3,92 @@
    var util = fb.pkg('util');
    var join = fb.pkg('join');
 
-   function PathLoader(paths) {
-      var countNeeded;
-      var countCompleted = 0;
-      var waiting = [];
-
-      this.done = function(cb, context) {
-         if( countNeeded === countCompleted ) {
-            notify([cb, context]);
-         }
-         else {
-            waiting.push([cb, context]);
-         }
-      };
-
-      countNeeded = paths.length;
-      util.each(paths, addPath);
-
-      function addPath(path) {
-         path.observe('keyMapLoaded', pathLoaded);
+   /**
+    * @param {JoinedRecord|null} joinedParent
+    * @param {Array} rawPathData
+    * @param {string} [childKey]
+    * @param {bool} [pathSearch]
+    * @constructor
+    */
+   function PathLoader(joinedParent, rawPathData, childKey, pathSearch) {
+      var hasChildKey = !util.isEmpty(childKey);
+      var sourcePaths = buildPaths(rawPathData);
+      this.refName = hasChildKey? childKey : makeMasterName(sourcePaths);
+      this.rootRef = joinedParent? joinedParent.rootRef : sourcePaths[0].ref().root();
+      if( hasChildKey && pathSearch ) {
+         this.finalPaths = [];
+         this.intersections = [];
+         this.q = util.createQueue()
+            .chain(joinedParent.queue)
+            .done(function() {
+               this.sortPath = searchForPath(joinedParent.paths, childKey);
+               if( this.sortPath ) {
+                  this.finalPaths.push(this.sortPath);
+                  this.sortPath.isIntersection() && this.intersections.push(this.sortPath);
+               }
+            }, this);
       }
-
-      function pathLoaded() {
-         if( ++countCompleted === countNeeded ) {
-            reconcilePathKeys(paths);
-            util.each(waiting, notify);
-         }
+      else {
+         this.finalPaths = simplePaths(sourcePaths, childKey);
+         this.intersections = intersections(this.finalPaths);
+         this.sortPath = findSortPath(this.finalPaths, this.intersections);
+         this.q = util.createQueue(pathCallbacks(this.finalPaths));
       }
+      this.q.done(function() {
+         reconcilePathKeys(this.finalPaths);
+      }, this);
+   }
 
-      function notify(parts) {
-         parts[0].call(parts[1]||null);
-      }
+   PathLoader.prototype.done = function(fn, ctx) {
+      this.q.done(fn, ctx);
+      return this;
+   };
+
+   PathLoader.prototype.fail = function(fn, ctx) {
+      this.q.fail(fn, ctx);
+      return this;
+   };
+
+   function buildPaths(paths) {
+      return util.map(paths, function(props) {
+         return props instanceof join.Path? props : new join.Path(props);
+      })
+   }
+
+   function simplePaths(paths, childKey) {
+      var b = !util.isEmpty(childKey);
+      return util.map(paths, function(p) {
+         return b? p.child(childKey) : p;
+      })
+   }
+
+   function searchForPath(paths, childKey) {
+      var p = util.find(paths, function(p) { return p.hasKey(childKey); }) || findSortPath(paths, intersections(paths));
+      return p? p.child(childKey) : null;
+   }
+
+   function findSortPath(paths, intersections) {
+      return util.find(paths, function(p) { return p.isSortBy(); })
+         || (util.isEmpty(intersections)? paths[0] : intersections[0]);
+   }
+
+   function intersections(paths) {
+      return util.filter(paths, function(p) { return p.isIntersection() });
    }
 
    /**
-    * Okay, so the idea here is that key conflicts have to be resolved. The method we've picked for this
+    * Wrap paths in a callback that can be invoked by Queue
+    */
+   function pathCallbacks(paths) {
+      return util.map(paths, function(path) {
+         return function(cb) {
+            path.observe('keyMapLoaded', util.bind(cb, null, null));
+         }
+      });
+   }
+
+   /**
+    * The idea here is that key conflicts have to be resolved. The method we've picked for this
     * is that the last path wins. Basically, each additional path "extends" the prior one jQuery style.
     *
     * Now this method prevents the need for every point where we merge or reconcile data to look through
@@ -59,6 +110,11 @@
             }
          });
       });
+   }
+
+   function makeMasterName(paths) {
+      var names = util.map(paths, function(p) { return p.ref().name(); });
+      return names.length > 1? '['+names.join('][')+']' : names[0];
    }
 
    join.PathLoader = PathLoader;
