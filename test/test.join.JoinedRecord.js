@@ -1159,9 +1159,27 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should ignore primitive if keymap does not have .value');
+      it('should fail if I set multiple paths to a primitive', function(done) {
+         var rec = createJoinedRecord('users/profile', 'users/account');
+         rec.set('SOMEONE SET UP US THE BOMB', function(err) {
+            expect(err).instanceOf(Error);
+            helpers.get('users/profile/kato').done(function(data) {
+               expect(data).to.be.an('object');
+               done();
+            })
+         });
+      });
 
-      it('should accept privitive if keymap has .value');
+      it('should fail if I call set() on a single path, but the path is an object', function(done) {
+         var rec = createJoinedRecord('users/profile').child('kato');
+         rec.set('SOMEONE SET UP US THE BOMB', function(err) {
+            expect(err).instanceOf(Error);
+            helpers.get('users/profile/kato').done(function(data) {
+               expect(data).to.be.an('object');
+               done();
+            })
+         });
+      });
 
       it('should create a record which does not exist');
 

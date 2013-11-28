@@ -5,7 +5,7 @@ Sync to multiple Firebase paths and seamlessly merge the data into a single obje
 Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
 during set/update/remove ops.
 
-A JoinedRecord can be used anywhere a normal Firebase reference would work, including [angularFire](http://angularfire.com/).
+A JoinedRecord can be used anywhere a normal Firebase reference would work, including references passed into [angularFire](http://angularfire.com/).
 
  - [Usage](#usage)
     - [Writing data: set, update, remove, and push](#writing_data)
@@ -14,6 +14,8 @@ A JoinedRecord can be used anywhere a normal Firebase reference would work, incl
     - [Dealing with conflicting fields (key maps)](#keymaps)
     - [Queries: limit, startAt, and endAt](#queries)
     - [Configuration options](#configuration_options)
+ - [Limitations](#limitations)
+ - [Troubleshooting and Help](#troubleshooting)
  - [API](#api)
     - [Firebase.Util.join](#api_join)
     - [Firebase.Util.union](#api_union)
@@ -228,7 +230,7 @@ ref.on('value', ...);
 //       member_since: "2013",
 //       name:  "Michael Wulf",
 //       nick:  "Kato",
-//       style: { ".id": "Kung Fu", description: "Chinese system based on physical exercises involving animal mimicry" }
+//       style: { description: "Chinese system based on physical exercises involving animal mimicry" }
 //    }
 // }
 ```
@@ -260,6 +262,27 @@ The hash is structured as follows:
    - **sortBy**: {boolean} sort records using this path's data?
    - **keyMap**: {Array|Object} map fields specific to each Firebase ref, see [key maps](#keymaps)
 
+<a name="limitations"></a>
+# LIMITATIONS
+
+ - The joined paths must be objects. That is, they must contain child records. The children can be primitives but at the master level, they must be objects.
+ - The children at a given joined path must have consistent data keys.
+ - The root() command always returns the root for the first path provided. If you provide paths from different Firebase instances, only the first one is returned by root()
+
+<a name="troubleshooting"></a>
+# Troubleshooting
+
+## Helpful tips to isolate a problem
+ - Start by reading the [limitations](#limitations) above
+ - Turn on debugging by calling `Firebase.Util.logLevel(true);` (use 'info', 'log' or 'debug' to tweak verbosity)
+ - Check your JavaScript console for error messages
+ - Add a keyMap to every path and see if the problem resolves
+
+## Questions and bug reports
+
+ - Submit bugs and problems via the GitHub issue tracker: https://www.github.com/firebase/firebase-utils
+ - Be sure to call `Firebase.Util.logLevel('log') and attach it to your report
+
 <a name="api"></a>
 # API
 
@@ -268,14 +291,9 @@ The hash is structured as follows:
 
 `@param {Firebase|Object} path`: any number of paths to be joined, see [config](#configuration_options)
 
-<a name="api_union"></a>
-## Firebase.Util.union( path[, path...] )
+This returns a [JoinedRecord](api_joinedrecord) which will load the merged data from all the paths provided.
 
-`@param {Firebase|Object} path`: any number of paths to be joined, see [config](#configuration_options)
-
-This returns the union of two or more paths (an OUTER JOIN).
-
-For example, given this data
+By default, unless `intersects` is specified in the props for a path, this returns the union (an OUTER JOIN). For example, given this data
 
 ```json
    {
@@ -296,7 +314,7 @@ For example, given this data
    }
 ```
 
-Calling union with all three paths:
+Calling join with all three paths:
 
 ```javascript
 Firebase.Util.union(
@@ -323,8 +341,7 @@ Produces this:
 
 `@param {Firebase|Object} path`: any number of paths to be joined, see [config](#configuration_options)
 
-This is the intersection of the two or more paths (an INNER JOIN), so that only
-records existing in all paths provided are returned.
+This returns a [JoinedRecord](api_joinedrecord) containing the intersection of the two or more paths (an INNER JOIN), so that only records existing in all paths provided are returned.
 
 For example, given this data
 
@@ -371,16 +388,17 @@ Produces this:
 A wrapper on [Firebase](https://www.firebase.com/docs/javascript/firebase/index.html) containing
 a reference to all the joined paths, and providing most of the normal functionality, with some minor variations:
 
-   - **on**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance, dynamic child paths are excluded from 'value' events
-   - **once**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance, dynamic child paths are excluded from 'value' events
-   - **child**: returns a [JoinedRecord](#api_joinedrecord) instance or a Firebase instance as appropriate
-   - **parent**: if created from JoinedRecord.child(), returns the parent JoinedRecord, otherwise throws an error
+   - **on**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance
+   - **once**: callbacks receive a [JoinedSnapshot](#api_joinedsnapshot) instance
+   - **child**: returns a [JoinedRecord](#api_joinedrecord) instance
+   - **parent**: if called from a JoinedRecord.child() reference, returns the parent JoinedRecord, otherwise throws an Error (the master joined record has multiple parents)
    - **name**: for the joined collection, returns a string containing all the merged path names, for a merged child, returns the record's id
    - **set**: see [Writing data](#writing_data)
    - **setWithPriority**: sets priority on all of the paths
    - **setPriority**: sets priority on all of the paths
    - **update**: see [Writing data](#writing_data)
    - **remove**: removes records from all the joined paths
+   - **root**: always returns the root of the first path, even if they point to different Firebase instances
    - **limit**: <span style="color:red">throws an Error</span>
    - **endAt**: <span style="color:red">throws an Error</span>
    - **startAt**: <span style="color:red">throws an Error</span>
