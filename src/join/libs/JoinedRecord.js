@@ -108,11 +108,7 @@
 
       set:             function(value, onComplete) {
          this.queue.done(function() {
-            if( !util.isObject(value) && (this.paths.length > 1 || !this.paths[0].isPrimitive()) ) {
-               log.error('Attempted to call set() using a primitive, but the joined path contains objects (there is no way to split a primitive between its various paths)');
-               onComplete(new Error('Attempted to call set() using a primitive, but this is a joined path (there is no way to split a primitive between its various parts)'));
-            }
-            else {
+            if( assertValidSet(this.paths, value, onComplete) ) {
                var q = util.createQueue();
                util.each(this.paths, function(path) {
                   q.addCriteria(function(cb) {
@@ -626,6 +622,15 @@
       return function(err) {
          if( err ) { fn(err); }
       }
+   }
+
+   function assertValidSet(paths, value, onComplete) {
+      var b = value !== null && !util.isObject(value) && (paths.length > 1 || !paths[0].isPrimitive());
+      if( b ) {
+         log.error('Attempted to call set() using a primitive, but the joined path contains objects (there is no way to split a primitive between its various paths)');
+         onComplete(new Error('Attempted to call set() using a primitive, but this is a joined path (there is no way to split a primitive between its various parts)'));
+      }
+      return !b;
    }
 
    /** add JoinedRecord to package
