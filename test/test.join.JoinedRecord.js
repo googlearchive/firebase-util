@@ -1148,7 +1148,7 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it.only('should work if given a primitive for a record\'s field', function(done) {
+      it('should work if given a primitive for a record\'s field', function(done) {
          var rec = createJoinedRecord('users', 'unions');
          rec.child('profile/kato/nick').set('ALL YOUR BASE ARE BELONG TO US', function(err) {
             expect(err).to.be.null;
