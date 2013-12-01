@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="mocha" type="javaScript">
+    <properties>
+      <sourceFilesUrls>
+        <item url="file://$PROJECT_DIR$/node_modules/grunt-mocha-test/node_modules/mocha/mocha.js" />
+      </sourceFilesUrls>
+    </properties>
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/node_modules/grunt-mocha-test/node_modules/mocha/mocha.js" />
+    </CLASSES>
+    <SOURCES />
+  </library>
+</component>

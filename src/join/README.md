@@ -10,7 +10,7 @@ A JoinedRecord can be used anywhere a normal Firebase reference would work, incl
  - [Usage](#usage)
     - [Writing data: set, update, remove, and push](#writing_data)
     - [Working with primitives](#working_with_primitives)
-    - [Dynamic path names](#dynamic_path_names)
+    - [Dynamic child paths](#dynamic_path_names)
     - [Dealing with conflicting fields (key maps)](#keymaps)
     - [Queries: limit, startAt, and endAt](#queries)
     - [Configuration options](#configuration_options)
@@ -119,8 +119,7 @@ ref.once('value', ...);
 <a name="keymaps"></a>
 ## Dealing with conflicting fields (key maps)
 
-If paths have conflicting field names or we are using a dynamic path (in which case the join methods can't
-look to see what fields exist), or if we simply want to restrict which fields get used, we can map each
+If paths have conflicting field names  or if we simply want to restrict which fields get used, we can map each
 field in the data to a particular path by adding a key map.
 
 The key map can be an array, which simply specifies the list of fields which belong to this path, or a hash
@@ -172,12 +171,12 @@ ref.once('value', ...);
 // { kato: { profile_name: "Michael Wulf", name: "Stupendous Man", id: "A98441133B64" } }
 ```
 
-Note that, because we declared a keyMap for the first ref, but didn't include email, that it doesn't exist in the results.
-Thus, a keymap could also be used to filter data added into the join. Be careful using this in conjunction with update()
-or set()!
+Note that, because we declared a keyMap for the first ref, but didn't include email, it doesn't exist in the results.
+Thus, a keymap could also be used to filter data added into the join. Be careful using this in conjunction with set()
+as values not in the keyMap are removed!
 
 <a name="dynamic_path_names"></a>
-## Dynamic Path Names
+## Dynamic Child Paths
 
 To include records from paths which don't have matching key hierarchies, a Firebase ref can
 be put into the keyMap. It will be loaded when the source path is loaded and its contents put into the key.
@@ -218,6 +217,7 @@ var ref = Firebase.Util.join(
        ref: new Firebase('INSTANCE/profile'),
        keyMap: {
           name: 'name',
+          nick: 'nick',
           style: new Firebase('INSTANCE/styles')
        }
     }
@@ -230,9 +230,37 @@ ref.on('value', ...);
 //       member_since: "2013",
 //       name:  "Michael Wulf",
 //       nick:  "Kato",
-//       style: { description: "Chinese system based on physical exercises involving animal mimicry" }
+//       style: { '.id': 'Kung Fu', description: "Chinese system based on physical exercises involving animal mimicry" }
 //    }
 // }
+```
+
+### Setting dynamic path data
+
+We can set the key for a dynamic path with an object containing `.id`:
+
+```javascript
+// all of these work
+ref.update({style: {'.id': 'MMA'}});
+ref.child('style').set({'.id': 'MMA'});
+```
+
+We can set the data in a dynamic path by setting it normally. All set ops must include the ID!:
+
+```javascript
+ref.update({style: {description: 'Mixed Martial Arts'}});
+
+// also works great
+ref.child('style').set({description: 'Mixed Martial Arts'});
+```
+
+We can also do both at the same time:
+
+```javascript
+ref.update({style: {'.id': 'MMA', description: 'Mixed Martial Arts'}});
+
+// or for a primitive...
+ref.update({widget: {'.id': 'blue', '.value': 'I am blue'});
 ```
 
 <a name="queries"></a>
@@ -266,8 +294,10 @@ The hash is structured as follows:
 # LIMITATIONS
 
  - The joined paths must be objects. That is, they must contain child records. The children can be primitives but at the master level, they must be objects.
- - The children at a given joined path must have consistent data keys.
+ - The children at a given joined path must have consistent data keys (an occasional null value is tolerated, but they should be very consistent)
  - The root() command always returns the root for the first path provided. If you provide paths from different Firebase instances, only the first one is returned by root()
+ - Does not return arrays under any circumstances (will always be represented as an object)
+ - Write operations are not atomic; one path could succeed and another path fail in rare instances
 
 <a name="troubleshooting"></a>
 # Troubleshooting

@@ -177,7 +177,7 @@ describe('join.JoinedRecord', function() {
             expect(snap.getPriority()).to.equal(25);
             done();
          });
-         rec.once('value', function(snap) {
+         rec.once('value', function() {
             helpers.ref('ordered/set1/three').setPriority(25);
          });
       });
@@ -469,6 +469,7 @@ describe('join.JoinedRecord', function() {
                name: 'Michael Wulf',
                nick: 'Kato',
                style: {
+                  ".id": "Kung Fu",
                   "description": "Chinese system based on physical exercises involving animal mimicry"
                }
             });
@@ -476,7 +477,7 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should load if a dynamic keyMap ref is null', function(done) {
+      it('should not explode if dynamic keyMap ref does not exist', function(done) {
          var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
             name: 'name',
             nick: 'nick',
@@ -495,26 +496,33 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should only call "value" once when using dynamic keyMap ref', function(done) {
-         var spy = sinon.spy();
+         var cancelSpy = sinon.spy(), count = 0, to;
          var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
             name: 'name',
             nick: 'nick',
             style: helpers.ref('users/styles')
          }});
 
-         ref.on('value', spy);
+         ref.on('value', function() {
+            // debounce every time this method is called
+            count++;
+            to && clearTimeout
+            (to);
+            setTimeout(finished, 750);
+         }, cancelSpy);
 
-         helpers.chain()
-            .get('users')
-            .pause(function() {
-               expect(spy).calledOnce;
-            })
-            .testDone(done);
+         function finished() {
+            expect(count).to.equal(1);
+            expect(cancelSpy).not.called;
+            done();
+         }
+
       });
 
       it('should sort data according to first sortBy path', function(done) {
          var ref = createJoinedRecord('ordered/set1', {ref: helpers.ref('ordered/set2'), sortBy: true});
          ref.on('value', function(snap) {
+            snap.ref().off();
             expect(snap.val()).keys(['five', 'one', 'two', 'three', 'four']);
             done();
          });
@@ -522,6 +530,7 @@ describe('join.JoinedRecord', function() {
 
       // can't test cancel callback because set on security rules isn't working from bash/PowerShell
       it('should invoke the cancel callback for all listeners if canceled', function(done) {
+         console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
          var cancel = fb.util.map([1, 2, 3], function() { return sinon.spy(); });
          helpers.chain()
             .then(function() {
@@ -535,11 +544,13 @@ describe('join.JoinedRecord', function() {
             })
             .set('secured_read_allowed', false)
             .wait(function() {
-               console.log('wait is done'); //debug
                fb.util.each(cancel, function(spy) {
                   expect(spy).calledOnce;
                });
             }, 1000)
+            .then(function() {
+               console.log("\n<<< //INTENTIONAL WARNINGS >>>\n\n");
+            })
             .testDone(done);
       });
 
@@ -703,6 +714,95 @@ describe('join.JoinedRecord', function() {
                   }, 100);
                });
             }, 50);
+         });
+      });
+
+      it('should return object for "value" when source is an array', function(done) {
+         createJoinedRecord('arrays/english', 'arrays/spanish').on('value', function(snap) {
+            expect(snap.val()).to.eql({
+               0: { english: 'zero',  numero: 'cero' },
+               1: { english: 'one',   numero: 'uno' },
+               2: { english: 'two',   numero: 'dos' },
+               3: { english: 'three', numero: 'tres' },
+               4: { english: 'four',  numero: 'cuatro' },
+               5: { english: 'five',  numero: 'cinco' }
+            });
+            done();
+         });
+      });
+
+      it('should call "child_added" when source is an array', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+         rec.on('child_added', spy);
+         rec.once('value', function(snap) {
+            var keys = fb.util.keys(snap.val());
+            sinon.assert.callCount(spy, keys.length);
+            fb.util.each(keys, function(key, i) {
+               expect(spy.getCall(i).args[0].name()).to.equal(key);
+            });
+            done();
+         });
+      });
+
+      it('should call "child_removed" when source is an array', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+         rec.on('child_removed', spy);
+         rec.once('value', function(snap) {
+            var keys = fb.util.keys(snap.val());
+            var count = 0, needed = 0;
+            sinon.assert.callCount(spy, 0);
+            var chain = helpers.chain();
+            fb.util.each(keys, function(key, i) {
+               chain = chain
+                  .remove(['arrays/english', key])
+                  .remove(['arrays/spanish', key]);
+            });
+            chain
+               .wait(function() {
+                  sinon.assert.callCount(spy, keys.length);
+                  fb.util.each(keys, function(key, i) {
+                     expect(spy.getCall(i).args[0].name()).to.equal(key);
+                  });
+               })
+               .testDone(done);
+         });
+      });
+
+      it('should call "child_moved" when source is an array', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('arrays/french', 'arrays/english');
+         rec.on('child_moved', spy);
+         rec.once('value', function(snap) {
+            sinon.assert.callCount(spy, 0);
+            helpers
+               .chain()
+               .setPriority('arrays/french/1', 25)
+               .wait(function(){
+                  sinon.assert.callCount(spy, 1);
+                  expect(spy.args[0][0].name()).to.equal('1');
+               })
+               .testDone(done);
+         });
+      });
+
+      it('should call "child_changed" when source is an array', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+         rec.on('child_changed', spy);
+         rec.once('value', function(snap) {
+            sinon.assert.callCount(spy, 0);
+            helpers
+               .chain()
+               .set('arrays/english/2', 'twotwo')
+               .wait(function(){
+                  sinon.assert.callCount(spy, 1);
+                  var snap = spy.args[0][0];
+                  expect(snap.name()).to.equal('2');
+                  expect(snap.val()).to.eql({ english: 'twotwo', numero: 'dos' });
+               })
+               .testDone(done);
          });
       });
    });
@@ -950,6 +1050,7 @@ describe('join.JoinedRecord', function() {
                   email: 'wulf@firebase.com',
                   name: 'Michael Wulf',
                   style: {
+                     ".id": "Kung Fu",
                      "description": "Chinese system based on physical exercises involving animal mimicry"
                   }
                });
@@ -969,10 +1070,11 @@ describe('join.JoinedRecord', function() {
          expect(rec.name()).to.equal('c');
       });
 
-      it('should work with multiple .child().child() calls', function() {
+      it('should work with multiple .child().child() calls when loading keyMap', function(done) {
          var rec = createJoinedRecord('users/account', 'users/profile').child('kato').child('nick').child('abc');
          expect(rec).instanceOf(JoinedRecord);
          expect(rec.name()).to.equal('abc');
+         setTimeout(done, 1000);
       });
 
       it('should work with / in the path and get the correct child', function() {
@@ -984,6 +1086,27 @@ describe('join.JoinedRecord', function() {
       it('should always return JoinedRecord no matter how many child calls', function() {
          var rec = fakeMappedRecord('a', 'b').child('c/x/y/z');
          expect(rec).instanceOf(JoinedRecord);
+      });
+
+      it('should return a ref to the correct path if an alias is used', function(done) {
+         var rec = createJoinedRecord({ref: helpers.ref('users/account'), keyMap: {email: 'liame'}}, 'users/profile').child('kato/liame');
+         rec.queue.done(function() {
+            expect(rec.name()).to.equal('liame');
+            expect(rec.paths[0].toString()).to.match(/kato\/email$/);
+            done();
+         });
+      });
+
+      it('should return a ref to correct dynamic keyMap paths', function(done) {
+         var rec = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+            name: true, nick: true, style: helpers.ref('users/style')
+         }}).child('kato/style');
+
+         rec.queue.done(function() {
+            expect(rec.name()).to.equal('style');
+            expect(rec.paths[0].toString()).to.match(/users\/style\/Kung%20Fu$/);
+            done();
+         })
       });
   });
 
@@ -1030,7 +1153,7 @@ describe('join.JoinedRecord', function() {
       it('should invoke callback when done', function(done) {
          var newData = { mary: { name: 'had', email: 'a@a.com', nick: 'little lamb' } };
          var rec = createJoinedRecord('users/account', 'users/profile');
-         rec.once('value', function() {
+         rec.once('value', function(snap) {
             rec.set(newData, function(err) {
                expect(err).to.be.null;
                done();
@@ -1039,6 +1162,7 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should invoke callback with error on failure', function(done) {
+         console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
          helpers
             .chain()
             .set('secured_write_allowed', false)
@@ -1053,6 +1177,9 @@ describe('join.JoinedRecord', function() {
                   expect(err).to.match(/PERMISSION_DENIED/);
                   def.resolve();
                });
+            })
+            .then(function() {
+               console.log("\n<<< ///INTENTIONAL WARNINGS >>>\n\n");
             })
             .testDone(done);
       });
@@ -1085,7 +1212,7 @@ describe('join.JoinedRecord', function() {
                   var a = data.account.kato;
                   var b = data.profile.kato;
                   expect(a.email).to.equal('wulf2@firebase.com');
-                  expect(a.name).to.equal('kato');
+                  expect(a.name).to.be.undefined; // removed by set op since not in keymap
                   expect(b.name).to.equal('Kato 2');
                   expect(b.nick).to.equal('Kato??');
                   expect(b.style).to.equal('Jeet Kune Do');
@@ -1160,6 +1287,7 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should fail if I set multiple paths to a primitive', function(done) {
+         helpers.debugThisTest(false);
          var rec = createJoinedRecord('users/profile', 'users/account');
          rec.set('SOMEONE SET UP US THE BOMB', function(err) {
             expect(err).instanceOf(Error);
@@ -1170,7 +1298,8 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should fail if I call set() on a single path, but the path is an object', function(done) {
+      it('should fail to set() a primitive on a joined path, even if it has only one path', function(done) {
+         helpers.debugThisTest(false);
          var rec = createJoinedRecord('users/profile').child('kato');
          rec.set('SOMEONE SET UP US THE BOMB', function(err) {
             expect(err).instanceOf(Error);
@@ -1181,31 +1310,226 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it('should create a record which does not exist');
+      it('should create a record which does not exist', function(done) {
+         var rec = createJoinedRecord('users/profile', 'users/account').child('mary');
+         rec.set({ email: 'mary@mary.com', name: 'mary', 'style': 'Leopard Fu' }, function(err) {
+            rec.off();
+            expect(err).to.be.null;
+            helpers
+               .chain()
+               .get('users/account/mary')
+               .then(function(data) {
+                  expect(data).to.eql({ email: 'mary@mary.com', name: 'mary' });
+               })
+               .get('users/profile/mary')
+               .then(function(data) {
+                  expect(data).to.eql({ style: 'Leopard Fu' });
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should trigger child_added if record is created');
+      it('should create a field which does not exist', function(done) {
+         var katoData = {
+            name: 'Kato?',
+            email: 'katoooo@firebase2.com',
+            nick: 'Sidekick',
+            style: 'Kung Fu'
+         };
+         helpers
+            .chain()
+            .remove('users/account/kato/email')
+            .then(function() {
+               return helpers.def(function(def) {
+                  var rec = createJoinedRecord('users/account', 'users/profile')
+                     .child('kato')
+                     .set(katoData, function(err) {
+                        if( err ) { def.reject(err); }
+                        else { def.resolve(); }
+                     });
+               });
+            })
+            .get('users/account/kato')
+            .then(function(data) {
+               expect(data).not.to.be.empty;
+               expect(data.email).to.eql(katoData.email);
+            })
+            .testDone(done);
+      });
 
-      it('should create a field which does not exist');
+      it('should accept array', function(done) {
+         var newVals = [
+            { numero: 'cerocero', english: 'zerozero' },
+            { numero: 'unouno', english: 'oneone' },
+            { numero: 'dosdos', english: 'twotwo' }
+         ];
+         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+         rec.set(newVals, function(err) {
+            expect(err).to.be.null;
+            helpers
+               .chain()
+               .get('arrays/english')
+               .then(function(data) {
+                  expect(data).to.eql([ 'zerozero', 'oneone', 'twotwo' ]);
+               })
+               .get('arrays/spanish')
+               .then(function(data) {
+                  expect(data).to.eql([
+                     { numero: 'cerocero' },
+                     { numero: 'unouno' },
+                     { numero: 'dosdos' }
+                  ]);
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should trigger child_added if field added');
+      it('should accept array on child record', function(done) {
+         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+         rec.child('1').set({ numero: 'dosdos', english: 'twotwo' }, function(err) {
+            expect(err).to.be.null;
+            helpers
+               .chain()
+               .get('arrays/english/1')
+               .then(function(data) {
+                  expect(data).to.equal('twotwo');
+               })
+               .get('arrays/spanish/1')
+               .then(function(data) {
+                  expect(data).to.eql({ numero: 'dosdos' });
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should work with an array');
+      it('should delete missing keys on master', function(done) {
+         createJoinedRecord('users/account', 'users/profile')
+            .set({ 'mary': { 'name': 'Mary', 'email': 'mary@mary.com' } }, function(err) {
+               expect(err).to.be.null;
+               helpers
+                  .chain()
+                  .get('users/account')
+                  .then(function(data) {
+                     expect(data).to.have.keys(['mary']);
+                  })
+                  .get('users/profile')
+                  .then(function(data) {
+                     expect(data).to.have.keys(['mary']);
+                  })
+                  .testDone(done);
+            });
+      });
 
-      it('should work with an array on child record');
+      it('should delete missing keys on child', function(done) {
+         createJoinedRecord('users/account', 'users/profile')
+            .child('kato')
+            .set({ 'email': 'kato@kato.com' }, function(err) {
+               expect(err).to.be.null;
+               helpers
+                  .chain()
+                  .get('users/account/kato')
+                  .then(function(data) {
+                     expect(data).to.have.keys(['email']);
+                  })
+                  .get('users/profile/kato')
+                  .then(function(data) {
+                     expect(data).to.be.null;
+                  })
+                  .testDone(done);
+            });
+      });
 
-      it('should not overwrite anything which is not in keymap');
+      it('should delete primitives', function(done) {
+         createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie')
+            .set({
+               a: { fruit: 'aaa', legume: 'aab' },
+               b: { legume: 'bbb' },
+               c: null
+            }, function(err) {
+               expect(err).to.be.null;
+               helpers
+                  .chain()
+                  .get('unions')
+                  .then(function(data) {
+                     expect(data).to.eql({
+                        fruit: {a: 'aaa'},
+                        legume: { a: 'aab', b: 'bbb' }
+                     });
+                  })
+                  .testDone(done);
+            })
+      });
 
-      it('should delete any values in keymap which are not provided');
+      it('should delete primitives on child', function(done) {
+         createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie')
+            .child('b')
+            .set({ fruit: 'aaa', legume: 'aab' }, function(err) {
+               expect(err).to.be.null;
+               helpers
+                  .chain()
+                  .get('unions/fruit/b')
+                  .then(function(data) {
+                     expect(data).to.equal('aaa');
+                  })
+                  .get('unions/legume/b')
+                  .then(function(data) {
+                     expect(data).to.equal('aab');
+                  })
+                  .get('unions/veggie/b')
+                  .then(function(data) {
+                     expect(data).to.be.null;
+                  })
+                  .testDone(done);
+            })
+      });
 
-      it('should only delete values in keymap if null is provided');
+      it.skip('should set dynamic keyMap data from master', function(done) {
+         createJoinedRecord('users/account', {
+            ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: helpers.ref('users/style')
+            }
+         }).set({ mary: {
+               email: 'mary@mary.com',
 
-      it('should work if includes object at key for dynamic keyMap path');
+            } }, function(err) {
+               expect(err).to.be.null;
+               helpers
+                  .chain()
+                  .get('unions/fruit/b')
+                  .then(function(data) {
+                     expect(data).to.equal('aaa');
+                  })
+                  .get('unions/legume/b')
+                  .then(function(data) {
+                     expect(data).to.equal('aab');
+                  })
+                  .get('unions/veggie/b')
+                  .then(function(data) {
+                     expect(data).to.be.null;
+                  })
+                  .testDone(done);
+            })
+      });
 
-      it('should work if includes primitive at key for dynamic keyMap path');
+      it('should set dynamic keyMap data if called on child');
+
+      it('should set dynamic keyMap key from master');
+
+      it('should set dynamic keyMap key from child');
+
+      it('should delete dynamic keyMap paths');
+
+      it('should delete dynamic keyMap paths on child');
+
+      it('should set primitive at dynamic keyMap path');
 
       it('should ??? for an empty path and no keyMap');
 
       it('should ??? if all paths are empty and no keyMap');
+
+      it('should set properly if given a single .value keyMap which points to a dynamic path');
    });
 
    describe('#setWithPriority', function() {
@@ -1253,9 +1577,9 @@ describe('join.JoinedRecord', function() {
 
       it('should invoke callback with error on failure');
 
-      it('should only modify fields specified');
+      it('should only modify fields specified (ignores extra fields in data passed to set)');
 
-      it('should ignore fields not in the keyMap');
+      it('should preserve fields not in the keyMap (they are not overwritten or set to null)');
 
       it('should set data on dynamic keyMap paths');
 
@@ -1266,6 +1590,8 @@ describe('join.JoinedRecord', function() {
       it('should accept null values');
 
       it('should accept primitives');
+
+      it('should call set on children if update invoked on master');
    });
 
    describe('#remove', function() {

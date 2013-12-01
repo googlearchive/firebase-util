@@ -11,7 +11,7 @@
     * @constructor
     */
    function Path(props, parent) {
-      this._super(this, EVENTS, util.bindAll(this, { onAdd: this._observerAdded, onRemove: this._observerRemoved }));
+      this._super(this, EVENTS, util.bindAll(this, { onAdd: this._observerAdded, onRemove: this._observerRemoved, onEvent: this._eventTriggered }));
       this.subs = [];
       this.joinedParent = parent;
       this.props = buildPathProps(props, parent);
@@ -29,12 +29,25 @@
    }
 
    Path.prototype = {
-      child: function(key) {
-         if( this._isDynamicChild(key) ) {
+      child: function(aliasedKey) {
+         var key = this.isJoinedChild()? this.sourceKey(aliasedKey) : aliasedKey;
+         if( this.isDynamicChild(key) ) {
             return this.dynamicChildPaths[key];
          }
          else {
             return new Path(this.ref().child(key), this);
+         }
+      },
+
+      dynamicChild: function(aliasedKey, callback, context) {
+         var key = this.sourceKey(aliasedKey), self = this;
+         self.ref().on('value', fn);
+         function fn(snap) {
+            var data = snap.val();
+            if( util.has(data, key) ) {
+               self.ref().off('value', fn);
+               callback.call(context, self.dynamicChildPaths[key].child(data[key]));
+            }
          }
       },
 
@@ -58,16 +71,49 @@
          if( data === null ) {
             this.ref().remove(callback);
          }
-         else if( this.isPrimitive() ) {
-            var key = this.props.keyMap['.value'];
-            var val = util.has(data, key)? data[key] : data;
-            this.ref().set(val, callback);
-         }
          else if( this.isJoinedChild() ) {
-            this.ref().update(this._pickMyData(data), callback);
+            this.ref().set(this._pickMyData(data), callback);
+            //todo dynamic paths
+            //todo
+            //todo
+            //todo
+            //todo
          }
          else {
-            this.ref().set(util.mapObject(data, this._pickMyData, this), callback);
+            this.ref().set(util.mapObject(data, this._pickMyData, this), function(err) {
+               callback(err);
+            });
+            //todo dynamic paths
+            //todo
+            //todo
+            //todo
+            //todo
+         }
+      },
+
+      pickAndUpdate: function(data, callback) {
+         if( !util.isObject(data) ) {
+            throw new Error('Update failed: First argument must be an object containing the children to replace.');
+         }
+         else {
+            if( this.isJoinedChild() ) {
+               var filteredData = util.mapObject(this.getKeyMap(), function(aliasedKey, sourceKey) {
+                  return data[aliasedKey];
+               });
+
+               if( !util.isEmpty(filteredData) ){
+                  this.ref().update(filteredData, callback);
+               }
+            }
+            else {
+               var q = util.createQueue(), parentPath = this;
+               util.each(data, function(childData, key) {
+                  q.addCriteria(function(cb) {
+                     parentPath.child(key).pickAndSet(childData, cb);
+                  });
+               });
+               q.handler(callback);
+            }
          }
       },
 
@@ -75,28 +121,33 @@
       isSortBy: function() { return this.props.sortBy; },
       setSortBy: function(b) { this.props.sortBy = b; },
       ref: function() { return this.props.ref; },
-      hasKey: function(key) { return util.contains(this.props.keyMap, key); },
-      sourceKey: function(key) {
-         var res = null;
-         util.find(this.props.keyMap, function(v,k) {
-            if( v === key ) {
-               res = k;
-            }
-            return v === key;
-         });
+      hasKey: function(key) {
+         return util.contains(this.getKeyMap(), key);
+      },
+      sourceKey: function(aliasedKey) {
+         var res = aliasedKey;
+         if( this.isJoinedChild() ) {
+            util.find(this.props.keyMap, function(v,k) {
+               var isMatch = v === aliasedKey;
+               if(isMatch) {
+                  res = k;
+               }
+               return isMatch;
+            });
+         }
          return res;
       },
 
       isJoinedChild: function() { return !!this.joinedParent; },
 
       isPrimitive: function() {
-         return util.has(this.getKeyMap(), '.value');
+         return util.has(this.getKeyMap(), '.value') && this.isJoinedChild();
       },
 
       // see the reconcilePaths() method in PathLoader.js
-      removeConflictingKey: function(fromKey, owningPath) {
-         log('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, fromKey, this.getKeyMap()[fromKey], owningPath);
-         delete this.props.keyMap[fromKey];
+      removeConflictingKey: function(sourceKey, owningPath) {
+         log('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, sourceKey, this.getKeyMap()[sourceKey], owningPath);
+         delete this.props.keyMap[sourceKey];
       },
 
       /**
@@ -107,26 +158,53 @@
          return this.props.keyMap || {};
       },
 
-      eachKey: function(data, callback) {
-         util.each(this.getKeyMap(), function(toKey, fromKey) {
-            if( fromKey === '.value' ) {
-               callback(fromKey, toKey, data);
-            }
-            else {
-               callback(fromKey, toKey, util.has(data, toKey)? data[toKey] : null);
-            }
-         });
+      eachKey: function(data, callback, context) {
+         this._iterateKeys(data, callback, context, false);
       },
 
-      _pickMyData: function(data, useToKey) {
-         var out = null;
-         if( data !== null ) {
-            out = {};
-            this.eachKey(data, function(fromKey, toKey, value) {
-               out[useToKey? toKey : fromKey] = value;
-            });
-         }
-         return out;
+      eachSourceKey: function(data, callback, context) {
+         this._iterateKeys(data, callback, context, true);
+      },
+
+      /**
+       * Given a set of values loaded from a database, map them according to my keyMap for use in event
+       * notifications.
+       *
+       * @param data
+       * @private
+       */
+      _mapMyValues: function(data) {
+         var out = {};
+         this.eachSourceKey(data, function(sourceKey, aliasedKey, value) {
+            out[aliasedKey] = value;
+         });
+         return util.isEmpty(out)? null : out;
+      },
+
+      /**
+       * Given a set of keyMapped data, return it to the raw format usable for use in my set/update
+       * functions. Dynamic keyMap values are replaced by their ids
+       *
+       * @param data
+       * @private
+       */
+      _pickMyData: function(data) {
+         var out = {};
+         this.eachKey(pickDataForSetOps(data, this.isPrimitive(), this.getKeyMap()), function(sourceKey, aliasedKey, value) {
+            if( this.isDynamicChild() ) {
+               throw new Error('I do not know how to write dynamic data yet :(((')
+               //todo
+               //todo
+               //todo
+               //todo
+               //todo
+               //todo
+               //todo
+               //todo
+            }
+            out[sourceKey] = value;
+         }, this);
+         return util.isEmpty(out)? null : out;
       },
 
       _observerAdded: function(event) {
@@ -158,6 +236,12 @@
          }
       },
 
+      _eventTriggered: function(event) {
+         if( event === 'keyMapLoaded' ) {
+            this.stopObserving('keyMapLoaded');
+         }
+      },
+
       _startDynamicListeners: function() {
          this.isJoinedChild() && util.each(this.dynamicChildPaths, util.bind(this._startDynamicPath, this));
       },
@@ -185,11 +269,11 @@
             this.loadData(fn, this);
          }
          else if( !this.isJoinedChild() ) {
-            util.defer(util.bind(fn, this, this._pickMyData(snap.val(), true)));
+            util.defer(util.bind(fn, this, this._mapMyValues(snap.val())));
 //            fn.call(this, mapValues(this.getKeyMap(), snap.val()));
          }
          else if( this.hasKey(snap.name()) ) {
-            if( this._isDynamicChild(snap.name())) {
+            if( this.isDynamicChild(snap.name())) {
                this.dynamicChildPaths[snap.name()].loadData(fn, this);
             }
             else {
@@ -207,7 +291,7 @@
          }
       },
 
-      _isDynamicChild: function(key) {
+      isDynamicChild: function(key) {
          return util.has(this.dynamicChildPaths, key);
       },
 
@@ -216,11 +300,12 @@
       _buildMasterKeyMap: function(cb) {
          var km = this.props.keyMap;
          if( !util.isObject(km) ) {
-            this.props.ref.limit(1).once('value', function(outerSnap) {
-               var self = this;
-               outerSnap.forEach(function(snap) {
-                  return self._loadKeyMapFromSnap(snap);
-               });
+            // sample several records (but not hundreds) and load the keys from each so
+            // we get an accurate union of the fields in the child data; they are supposed
+            // to be consistent, but some could have null values for various reasons,
+            // so this should help avoid inconsistent keys
+            this.ref().limit(25).once('value', function(snap) {
+               this._loadKeyMapFromSnap(snap);
                this._finishedKeyMap();
                cb && cb(this);
             }, this);
@@ -229,13 +314,17 @@
             var dynamicPaths = this.dynamicChildPaths;
             util.each(km, function(v, k) {
                if( util.isObject(v) ) {
-                  km[k] = v.toKey? v.toKey : k;
+                  var toKey = k;
                   if( v instanceof Firebase || v instanceof join.JoinedRecord ) {
                      v = {
                         ref: v,
                         keyMap: {'.value': '.value'}
                      };
                   }
+                  else if(v.aliasedKey) {
+                     toKey = v.aliasedKey;
+                  }
+                  km[k] = toKey;
                   dynamicPaths[k] = new Path(v);
                }
             });
@@ -245,40 +334,50 @@
       },
 
       _loadKeyMapFromParent: function(parent) {
-         if( parent.isJoinedChild() ) {
-            this.props.keyMap = { '.value': '.value' };
-            this._finishedKeyMap();
-         }
-         else {
-            this.props.intersects = parent.isIntersection();
-            parent.observe('keyMapLoaded', function(keyMap) {
+         parent.observe('keyMapLoaded', function(keyMap) {
+            if( parent.isJoinedChild() ) {
+               this.props.keyMap = { '.value': '.value' };
+               this._finishedKeyMap();
+            }
+            else {
+               this.props.intersects = parent.isIntersection();
                this.dynamicChildPaths = cloneDynamicPaths(parent.dynamicChildPaths);
                this.props.keyMap = keyMap;
                this._finishedKeyMap();
-            }, this);
-         }
+            }
+         }, this);
       },
 
       _finishedKeyMap: function() {
          if( util.isEmpty(this.props.keyMap) ) {
-            log.warn('The path "%s" is empty! You either need to add at least one data record into the path or declare a keyMap. No data will be written to or read from this path :(', this);
+            throw Error('Could not load a keyMap for Path(%s); declare one or add a record to this path. No data can be written to or read from this path without a keyMap:(', this);
          }
          this.triggerEvent('keyMapLoaded', this.props.keyMap);
-         this.stopObserving('keyMapLoaded');
       },
 
-      _loadKeyMapFromSnap: function(snap) {
-         var b = snap.val() !== null && this.props.keyMap === null;
+      _loadKeyMapFromSnap: function(samplingSnap) {
+         var b = util.isObject(samplingSnap.val()) && this.props.keyMap === null;
          if( b ) {
             var km = this.props.keyMap = {};
-            if( util.isObject(snap.val()) ) {
-               util.each(snap.val(), function(v, k) { km[k] = k; });
-            }
-            else {
-               km['.value'] = this.props.pathName;
-            }
+            var keys = [];
+            var props = this.props;
+            // we sample several records and look for keys so if a key is missing from one or two
+            // we don't get funky and skewed results (we hope)
+            samplingSnap.forEach(function(snap) {
+               keys.push(snap.name());
+               if( util.isObject(snap.val()) ) {
+                  // got an object, add an keys in that object to our map
+                  util.each(snap.val(), function(v, k) { km[k] = k; });
+                  return false;
+               }
+               else if( !util.isEmpty(snap.val()) ) {
+                  // got a primitive, so the only key is .value and we cancel iterations
+                  km = props.keyMap = {'.value': props.pathName};
+                  return true;
+               }
+            });
+            log.info('Loaded keyMap for Path(%s) from child records "%s": %j', this.toString(), keys, km);
          }
-         log.info('Loaded keyMap for Path(%s) from child record "%s": %j', this.toString(), snap.name(), km);
          return b;
       },
 
@@ -286,22 +385,22 @@
          var out = {}, q = util.createQueue(), dynamicPaths = this.dynamicChildPaths;
          var data = snap.val();
          if( !util.isEmpty(data) ) {
-            util.each(this.getKeyMap(), function(toKey, fromKey) {
-               if( this._isDynamicChild(fromKey) ) {
-                  if( util.has(data, fromKey) && !util.isEmpty(data[fromKey]) ) {
+            util.each(this.getKeyMap(), function(aliasedKey, sourceKey) {
+               if( this.isDynamicChild(sourceKey) ) {
+                  if( util.has(data, sourceKey) && !util.isEmpty(data[sourceKey]) ) {
                      q.addCriteria(function(cb) {
-                        dynamicPaths[fromKey].child(data[fromKey]).loadData(function(data) {
-                           data !== null && (out[toKey] = extractValue(data));
+                        dynamicPaths[sourceKey].child(data[sourceKey]).loadData(function(dynData) {
+                           dynData !== null && (out[aliasedKey] = util.extend({'.id': data[sourceKey]}, extractValue(dynData)));
                            cb();
                         });
                      });
                   }
                }
-               else if( fromKey === '.value' ) {
-                  out[toKey] = data;
+               else if( sourceKey === '.value' ) {
+                  out[aliasedKey] = data;
                }
-               else if( util.has(data, fromKey) ) {
-                  out[toKey] = data[fromKey];
+               else if( util.has(data, sourceKey) ) {
+                  out[aliasedKey] = data[sourceKey];
                }
             }, this);
          }
@@ -325,6 +424,19 @@
          q.done(function() {
             callback.call(scope, util.isEmpty(out)? null : out, parentSnap);
          });
+      },
+
+      _iterateKeys: function(data, callback, context, useSourceKey) {
+         var map = this.getKeyMap();
+         if( this.isPrimitive() ) {
+            callback.call(context, '.value', map['.value'], data);
+         }
+         else {
+            util.each(map, function(aliasedKey, sourceKey) {
+               var key = useSourceKey? sourceKey : aliasedKey;
+               callback.call(context, sourceKey, aliasedKey, util.has(data, key)? data[key] : null);
+            });
+         }
       }
    };
 
@@ -334,11 +446,13 @@
     ***************************************************/
 
    function buildPathProps(props, parent) {
-      if( props instanceof Firebase ) {
+      if( props instanceof Firebase || props instanceof join.JoinedRecord ) {
          props = propsFromRef(props);
       }
       else {
-         if( !props.ref ) { throw new Error('Must declare ref in properties hash for all Util.Join functions'); }
+         if( !props.ref ) {
+            throw new Error('Must declare ref in properties hash for all Util.Join functions');
+         }
          props = propsFromHash(props);
       }
 
@@ -389,6 +503,13 @@
 
    function extractValue(data) {
       return util.isObject(data) && data['.value']? data['.value'] : data;
+   }
+
+   function pickDataForSetOps(data, isPrimitive, keyMap) {
+      if( !util.isObject(data) ) {
+         return data;
+      }
+      return isPrimitive? util.val(data, keyMap['.value']) : data;
    }
 
    join.Path = Path;

@@ -23,6 +23,14 @@
    }
 
    Args.prototype = {
+      skip: function() {
+         if( this.argList.length ) {
+            this.pos++;
+            return this.argList.shift();
+         }
+         return undefined;
+      },
+
       next: function(types, defaultValue) {
          return this._arg(types, defaultValue, false);
       },
@@ -69,7 +77,7 @@
             return format(this.argList.shift(), types);
          }
          else {
-            required && assertRequired(required, this.fnName, this.pos, util.printf('must be of type %s', types));
+            required && assertRequired(required, this.fnName, this.pos, util.printf('must be of type %s', types), this.argList[0]);
             return defaultValue;
          }
       },
@@ -80,7 +88,7 @@
             return this.argList.shift();
          }
          else {
-            required && assertRequired(required, this.fnName, this.pos, util.printf('must be one of %s', choices));
+            required && assertRequired(required, this.fnName, this.pos, util.printf('must be one of %s', choices), this.argList[0]);
             return defaultValue;
          }
       },
@@ -112,7 +120,7 @@
             }
          }
          if( util.isEmpty(out) ) {
-            required && assertRequired(required, this.fnName, this.pos, util.printf('choices must be in [%s]', choices));
+            required && assertRequired(required, this.fnName, this.pos, util.printf('choices must be in [%s]', choices), list);
             return defaultValue === true? choices : defaultValue;
          }
          return out;
@@ -147,8 +155,8 @@
       });
    }
 
-   function assertRequired(required, fnName, pos, msg) {
-      msg = util.printf('%s: invalid argument at pos %d, %s', fnName, pos, msg);
+   function assertRequired(required, fnName, pos, msg, val) {
+      msg = util.printf('%s: invalid argument at pos %d, %s (received %s)', fnName, pos, msg);
       if( required === true ) {
          throw new Error(msg);
       }

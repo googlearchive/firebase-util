@@ -22,6 +22,7 @@
          }
          this.needs++;
          this.criteria.push(scope? [criteriaFn, scope] : criteriaFn);
+         return this;
       },
 
       ready: function() {

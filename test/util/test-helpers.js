@@ -77,6 +77,15 @@ helpers.ref = function(path) {
 };
 
 /**
+ * Create a URL suitable for toString() testing
+ * @param {Array|String} path
+ * @returns {string}
+ */
+helpers.url = function(path) {
+   return helpers.ref(path).toString();
+};
+
+/**
  * Log in using Firebase secret (as a super)
  *
  * @param {Array|String} path (arrays joined joined with /)
@@ -95,7 +104,7 @@ helpers.sup = function(path) {
  * @param {Function} [done] optionally call this method when finished
  */
 helpers.reset = function(json, done) {
-   return helpers.chain().sup().set(null, json).unauth().testDone(done||function(err) { err && fb.log.error(err); });
+   var chain = helpers.chain().sup().set(null, json).unauth().testDone(done||function(err) { err && fb.log.error(err); });
 };
 
 /**
@@ -179,7 +188,7 @@ helpers.rest = function(path, method, data) {
  * @param {String|RegExp} [grep]
  */
 helpers.debugThisTest = function(level, grep) {
-   doAfterTest(fb.log.logLevel(level||'log', grep));
+   doAfterTest(fb.log.logLevel(level===undefined? 'log' : level, grep));
 };
 
 /**

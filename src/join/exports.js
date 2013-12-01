@@ -10,14 +10,6 @@
    exports.join = function() {};
 
    /**
-    * This returns the union of two or more paths (an OUTER JOIN).
-    *
-    * Accepts any number of {Firebase|Object} arguments, see README for details.
-    * @static
-    */
-   exports.union = function() {};
-
-   /**
     * This is the intersection of the two or more paths (an INNER JOIN), so that only
     * records existing in all paths provided are returned.
     *

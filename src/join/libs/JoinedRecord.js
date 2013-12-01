@@ -31,6 +31,10 @@
 
    JoinedRecord.prototype = {
       auth: function(authToken, onComplete, onCancel) {
+         var args = util.Args('auth', arguments, 1, 3);
+         authToken = args.nextReq('string');
+         onComplete = args.next('function');
+         onCancel = args.next('function');
          this.queue.done(function() {
             this.sortPath.ref().auth(authToken, onComplete, onCancel);
          }, this);
@@ -43,10 +47,11 @@
       },
 
       on: function(eventType, callback, cancelCallback, context) {
-         if( util.isObject(cancelCallback) && arguments.length === 3 ) {
-            context = cancelCallback;
-            cancelCallback = null;
-         }
+         var args = util.Args('on', arguments, 2, 4);
+         eventType = args.nextFromReq(EVENTS);
+         callback = args.nextReq('function');
+         cancelCallback = args.next('function');
+         context = args.next('object');
          this.queue.done(function() {
             var obs = this.observe(eventType, callback, wrapFailCallback(cancelCallback), context);
             this._triggerPreloadedEvents(eventType, obs);
@@ -55,6 +60,10 @@
       },
 
       off: function(eventType, callback, context) {
+         var args = util.Args('off', arguments, 0, 3);
+         eventType = args.nextFrom(EVENTS);
+         callback = args.next('function');
+         context = args.next('object');
          this.queue.done(function() {
             this.stopObserving(eventType, callback, context);
          }, this);
@@ -62,11 +71,11 @@
       },
 
       once: function(eventType, callback, failureCallback, context) {
-         if( util.isObject(failureCallback) && arguments.length === 3 ) {
-            context = failureCallback;
-            failureCallback = null;
-         }
-
+         var args = util.Args('once', arguments, 2, 4);
+         eventType = args.nextFromReq(EVENTS);
+         callback = args.nextReq('function');
+         failureCallback = args.next('function');
+         context = args.next('object');
          var fn = function(snap, prevChild) {
             if( typeof(callback) === util.Observer )
                callback.notify(snap, prevChild);
@@ -79,20 +88,21 @@
       },
 
       child: function(childPath) {
-         var ref;
+         childPath = util.Args('child', arguments, 1, 1).nextReq(['string', 'number']);
+         var rec;
          var parts = (childPath+'').split('/'), firstPart = parts.shift();
          if( this._isChildLoaded(firstPart) ) {
             // I already have this child record loaded so just return it
-            ref = this._getJoinedChild(firstPart);
+            rec = this._getJoinedChild(firstPart);
          }
          else {
             // this is the joined parent, so we fetch a JoinedRecord as the child
             // this constructor syntax is for internal use only and not documented in the API
-            ref = new JoinedRecord(this, firstPart);
+            rec = new JoinedRecord(firstPart, this);
          }
 
          // we've only processed the first bit of the child path, so if there are more, fetch them here
-         return parts.length? ref.child(parts.join('/')) : ref;
+         return parts.length? rec.child(parts.join('/')) : rec;
       },
 
       parent:          function() {
@@ -106,7 +116,10 @@
          return this.refName;
       },
 
-      set:             function(value, onComplete) {
+      set: function(value, onComplete) {
+         var args = util.Args('set', arguments, 1, 2);
+         args.skip();
+         onComplete = args.next('function', util.noop);
          this.queue.done(function() {
             if( assertValidSet(this.paths, value, onComplete) ) {
                var q = util.createQueue();
@@ -257,25 +270,8 @@
 
       // must be called before any on/off events
       _loadPaths: function(pathArgs) {
-         this._assertHasPaths(pathArgs);
-         var paths, childKey, pathSearch;
-
-         if( pathArgs[0] instanceof join.JoinedRecord ) {
-            // occurs when loading child paths from a JoinedRecord, which
-            // passes the parent JoinedRecord (paths[0]) and a key name (paths[1])
-            this.joinedParent = pathArgs[0];
-            childKey = this.refName = pathArgs[1];
-            paths = this.joinedParent.paths;
-            // when we load a child of a child, it's not possible to determine which
-            // branch the child comes off of until after the parent loads its keys
-            // so we do a little dance magic here to determine which parent it comes from
-            pathSearch = !!this.joinedParent.joinedParent && pathArgs.length > 1;
-         }
-         else {
-            paths = pathArgs;
-         }
-
-         var pathLoader = new join.PathLoader(this.joinedParent, paths, childKey, pathSearch);
+         var pathLoader = new join.PathLoader(pathArgs);
+         this.joinedParent = pathLoader.joinedParent;
          this.refName = pathLoader.refName;
          this.rootRef = pathLoader.rootRef;
          this.paths = pathLoader.finalPaths;
@@ -354,7 +350,7 @@
             log.debug('Added child rec %s to JoinedRecord(%s) after %s', rec, this.name(), prevName);
             // the record is new and has already loaded its value and no intersection path returned null,
             // so now we can add it to our child recs
-            var nextRec = this._placeRecAfter(rec, prevName);
+            this._placeRecAfter(rec, prevName);
             this.childRecs[childName] = rec;
             if( this._isValueLoaded() && !util.has(this.currentValue, childName) ) {
                // we only store the currentValue on this record if somebody is monitoring it,
@@ -363,7 +359,6 @@
                this._setMyValue(join.sortSnapshotData(this, this.currentValue, makeSnap(rec)));
             }
             this.triggerEvent('child_added', makeSnap(rec));
-//            nextRec && this.triggerEvent('child_moved', makeSnap(nextRec), childName);
             rec.on('value', this._updateChildRec, this);
          }
          return rec;
@@ -455,7 +450,6 @@
          this._assertIsParent('_moveChildRec');
          if( this._isChildLoaded(rec) ) {
             var fromX = util.indexOf(this.sortedChildKeys, rec.name());
-
             if( fromX > -1 && prevChild !== undefined) {
                var toY = 0;
                if( prevChild !== null ) {
@@ -581,21 +575,6 @@
             // trigger a 'value' event as soon as my data loads
             this._myValueChanged();
          }
-      },
-
-      _assertHasPaths: function(paths) {
-         if( !paths || !paths.length ) {
-            throw new Error('Cannot construct a JoinedRecord without at least 1 path');
-         }
-      },
-
-      _assertSortPath: function() {
-         if( !this.sortPath ) {
-            throw new Error('Cannot construct a JoinedRecord without at least 1 valid path');
-         }
-         if( !util.isEmpty(this.intersections) && !this.sortPath.isIntersection() ) {
-            throw new Error(util.printf('Sort path cannot be set to a non-intersecting path as this makes no sense', this.name()));
-         }
       }
    };
 
@@ -620,15 +599,15 @@
 
    function wrapFailCallback(fn) {
       return function(err) {
-         if( err ) { fn(err); }
+         if( fn && err ) { fn(err); }
       }
    }
 
    function assertValidSet(paths, value, onComplete) {
       var b = value !== null && !util.isObject(value) && (paths.length > 1 || !paths[0].isPrimitive());
       if( b ) {
-         log.error('Attempted to call set() using a primitive, but the joined path contains objects (there is no way to split a primitive between its various paths)');
-         onComplete(new Error('Attempted to call set() using a primitive, but this is a joined path (there is no way to split a primitive between its various parts)'));
+         log.error('Attempted to call set() using a primitive, but this is a joined record (there is no way to split a primitive between multiple paths)');
+         onComplete(new Error('Attempted to call set() using a primitive, but this is a joined record (there is no way to split a primitive between multiple paths)'));
       }
       return !b;
    }

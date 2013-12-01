@@ -53,7 +53,8 @@ module.exports = function(grunt) {
          test: {
             options: {
                growl: true,
-               timeout: 5000
+               timeout: 5000,
+               reporter: 'spec'
             },
             require: [
                "chai"

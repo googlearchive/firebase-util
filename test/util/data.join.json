@@ -80,6 +80,33 @@
    },
 
    "secured_read_allowed": true,
-   "secured_write_allowed": true
+   "secured_write_allowed": true,
+
+   "arrays": {
+      "english": [
+         "zero",
+         "one",
+         "two",
+         "three",
+         "four",
+         "five"
+      ],
+      "spanish": [
+         {"numero": "cero"},
+         {"numero": "uno"},
+         {"numero": "dos"},
+         {"numero": "tres"},
+         {"numero": "cuatro"},
+         {"numero": "cinco"}
+      ],
+      "french": [
+         {".value": "zéro",   ".priority": 0},
+         {".value": "un",     ".priority": 1},
+         {".value": "deux",   ".priority": 2},
+         {".value": "trois",  ".priority": 3},
+         {".value": "quatre", ".priority": 4},
+         {".value": "cinq",   ".priority": 5}
+      ]
+   }
 
 }

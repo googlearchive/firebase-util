@@ -497,4 +497,8 @@ describe('global.js', function() {
       it('should be tested');
    });
 
+   describe('#filter', function() {
+      it('should be tested');
+   });
+
 });

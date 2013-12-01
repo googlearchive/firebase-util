@@ -152,6 +152,10 @@ else {
          || false;
    };
 
+   util.val = function(list, key) {
+      return util.has(list, key)? list[key] : undefined;
+   };
+
    util.contains = function(vals, iterator, scope) {
       if( typeof(iterator) !== 'function' ) {
          if( util.isArray(vals) ) {

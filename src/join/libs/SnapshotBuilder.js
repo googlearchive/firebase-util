@@ -66,7 +66,7 @@
                dat = mergeIntersections(this.pendingPaths, this.valueParts);
             }
             else {
-               dat = mergeValue(this.pendingPaths.sortIndex, this.valueParts);
+               dat = mergeValue(this.valueParts);
             }
             this.snapshot = new join.JoinedSnapshot(this.rec, dat);
 //            log('Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val());
@@ -142,10 +142,10 @@
       }) === undefined;
    }
 
-   function mergeValue(sortIndex, valueParts) {
-      var out = util.extend({}, valueParts[sortIndex]);
+   function mergeValue(valueParts) {
+      var out = {};
       util.each(valueParts, function(v, i) {
-         i === sortIndex || util.extend(true, out, v);
+         util.extend(true, out, v);
       });
       return util.isEmpty(out)? null : out;
    }
