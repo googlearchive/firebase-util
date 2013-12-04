@@ -18,7 +18,7 @@
          oneTimeEvents: ['keyMapLoaded', 'dynamicKeyLoaded']
       }));
       this.subs = [];
-      this.parentKey = parent;
+      this.parentPath = parent;
       this.props = buildPathProps(props, parent);
       // map of dynamic fields that have to be loaded separately, see _buildKeyMap() and _parseData()
       this.dynamicChildPaths = null;
@@ -32,7 +32,7 @@
    Path.prototype = {
       child: function(aliasedKey) {
          var sourceKey = this.isJoinedChild()? this.sourceKey(aliasedKey) : aliasedKey;
-         if( this.isDynamicChild(sourceKey) ) {
+         if( this.hasDynamicChild(sourceKey) ) {
             throw new Error('Cannot use child() to retrieve a dynamic keyMap ref; try loadChild() instead');
          }
          return new Path(this.ref().child(sourceKey), this);
@@ -40,14 +40,14 @@
 
       /**
        * @param {Firebase} sourceRef path where the dynamic key's value is kept
-       * @param {String} [aliasedKey] name of the key where I put my data
+       * @param {String} aliasedKey name of the key where I put my data
        * @returns {Path}
        */
       dynamicChild: function(sourceRef, aliasedKey) {
          return new Path({
             ref: this.ref(),
             dynamicSource: sourceRef,
-            keyMap: {'.value': aliasedKey||'.value'}
+            keyMap: {'.value': aliasedKey}
          }, this);
       },
 
@@ -58,16 +58,7 @@
          util.defer(function() {
             if( !this.isReadyForOps() ) {
                log.debug('Path(%s) loadData() called but dynamic key has not loaded yet; waiting for dynamicKeyLoaded event', this.name());
-               this.observeOnce('dynamicKeyLoaded', function() {
-                  log.debug('Path(%s) loadData() dynamic key loaded, completing data load', this.name());
-                  if( this.isReadyForOps() ) {
-                     this.loadData(doneCallback, context);
-                  }
-                  else {
-                     log('Path(%s) has a dynamic key but the key was null. Returning null for value');
-                     doneCallback.call(context, null);
-                  }
-               }, this);
+               this._waitForReady(doneCallback, context);
             }
             else {
                this.ref().once('value', function(snap) {
@@ -173,7 +164,7 @@
          return this.getKeyMap()[sourceKey];
       },
 
-      isJoinedChild: function() { return !!this.joinedParent; },
+      isJoinedChild: function() { return !!this.parentPath; },
 
       isPrimitive: function() {
          return util.has(this.getKeyMap(), '.value') && this.isJoinedChild();
@@ -297,7 +288,7 @@
          return !this.isDynamic() || !util.isEmpty(this.props.dynamicKey);
       },
 
-      isDynamicChild: function(sourceKey) {
+      hasDynamicChild: function(sourceKey) {
          return util.has(this.dynamicChildPaths, sourceKey);
       },
 
@@ -414,14 +405,16 @@
       },
 
       _parseRecord: function(snap, callback, scope) {
-         var out, q = util.createQueue();
+         var out = null, q = util.createQueue();
          var data = snap.val();
-         if( this.isPrimitive() && data !== null ) {
-            out = data;
-         }
-         else {
-            out = {};
-            this.eachSourceKey(data, util.bind(this._parseValue, this, q, out, snap));
+         if( data !== null ) {
+            if( this.isPrimitive() ) {
+               out = data;
+            }
+            else {
+               out = {};
+               this.eachSourceKey(data, util.bind(this._parseValue, this, q, out, snap));
+            }
          }
          q.done(function() {
             out = parseValue(out);
@@ -433,7 +426,7 @@
 
       _parseValue: function(queue, out, snap, sourceKey, aliasedKey, value) {
          if( value !== null ) {
-            if( this.isDynamicChild(sourceKey) ) {
+            if( this.hasDynamicChild(sourceKey) ) {
                out['.id:'+aliasedKey] = value;
                queue.addCriteria(function(cb) {
                   this._parseDynamicChild(
@@ -465,7 +458,7 @@
          }
          else {
             util.each(map, function(aliasedKey, sourceKey) {
-               var val = getFirebaseValue(this, data, this.isDynamicChild(sourceKey), sourceKey, aliasedKey, useSourceKey);
+               var val = getFirebaseValue(this, data, this.hasDynamicChild(sourceKey), sourceKey, aliasedKey, useSourceKey);
                callback.call(context, sourceKey, aliasedKey, val);
             }, this);
          }
@@ -536,6 +529,19 @@
          }
       },
 
+      _waitForReady: function(doneCallback, context) {
+         this.observeOnce('dynamicKeyLoaded', function() {
+            log.debug('Path(%s) loadData() dynamic key loaded, completing data load', this.name());
+            if( this.isReadyForOps() ) {
+               this.loadData(doneCallback, context);
+            }
+            else {
+               log('Path(%s) has a dynamic key but the key was null. Returning null for value');
+               doneCallback.call(context, null);
+            }
+         }, this);
+      },
+
       _stopObserving: function(event) {
          this.ref().off(event, this.subs[event], this);
       },
@@ -577,7 +583,7 @@
          out.keyMap = arrayToMap(out.keyMap);
       }
 
-      out.pathName = out.ref.name();
+      out.pathName = (parent && !out.dynamicSource? (parent.name()||'').replace(/\/$/, '')+'/' : '') + out.ref.name();
 
       return out;
    }

@@ -591,7 +591,7 @@ describe('join.JoinedRecord', function() {
          });
 
          //todo-test
-         it.skip('should only call "value" once when using dynamic keyMap ref', function(done) {
+         it('should only call "value" once when using dynamic keyMap ref', function(done) {
             var cancelSpy = sinon.spy(), count = 0, to;
             var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
                name: 'name',
@@ -1217,7 +1217,7 @@ describe('join.JoinedRecord', function() {
       });
   });
 
-   describe.skip('#set', function() {
+   describe.skip('#set', function() { //todo-test
       it('should invoke callback when done', function(done) {
          var newData = { mary: { name: 'had', email: 'a@a.com', nick: 'little lamb' } };
          var rec = createJoinedRecord('users/account', 'users/profile');

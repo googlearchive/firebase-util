@@ -147,10 +147,12 @@
    function mergeValue(paths, valueParts) {
       var out = {};
       util.each(valueParts, function(v, i) {
-         util.extend(true, out, v);
          var myPath = paths.both[i][0];
          if( myPath.isPrimitive() ) {
-            util.extend(out, makeObj(myPath.sourceKey('.value'), v));
+            util.extend(out, makeObj(myPath.aliasedKey('.value'), v));
+         }
+         else {
+            util.extend(true, out, v);
          }
          if( myPath.isDynamic() && myPath.isReadyForOps() ) {
             util.extend(out, makeObj('.id:'+myPath.aliasedKey('.value'), myPath.props.dynamicKey));
@@ -212,27 +214,16 @@
          if( rec.joinedParent ) {
             out = {};
             util.each(rec.paths, function(path) {
-               //todo use this!
-               //todo
-               //todo
-               //todo
-               //todo
-//               path.eachKey(data, function(sourceKey, aliasedKey, value) {
-//                  if( value === null ) { return; }
-//                  if( path.isDynamicChild(sourceKey) ) {
-//                     out['.id:'+aliasedKey] = value;
-//                     out[aliasedKey] = data[aliasedKey];
-//                  }
-//                  else {
-//                     out[aliasedKey] = value;
-//                  }
-//               });
-               util.each(path.getKeyMap(), function(key, fromKey) {
-                  if( fromKey === '.value' ) {
-                     out[key] = data;
+//               console.log('adding path', path.toString(), path.getKeyMap()); //debug
+               path.eachKey(data, function(sourceKey, aliasedKey, value) {
+//                  console.log('eachKey', sourceKey, aliasedKey, value); //debug
+                  if( value === null ) { return; }
+                  if( path.hasDynamicChild(sourceKey) ) {
+                     out['.id:'+aliasedKey] = value;
+                     out[aliasedKey] = data[aliasedKey];
                   }
-                  else if( !util.isEmpty(data[key]) ) {
-                     out[key] = data[key];
+                  else {
+                     out[aliasedKey] = value;
                   }
                });
             });

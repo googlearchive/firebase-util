@@ -103,7 +103,7 @@
                   util.each(parentPath.getDynamicKeys(), function(path, key) {
                      var aliasedKey = parentPath.aliasedKey(key);
                      childPath.removeConflictingKey(key);
-                     finalPaths.push(path.dynamicChild(childPath.child(key).ref(), aliasedKey));
+                     finalPaths.push(path.dynamicChild(childPath.ref().child(key), aliasedKey));
                   })
                });
                util.createQueue(pathCallbacks(finalPaths)).done(cb);
