@@ -85,7 +85,7 @@ describe('join.JoinedRecord', function() {
 
       /** on() general checks
         ***************************************************/
-      describe('#on() general checks', function(){
+      describe('<general>', function(){
          it('should return the callback function', function() {
             var fn = sinon.stub();
             var rec = createJoinedRecord('users/account', 'users/profile');
@@ -189,7 +189,7 @@ describe('join.JoinedRecord', function() {
             });
          });
 
-         it('should not call child_removed until last path is removed if a union', function(done) {
+         it('should not call child_removed until last union is removed', function(done) {
             var ref = createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie'), ready = false;
             ref.on('child_removed', function(snap) {
                ref.off();
@@ -204,13 +204,13 @@ describe('join.JoinedRecord', function() {
 
             function rem(path) {
                return JQDeferred(function(def) {
-                  helpers.set(path, null).then(function() {
-                     setTimeout(def.resolve, 10); // give a little wait for events to be fired
-                  });
+                  helpers.chain().remove(path).wait(function() {
+                     def.resolve();
+                  }, 10);
                });
             }
 
-            ref.once('value', function() {
+            ref.once('value', function(snap) {
                rem('unions/fruit/b')
                   .then(rem.bind(null, 'unions/legume/b'))
                   .done(function() { ready = true; })
@@ -314,7 +314,7 @@ describe('join.JoinedRecord', function() {
       /** on() master record
         ***************************************************/
 
-      describe('#on() master record', function() {
+      describe('<master record>', function() {
          it('should call "child_added" for all pre-loaded recs', function(done) {
             var keys;
             var rec = createJoinedRecord('users/account', 'users/profile');
@@ -453,7 +453,7 @@ describe('join.JoinedRecord', function() {
       /** on() child record
         ***************************************************/
 
-      describe('#on() child record', function() {
+      describe('<child record>', function() {
          it('should return a JoinedSnapshot if called on a child record\'s field', function(done) {
             createJoinedRecord('users/account', 'users/profile')
                .child('kato/nick')
@@ -547,7 +547,7 @@ describe('join.JoinedRecord', function() {
       /** on() dynamic refs
         ***************************************************/
 
-      describe('#on() dynamic refs', function() {
+      describe('<dynamic refs>', function() {
          it('should merge data from a dynamic keyMap ref', function(done) {
             var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
                name: 'name',
@@ -639,7 +639,7 @@ describe('join.JoinedRecord', function() {
       /** on() primitives
         ***************************************************/
 
-      describe('#on() primitives', function() {
+      describe('<primitives>', function() {
          it('should put primitives into field named by path', function(done) {
             createJoinedRecord('unions/fruit', 'unions/legume').on('value', function(snap) {
                snap.ref().off();
@@ -674,7 +674,7 @@ describe('join.JoinedRecord', function() {
       /** on() intersections
         ***************************************************/
 
-      describe('#on() intersections', function() {
+      describe('<intersections>', function() {
          it('should be union if no intersecting paths are declared', function(done) {
             var ref = createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie');
             ref.on('value', function(snap) {
@@ -761,7 +761,7 @@ describe('join.JoinedRecord', function() {
 
       /** on() arrays
         ***************************************************/
-      describe('#on() arrays', function() {
+      describe('<arrays>', function() {
          it('should not behave unexpectedly if add followed immediately by remove event', function(done) {
             var valueSpy = sinon.spy(), addedSpy = sinon.spy(), removedSpy = sinon.spy();
             var ref = createJoinedRecord('users/account', 'users/profile');

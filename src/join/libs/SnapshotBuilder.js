@@ -147,15 +147,17 @@
    function mergeValue(paths, valueParts) {
       var out = {};
       util.each(valueParts, function(v, i) {
-         var myPath = paths.both[i][0];
-         if( myPath.isPrimitive() ) {
-            util.extend(out, makeObj(myPath.aliasedKey('.value'), v));
-         }
-         else {
-            util.extend(true, out, v);
-         }
-         if( myPath.isDynamic() && myPath.isReadyForOps() ) {
-            util.extend(out, makeObj('.id:'+myPath.aliasedKey('.value'), myPath.props.dynamicKey));
+         if( v !== null ) {
+            var myPath = paths.both[i][0];
+            if( myPath.isPrimitive() ) {
+               util.extend(out, makeObj(myPath.aliasedKey('.value'), v));
+            }
+            else {
+               util.extend(true, out, v);
+            }
+            if( myPath.isDynamic() && myPath.isReadyForOps() ) {
+               util.extend(out, makeObj('.id:'+myPath.aliasedKey('.value'), myPath.props.dynamicKey));
+            }
          }
       });
       return util.isEmpty(out)? null : out;

@@ -379,6 +379,9 @@
                      km = props.keyMap = {'.value': props.pathName};
                      return true;
                   }
+                  else {
+                     return false;
+                  }
                });
                log.info('Loaded keyMap for Path(%s) from child records "%s": %j', this.toString(), keys, km);
             }
@@ -634,12 +637,6 @@
          }
       }
       return val;
-   }
-
-   function isEmpty(data) {
-      return util.isEmpty(data) || !util.contains(data, function(v, k) {
-         return !(k+'').match(/^\.id:/);
-      });
    }
 
    //todo move this to a util method on exports
