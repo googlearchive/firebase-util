@@ -49,17 +49,34 @@ be called with a printf-like logic and all other arguments are substituted into 
    -  %j - JSON.
    -  % - single percent sign ('%'). This does not consume an argument.
 
+### Obey these conventions
+   - begin each log with a Class name for easy filtering
+   - choose the right severity
+   - do not concatenate or parse json ahead of time, let the printf functions do that (for performance in production)
+
+### Choose the right severity
+
+Use the escalation approach:
+
+   - Don't enter a log message until you need it.
+   - Start with debug()
+   - The first time it helps you solve a problem, promote it to log()
+   - If you use it frequently, promote it to info()
+   - If it helps customers with the big picture, use info()
+   - If it indicates config errors, common mistakes, or potential gotchas use warn() or error()
+
 All of the following are valid log function calls:
 
 ```javascript
-fb.log('hello %s', "world");
-fb.log('json value: %j', {foo: bar}, 'more', 'args', 'not in sprintf');  // additional args are sent directly to console
+var log = fb.pkg('log');
+log('Class: hello %s', "world");
+log('Class: json value: %j', {foo: bar}, 'more', 'args', 'not in sprintf');  // additional args are sent directly to console
 
-fb.log.debug('hello %s', "world");
-fb.log.log('hello %s', "world");
-fb.log.info('hello %s', "world");
-fb.log.warn('hello %s', "world");
-fb.log.error('hello %s', "world");
+log.debug('Class: hello %s', "world");
+log.log('Class: hello %s', "world");
+log.info('Class: hello %s', "world");
+log.warn('Class: hello %s', "world");
+log.error('Class: hello %s', "world");
 ```
 
 ## Testing

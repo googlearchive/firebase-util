@@ -66,10 +66,10 @@
                dat = mergeIntersections(this.pendingPaths, this.valueParts);
             }
             else {
-               dat = mergeValue(this.valueParts);
+               dat = mergeValue(this.pendingPaths, this.valueParts);
             }
             this.snapshot = new join.JoinedSnapshot(this.rec, dat);
-//            log('Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val());
+            log.debug('SnapshotBuilder: Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val(), dat);
             this._notify();
          }
       },
@@ -77,7 +77,7 @@
       _notify: function() {
          var snapshot = this.snapshot;
          util.each(this.observers, function(obsArgs) {
-            obsArgs[0].apply(obsArgs[1]||null, [snapshot].concat(obsArgs.splice(2)));
+            obsArgs[0].apply(obsArgs[1], [snapshot].concat(obsArgs.splice(2)));
          });
          this.observers = [];
       },
@@ -86,10 +86,11 @@
          var path = parts[0];
          var myIndex = parts[1];
          this.callbacksExpected++;
-//         log('_loadIntersection: initialized "%s"', path.toString());
+         log.debug('SnapshotBuilder._loadIntersection: initialized "%s"', path.toString());
          path.loadData(function(data) {
-//            log('SnapshotBuilder._loadIntersection completed "%s" with value "%j"', path.toString(), data);
+            log.debug('SnapshotBuilder._loadIntersection completed "%s" with value "%j"', path.toString(), data);
             if( data === null ) {
+               log('SnapshatBuilder: Intersecting Path(%s) was null, so the record %s will be excluded', path.toString(), this.rec.name());
                // all intersected values must be present or the total value is null
                // so we can abort the load here and send out notifications
                this.valueParts = [];
@@ -107,8 +108,9 @@
          var path = parts[0];
          var myIndex = parts[1];
          this.callbacksExpected++;
+         log.debug('SnapshotBuilder._loadUnion: initialized "%s"', path.toString());
          path.loadData(function(data) {
-//            log('SnapshotBuilder._loadUnion completed "%s" with value "%j"', path.toString(), data);
+            log.debug('SnapshotBuilder._loadUnion completed "%s" with value "%j"', path.toString(), data);
             this.valueParts[myIndex] = data;
             this._callbackCompleted();
          }, this);
@@ -130,33 +132,38 @@
             var parts = util.map(valueParts, function(part) {
                return util.isObject(part)? part[k] : null;
             });
-            out[k] = mergeValue(paths.sortIndex, parts);
+            out[k] = mergeValue(paths, parts);
          }
       });
       return util.isEmpty(out)? null : out;
    }
 
    function noEmptyIntersections(intersectKeys, valueParts, recordKey) {
-      return util.find(intersectKeys, function(key) {
+      return !util.contains(intersectKeys, function(key) {
          return !util.isObject(valueParts[key]) || util.isEmpty(valueParts[key][recordKey]);
-      }) === undefined;
+      });
    }
 
-   function mergeValue(valueParts) {
+   function mergeValue(paths, valueParts) {
       var out = {};
       util.each(valueParts, function(v, i) {
          util.extend(true, out, v);
+         var myPath = paths.both[i][0];
+         if( myPath.isPrimitive() ) {
+            util.extend(out, makeObj(myPath.sourceKey('.value'), v));
+         }
+         if( myPath.isDynamic() && myPath.isReadyForOps() ) {
+            util.extend(out, makeObj('.id:'+myPath.aliasedKey('.value'), myPath.props.dynamicKey));
+         }
       });
       return util.isEmpty(out)? null : out;
    }
 
    function groupPaths(paths, sortPath) {
-      var out = { intersects: [], unions: [], dynamics: [], expect: 0, sortIndex: 0 };
-
+      var out = { intersects: [], unions: [], both: [], expect: 0, sortIndex: 0 };
       util.each(paths, function(path) {
          pathParts(out, sortPath, path);
       });
-
       return out;
    }
 
@@ -165,9 +172,18 @@
          pendingPaths.sortIndex = pendingPaths.expect;
       }
 
-      var parts = [path, pendingPaths.expect++];
+      var parts = [path, pendingPaths.expect];
       if( path.isIntersection() ) { pendingPaths.intersects.push(parts); }
       else { pendingPaths.unions.push(parts); }
+      pendingPaths.both.push(parts);
+
+      pendingPaths.expect++;
+   }
+
+   function makeObj(key, val) {
+      var out = {};
+      out[key] = val;
+      return out;
    }
 
    /**
@@ -177,7 +193,6 @@
     * @param [context]
     */
    join.buildSnapshot = function(rec, callback, context) {
-      //todo this can't handle the parent joins correctly if they have dynamic paths :(
       var snap = new SnapshotBuilder(rec);
       if( callback ) {
          snap.value.apply(snap, util.toArray(arguments).slice(1));
@@ -197,6 +212,21 @@
          if( rec.joinedParent ) {
             out = {};
             util.each(rec.paths, function(path) {
+               //todo use this!
+               //todo
+               //todo
+               //todo
+               //todo
+//               path.eachKey(data, function(sourceKey, aliasedKey, value) {
+//                  if( value === null ) { return; }
+//                  if( path.isDynamicChild(sourceKey) ) {
+//                     out['.id:'+aliasedKey] = value;
+//                     out[aliasedKey] = data[aliasedKey];
+//                  }
+//                  else {
+//                     out[aliasedKey] = value;
+//                  }
+//               });
                util.each(path.getKeyMap(), function(key, fromKey) {
                   if( fromKey === '.value' ) {
                      out[key] = data;

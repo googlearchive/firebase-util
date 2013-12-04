@@ -1,4 +1,4 @@
-var assert = require('chai').assert;
+var expect = require('chai').expect;
 var fb = require('../firebase-utils.js')._ForTestingOnly;
 var helpers = require('./util/test-helpers.js');
 

@@ -200,9 +200,7 @@ describe('global.Observable.js', function() {
       });
 
       it('should return true if any observers are registered assuming no args given', function() {
-         var a = new fb.util.Observer(['test1', 'test2'], function() {}),
-            b = function() {},
-            c = function() {};
+         var b = function() {};
          var obs = new Observable(['test1', 'test2', 'test3']);
          obs.observe('test2', b);
          expect(obs.hasObservers()).to.be.true;
@@ -294,6 +292,14 @@ describe('global.Observable.js', function() {
          expect(fn.secondCall.args[0]).to.equal('test2');
          expect(fn.thirdCall.args[0]).to.equal('test2');
       });
+   });
+
+   describe('observeOnce', function() {
+      it('should be tested');
+   });
+
+   describe('isOneTimeEvent', function() {
+      it('should be tested');
    });
 
 });

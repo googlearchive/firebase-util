@@ -45,7 +45,7 @@
 
       handler: function(fn, context) {
          this._runOrStore(function() {
-            fn.call(context, this.hasErrors()? this.errors[0] : null);
+            fn.apply(context, this.getErrors());
          });
          return this;
       },
@@ -54,9 +54,7 @@
        * @param {Queue} queue
        */
       chain: function(queue) {
-         this.addCriteria(function(cb) {
-            queue.done(cb).fail(cb);
-         });
+         this.addCriteria(queue.handler, queue);
          return this;
       },
 

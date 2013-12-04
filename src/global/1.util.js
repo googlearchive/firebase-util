@@ -313,7 +313,9 @@ else {
 
    util.bindAll = function(context, methods) {
       util.each(methods, function(m,k) {
-         methods[k] = util.bind(m, context);
+         if( typeof(m) === 'function' ) {
+            methods[k] = util.bind(m, context);
+         }
       });
       return methods;
    };

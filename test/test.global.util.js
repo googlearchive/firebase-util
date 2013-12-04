@@ -16,7 +16,7 @@ describe('global.js', function() {
       it('should be true for new Date', function() {
          expect( util.isObject(new Date()), true).to.be.true;
       });
-      
+
       it('should return true for []', function() {
          expect( util.isObject([]), true).to.be.true;
       });

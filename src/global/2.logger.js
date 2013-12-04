@@ -19,8 +19,6 @@
 
       if( oldDebuggingLevel === level ) { return; }
 
-      oldDebuggingLevel !== false && typeof(console) !== 'undefined' && console.info("Util.logLevel: changed from '%s' to '%s'", levelName(oldDebuggingLevel), levelName(level));
-
       fb.util.each(['error', 'warn', 'info', 'log', 'debug'], function(k, i) {
          if( typeof(console) !== 'undefined' && level >= i+1 ) {
             // binding is necessary to prevent IE 8/9 from having a spaz when

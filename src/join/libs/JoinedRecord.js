@@ -26,7 +26,9 @@
       this.intersections = [];
       this.refName = null;
       this.rootRef = null;
-      this.queue = this._loadPaths(util.toArray(arguments));
+      this.queue = this._loadPaths(util.toArray(arguments)).done(function() {
+         log.info('JoinedRecord(%s) is ready for use (all paths and dynamic keys loaded)', this.name());
+      }, this);
    }
 
    JoinedRecord.prototype = {
@@ -117,9 +119,7 @@
       },
 
       set: function(value, onComplete) {
-         var args = util.Args('set', arguments, 1, 2);
-         args.skip();
-         onComplete = args.next('function', util.noop);
+         onComplete = util.Args('set', arguments, 1, 2).skip().next('function', util.noop);
          this.queue.done(function() {
             if( assertValidSet(this.paths, value, onComplete) ) {
                var q = util.createQueue();
@@ -159,12 +159,12 @@
                paths = this.joinedParent || !this.intersections.length? this.paths : this.intersections;
                if( this.hasObservers(eventType) && !paths[0].hasObservers(eventType) ) {
                   var paths;
-                  (this.joinedParent? log.debug : log)('Now observing event "%s" for JoinedRecord(%s)', eventType, this.name());
+                  (this.joinedParent? log.debug : log)('JoinedRecord(%s) Now observing event "%s"', this.name(), eventType);
                   if( this.joinedParent ) {
                      util.call(paths, 'observe', eventType, this._pathNotification, this);
                   }
                   else if( !paths[0].hasObservers() ) {
-                     log.info('My first observer attached, loading my joined data and Firebase connections for JoinedRecord(%s)', this.name());
+                     log.info('JoinedRecord(%s) My first observer attached, loading my joined data and Firebase connections', this.name());
                      // this is the first observer, so start up our path listeners
                      util.each(paths, function(path) {
                         util.each(eventsToMonitor(this, path), function(event) {
@@ -181,12 +181,12 @@
          var obsCountRemoved = obsList.length;
          this.queue.done(function() {
             if( obsCountRemoved && !this.hasObservers(eventType) ) {
-               (this.joinedParent? log.debug : log)('Stopped observing %s events on JoinedRecord(%s)', eventType? '"'+eventType+'"' : '', this.name());
+               (this.joinedParent? log.debug : log)('JoinedRecord(%s) Stopped observing %s events', this.name(), eventType? '"'+eventType+'"' : '');
                if( this.joinedParent ) {
                   util.call(this.paths, 'stopObserving', eventType, this._pathNotification, this);
                }
                else if( !this.hasObservers() ) {
-                  log.info('My last observer detached, releasing my joined data and Firebase connections, JoinedRecord(%s)', this.name());
+                  log.info('JoinedRecord(%s) My last observer detached, releasing my joined data and Firebase connections', this.name());
                   // nobody is monitoring this event anymore, so we'll stop monitoring the path now
                   // and clear all our cached info (reset to nothing)
                   var paths = this.intersections.length? this.intersections : this.paths;
@@ -221,7 +221,7 @@
        */
       _pathNotification: function(path, event, childName, mappedVals, prevChild, priority) {
          var rec;
-         log.debug('Received "%s" from Path(%s): %s%s %j', event, path.name(), event==='value'?'' : childName+': ', prevChild === undefined? '' : '->'+prevChild, mappedVals);
+         log('JoinedRecord(%s) Received "%s" from Path(%s): %s%s %j', this.name(), event, path.name(), event==='value'?'' : childName+': ', prevChild === undefined? '' : '->'+prevChild, mappedVals);
 
          if( path === this.sortPath && event === 'value' ) {
             this.currentPriority = priority;
@@ -275,12 +275,12 @@
          this.refName = pathLoader.refName;
          this.rootRef = pathLoader.rootRef;
          this.paths = pathLoader.finalPaths;
-         this.intersections = pathLoader.intersections;
 
          return util
             .createQueue()
-            .chain(pathLoader)
+            .chain(pathLoader.queue)
             .done(function() {
+               this.intersections = pathLoader.intersections;
                this.sortPath = pathLoader.sortPath;
             }, this)
             .done(this._assertSortPath, this)
@@ -307,7 +307,7 @@
          if( !isLoading && !this._isChildLoaded(childName) ) {
             // the record is new: not currently loading and not loaded before
             if( !rec._isValueLoaded() ) {
-               log.debug('Preloading value for child %s in prep to add it to JoinedRecord(%s)', rec.name(), this.name());
+               log.debug('JoinedRecord(%s) Preloading value for child %s in prep to add it', this.name(), rec.name());
                // the record has no value yet, so we fetch it and then we call _addChildRec again
                this.loadingChildRecs[childName] = prevName;
                rec.once('value', function() {
@@ -347,7 +347,7 @@
          this._assertIsParent('_addChildRec');
          var childName = rec.name();
          if( rec.currentValue !== null && !this._isChildLoaded(childName) ) {
-            log.debug('Added child rec %s to JoinedRecord(%s) after %s', rec, this.name(), prevName);
+            log('JoinedRecord(%s) Added child rec %s after %s', rec, this.name(), prevName);
             // the record is new and has already loaded its value and no intersection path returned null,
             // so now we can add it to our child recs
             this._placeRecAfter(rec, prevName);
@@ -370,7 +370,7 @@
          var childName = rec.name();
          rec.off(null, this._updateChildRec, this);
          if( this._isChildLoaded(rec) ) {
-            log.debug('Removed child rec %s from JoinedRecord(%s)', rec, this.name());
+            log('JoinedRecord(%s) Removed child rec %s', this.name(), rec);
             var i = util.indexOf(this.sortedChildKeys, childName);
 //            rec.off('value', this._updateChildRec, this);
             if( i > -1 ) {
@@ -438,9 +438,6 @@
             var nextKey = this.sortedChildKeys[toY+1];
             var nextRec = this._getJoinedChild(nextKey);
             nextRec.prevChildName = rec.name();
-//            if( this._isChildLoaded(nextRec) ) {
-//               res = this.triggerEvent('child_moved', makeSnap(nextRec), rec.name());
-//            }
          }
          return res;
       },
@@ -462,7 +459,6 @@
                }
 
                if( toY !== fromX ) {
-//               log('Join::child_moved %s -> %s (%s)', rec.name(), prevChild, this);
                   this.sortedChildKeys.splice(toY, 0, this.sortedChildKeys.splice(fromX, 1)[0]);
                   rec.prevChildName = toY > 0? this.sortedChildKeys[toY-1] : null;
                   this._isChildLoaded(rec) && this.triggerEvent('child_moved', makeSnap(rec), prevChild);
@@ -519,8 +515,9 @@
        * @private
        */
       _eventTriggered: function(event, obsCount, snap, prevChild) {
-         var fn = obsCount? log : log.debug;
-         fn('"%s" (%s%s) sent to %d observers for JoinedRecord(%s)', event, snap.name(), prevChild? '->'+prevChild : '', obsCount, this.name());
+         var fn = obsCount? (this.joinedParent? log : log.info) : log.debug;
+         fn('JoinedRecord(%s) "%s" (%s%s) sent to %d observers', this.name(), event, snap.name(), prevChild? '->'+prevChild : '', obsCount);
+         log.debug(snap.val());
       },
 
       _getJoinedChild: function(keyName) {

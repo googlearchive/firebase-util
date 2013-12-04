@@ -23,9 +23,7 @@ var helpers = exports;
  */
 helpers.set = function(path, data) {
    return JQDeferred(function(def) {
-      helpers.ref(path).set(data, function() {
-         helpers.handle(def)();
-      });
+      helpers.ref(path).set(data, helpers.handle(def));
    })
 };
 
@@ -88,13 +86,11 @@ helpers.url = function(path) {
 /**
  * Log in using Firebase secret (as a super)
  *
- * @param {Array|String} path (arrays joined joined with /)
  * @returns {JQDeferred}
  */
-helpers.sup = function(path) {
+helpers.sup = function() {
    return JQDeferred(function(def) {
-      var ref = helpers.ref(path);
-      ref.auth(SECRET, helpers.handle(def, ref));
+      new Firebase(URL).auth(SECRET, helpers.handle(def));
    });
 };
 
@@ -104,7 +100,8 @@ helpers.sup = function(path) {
  * @param {Function} [done] optionally call this method when finished
  */
 helpers.reset = function(json, done) {
-   var chain = helpers.chain().sup().set(null, json).unauth().testDone(done||function(err) { err && fb.log.error(err); });
+   helpers.chain().sup().set(null, json).unauth()
+      .testDone(done||function(err) { console.error(err); });
 };
 
 /**
@@ -143,7 +140,7 @@ helpers.auth = function(user, path) {
  * Calls Firebase.unauth()
  */
 helpers.unauth = function() {
-   helpers.ref().unauth();
+   FB.unauth();
 };
 
 /**
@@ -188,7 +185,7 @@ helpers.rest = function(path, method, data) {
  * @param {String|RegExp} [grep]
  */
 helpers.debugThisTest = function(level, grep) {
-   doAfterTest(fb.log.logLevel(level===undefined? 'log' : level, grep));
+   doAfterTest(fb.log.logLevel(level===undefined? 'debug' : level, grep));
 };
 
 /**
@@ -196,7 +193,7 @@ helpers.debugThisTest = function(level, grep) {
  * fails or succeeds. (Can be called on anything with an off() function)
  */
 helpers.turnOffAfterTest = function(ref) {
-   doAfterTest(fb.util.bind(ref.off, ref));
+   doAfterTest(ref.off, ref);
    return ref;
 };
 

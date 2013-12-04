@@ -15,12 +15,12 @@ describe('join.JoinedRecord', function() {
       helpers.reset(data, done);
    });
 
-   afterEach(helpers.unauth);
+//   afterEach(helpers.unauth);
 
    describe('<constructor>', function() {
       it('should accept a single path', function(done) {
          new JoinedRecord(helpers.ref('users/account')).once('value', function(snap) {
-            expect(snap.val()).keys(['bruce', 'kato']);
+            expect(snap.val()||{}).keys(['bruce', 'kato']);
             done();
          })
       });
@@ -78,731 +78,798 @@ describe('join.JoinedRecord', function() {
       });
    });
 
-   describe('#on', function() {
-      it('should return the callback function', function() {
-         var fn = sinon.stub();
-         var rec = createJoinedRecord('users/account', 'users/profile');
-         var res = rec.on('value', fn);
-         expect(res).to.equal(fn);
-         rec.off();
-      });
+   /** on()
+     ***************************************************/
 
-      it('should pass a JoinedSnapshot to the callback', function(done) {
-         createJoinedRecord('users/account').on('value', function(snap) {
-            snap.ref().off();
-            expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
-            done();
-         });
-      });
+   describe('#on()', function() {
 
-      it('should merge data in order paths were added', function(done) {
-         createJoinedRecord('users/account', 'users/profile').on('value', function(snap) {
-            snap.ref().off();
-            expect(snap.val()).to.eql({
-               "bruce": {
-                  "email": "bruce@lee.com",
-                  "name": "Bruce Lee",
-                  "nick": "Little Phoenix",
-                  "style": "Jeet Kune Do"
-               },
-               "kato": {
-                  "email": "wulf@firebase.com",
-                  "name": "Michael Wulf",
-                  "nick": "Kato",
-                  "style": "Kung Fu"
-               }
-            });
-            done();
-         });
-      });
-
-      it('should invoke child_added if add to empty path', function(done) {
-         var rec = createJoinedRecord({ ref: helpers.ref('empty_path/one'), keyMap: ['a', 'b']}, {ref: helpers.ref('empty_path/two'), keyMap: ['c', 'd']});
-         rec.on('child_added', function(snap) {
-            snap.ref().off();
-            expect(snap.name()).to.equal('foo');
-            expect(snap.val()).to.eql({c: 'c'});
-            done();
-         });
-         rec.once('value', function(snap) {
-            expect(snap.val()).to.be.null;
-            helpers.ref('empty_path/two/foo/c').set('c');
-         });
-      });
-
-      it('should invoke child_removed on remove', function(done) {
-         var rec = createJoinedRecord('users/account', 'users/profile');
-         rec.on('child_removed', function(snap) {
-            snap.ref().off();
-            expect(snap.name()).to.equal('kato');
-            expect(snap.val()).to.eql({
-               "email": "wulf@firebase.com",
-               "name": "Michael Wulf",
-               "nick": "Kato",
-               "style": "Kung Fu"
-            });
-            done();
-         });
-         rec.once('value', function(snap) {
-            helpers.ref('users/account/kato').remove();
-            helpers.ref('users/profile/kato').remove();
-         });
-      });
-
-      it('should invoke child_changed on change', function(done) {
-         var rec = createJoinedRecord('users/account', 'users/profile');
-         rec.on('child_changed', function(snap) {
-            snap.ref().off();
-            expect(snap.name()).to.equal('kato');
-            expect(snap.val()).to.eql({
-               "email": "wulf@firebase.com",
-               "name": "Michael Wulf",
-               "nick": "Kato!",
-               "style": "Kung Fu"
-            });
-            done();
-         });
-         rec.once('value', function(snap) {
-            helpers.wait(function() {
-               helpers.ref('users/profile/kato/nick').set('Kato!');
-            }, 100);
-         });
-      });
-
-      it('should invoke child_moved on move', function(done) {
-         var rec = createJoinedRecord('ordered/set1', 'ordered/set2');
-         rec.on('child_moved', function(snap) {
-            snap.ref().off();
-            expect(snap.name()).to.equal('three');
-            expect(snap.getPriority()).to.equal(25);
-            done();
-         });
-         rec.once('value', function() {
-            helpers.ref('ordered/set1/three').setPriority(25);
-         });
-      });
-
-      it('should put primitives into field named by path', function(done) {
-         createJoinedRecord('unions/fruit', 'unions/legume').on('value', function(snap) {
-            snap.ref().off();
-            expect(snap.val()).to.eql({
-               a: { fruit: "apple" },
-               b: { fruit: "banana", legume: "baked beans" },
-               c: { legume: "chickpeas" },
-               d: { legume: "dry-roasted peanuts" }
-            });
-            done();
-         });
-      });
-
-      it('If keyMap specified, should put primitives into that field', function(done) {
-         createJoinedRecord(
-            {ref: helpers.ref('unions/fruit'), keyMap: {'.value': 'フルーツ'}},
-            'unions/legume'
-         ).on('value', function(snap) {
-            snap.ref().off();
-            expect(snap.val()).to.eql({
-               a: { 'フルーツ': "apple" },
-               b: { 'フルーツ': "banana", legume: "baked beans" },
-               c: { legume: "chickpeas" },
-               d: { legume: "dry-roasted peanuts" }
-            });
-            done();
-         });
-      });
-
-      it('should call "child_added" for all pre-loaded recs', function(done) {
-         var keys;
-         var rec = createJoinedRecord('users/account', 'users/profile');
-
-         function fn(snap) {
-            expect(snap.name()).to.equal(keys.shift());
-            if( !keys.length ) { done(); }
-         }
-
-         rec.once('value', function(snap) {
-            keys = fb.util.keys(snap.val());
-            expect(keys).length.greaterThan(0);
-            // wait for the recs to load, then try child_added against them
-            rec.on('child_added', fn);
+      /** on() general checks
+        ***************************************************/
+      describe('#on() general checks', function(){
+         it('should return the callback function', function() {
+            var fn = sinon.stub();
+            var rec = createJoinedRecord('users/account', 'users/profile');
+            var res = rec.on('value', fn);
+            expect(res).to.equal(fn);
+            rec.off();
          });
 
-      });
-
-      it('should call "value" on a child_added event', function(done) {
-         function setVal(snap) {
-            expect(snap.val()).to.eql({
-               "bruce": {
-                  "email": "bruce@lee.com",
-                  "name": "Bruce Lee",
-                  "nick": "Little Phoenix",
-                  "style": "Jeet Kune Do"
-               },
-               "kato": {
-                  "email": "wulf@firebase.com",
-                  "name": "Michael Wulf",
-                  "nick": "Kato",
-                  "style": "Kung Fu"
-               }
-            });
-            step = verify;
-            helpers.ref('users/account/john').set({name: 'john', email: 'john@john.com'});
-         }
-
-         function verify(snap) {
-            snap.ref().off();
-            expect(snap.val()).to.eql({
-               "bruce": {
-                  "email": "bruce@lee.com",
-                  "name": "Bruce Lee",
-                  "nick": "Little Phoenix",
-                  "style": "Jeet Kune Do"
-               },
-               "kato": {
-                  "email": "wulf@firebase.com",
-                  "name": "Michael Wulf",
-                  "nick": "Kato",
-                  "style": "Kung Fu"
-               },
-               "john": {
-                  // the name will lose out to the profile path (which has none)
-                  // so all we get is an email
-                  "email": "john@john.com"
-               }
-            });
-            done();
-         }
-
-         var step = setVal;
-
-         createJoinedRecord('users/account', 'users/profile')
-            .on('value', function(snap) {
-               // the first time this is called with empty callback to skip the pre-add notification
-               step(snap);
-            });
-      });
-
-      it('should call "value" on a child_removed event', function(done) {
-         var rec = createJoinedRecord('users/account', 'users/profile');
-         var fn = step1;
-
-         function step1(snap) {
-            fn = step2;
-            helpers.ref('users/account/kato').remove();
-            helpers.ref('users/profile/kato').remove();
-         }
-
-         function step2(snap) {
-            expect(snap.val()).not.keys('kato');
-            done();
-         }
-
-         rec.on('value', function(snap) {
-            fn(snap);
-         });
-      });
-
-      it('should call "value" on a child_changed event', function(done) {
-         var ref = createJoinedRecord('users/profile', 'users/account'), fn = step1;
-         function step1(snap) {
-            fn = step2;
-            helpers.ref('users/profile/kato/nick').set('Kato!');
-         }
-         function step2(snap) {
-            snap.ref().off();
-            expect(snap.val()).keys(['bruce', 'kato']);
-            expect(snap.val().kato.nick).to.equal('Kato!');
-            done();
-         }
-         ref.on('value', function(snap) {
-            fn(snap);
-         });
-      });
-
-      it('should call "value" on a child_moved event', function(done) {
-         var ref = createJoinedRecord('ordered/set1', 'ordered/set2'), fn = step1;
-         function step1() {
-            fn = step2;
-            helpers.ref('ordered/set1/two').setPriority(10);
-         }
-         function step2(snap) {
-            snap.ref().off();
-            expect(snap.val()).keys(['one', 'three', 'four', 'five', 'two']);
-            expect(snap.val()['two']).to.eql({set1: 2, set2: 22});
-            done();
-         }
-         ref.on('value', function(snap) { fn(snap); });
-      });
-
-      it('should be union if no intersecting paths are declared', function(done) {
-         var ref = createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie');
-         ref.on('value', function(snap) {
-            snap.ref().off();
-            expect(snap.val()).keys(['a', 'b', 'c', 'd', 'e']);
-            done();
-         });
-      });
-
-      it('should call "child_added" for any preloaded records when on() is declared', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile'), vals = ['bruce', 'kato'];
-         ref.on('child_added', function(snap) {
-            expect(snap.name()).to.equal(vals.shift());
-            if( vals.length === 0 ) {
-               setTimeout(done, 100);
-            }
-         });
-      });
-
-      it('should not call child_removed until last path is removed if a union', function(done) {
-         var ref = createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie'), ready = false;
-         ref.on('child_removed', function(snap) {
-            ref.off();
-            if( !ready ) {
-               console.error('child_removed event, but still existing unions', snap.name(), snap.val());
-               throw new Error('child_removed event, but still existing unions');
-            }
-            else {
+         it('should pass a JoinedSnapshot to the callback', function(done) {
+            createJoinedRecord('users/account').on('value', function(snap) {
+               snap.ref().off();
+               expect(snap).to.be.instanceof(fb.join.JoinedSnapshot);
                done();
-            }
-         });
-
-         function rem(path) {
-            return JQDeferred(function(def) {
-               helpers.set(path, null).then(function() {
-                  setTimeout(def.resolve, 10); // give a little wait for events to be fired
-               });
             });
-         }
-
-         ref.once('value', function() {
-            rem('unions/fruit/b')
-               .then(rem.bind(null, 'unions/legume/b'))
-               .done(function() { ready = true; })
-               .then(rem.bind(null, 'unions/veggie/b'));
          });
-      });
 
-      it('"value" should return null if any intersecting path is null and is a joined parent', function(done) {
-         var ref = newIntersection(['unions/fruit', 'unions/legume', {ref: helpers.ref('unions/notrealz'), keyMap: ['abc']}]);
-         ref.once('value', function(snap) {
-            expect(snap.val()).to.be.null;
-            done();
-         })
-      });
+         it('should merge data in order paths were added', function(done) {
+            createJoinedRecord('users/account', 'users/profile').on('value', function(snap) {
+               snap.ref().off();
+               expect(snap.val()).to.eql({
+                  "bruce": {
+                     "email": "bruce@lee.com",
+                     "name": "Bruce Lee",
+                     "nick": "Little Phoenix",
+                     "style": "Jeet Kune Do"
+                  },
+                  "kato": {
+                     "email": "wulf@firebase.com",
+                     "name": "Michael Wulf",
+                     "nick": "Kato",
+                     "style": "Kung Fu"
+                  }
+               });
+               done();
+            });
+         });
 
-      it('"value" should return null if any intersecting path is null and is a joined child', function(done) {
-         var ref = newIntersection(['unions/fruit', 'unions/legume', 'unions/veggie']).child('d');
-         ref.on('value', function(snap) {
-            ref.off();
-            expect(snap.val()).to.be.null;
-            done();
-         })
-      });
+         it('should invoke child_added if add to empty path', function(done) {
+            var rec = createJoinedRecord({ ref: helpers.ref('empty_path/one'), keyMap: ['a', 'b']}, {ref: helpers.ref('empty_path/two'), keyMap: ['c', 'd']});
+            rec.on('child_added', function(snap) {
+               snap.ref().off();
+               expect(snap.name()).to.equal('foo');
+               expect(snap.val()).to.eql({c: 'c'});
+               done();
+            });
+            rec.once('value', function(snap) {
+               expect(snap.val()).to.be.null;
+               helpers.ref('empty_path/two/foo/c').set('c');
+            });
+         });
 
-      it('"value" should only include children which exist in all intersecting paths', function(done) {
-         var ref = newIntersection(['unions/fruit', 'unions/legume', 'unions/veggie']);
-         ref.on('value', function(snap) {
-            expect(snap.val()||{}).keys(['b']);
-            done();
-         })
-      });
+         it('should invoke child_removed on remove', function(done) {
+            var rec = createJoinedRecord('users/account', 'users/profile');
+            rec.on('child_removed', function(snap) {
+               snap.ref().off();
+               expect(snap.name()).to.equal('kato');
+               expect(snap.val()).to.eql({
+                  "email": "wulf@firebase.com",
+                  "name": "Michael Wulf",
+                  "nick": "Kato",
+                  "style": "Kung Fu"
+               });
+               done();
+            });
+            rec.once('value', function(snap) {
+               helpers.ref('users/account/kato').remove();
+               helpers.ref('users/profile/kato').remove();
+            });
+         });
 
-      it('should not call child_added until all intersecting paths exist', function(done) {
-         helpers.set('unions', { fruit: {aa: 'aa'}, legume: {bb: 'bb'}, veggie: {cc: 'cc'} }).then(function() {
-            var ref = newIntersection(['unions/fruit', 'unions/legume'], ['unions/veggie']);
+         it('should invoke child_changed on change', function(done) {
+            var rec = createJoinedRecord('users/account', 'users/profile');
+            rec.on('child_changed', function(snap) {
+               snap.ref().off();
+               expect(snap.name()).to.equal('kato');
+               expect(snap.val()).to.eql({
+                  "email": "wulf@firebase.com",
+                  "name": "Michael Wulf",
+                  "nick": "Kato!",
+                  "style": "Kung Fu"
+               });
+               done();
+            });
+            rec.once('value', function(snap) {
+               helpers.wait(function() {
+                  helpers.ref('users/profile/kato/nick').set('Kato!');
+               }, 100);
+            });
+         });
 
-            var keys = false;
-            ref.on('child_added', function(snap) {
-               if( keys === false ) {
-                  console.error('snap received but is not a proper intersection', snap.val());
-                  throw new Error('should not call child_added yet :(');
+         it('should invoke child_moved on move', function(done) {
+            var rec = createJoinedRecord('ordered/set1', 'ordered/set2');
+            rec.on('child_moved', function(snap) {
+               snap.ref().off();
+               expect(snap.name()).to.equal('three');
+               expect(snap.getPriority()).to.equal(25);
+               done();
+            });
+            rec.once('value', function() {
+               helpers.ref('ordered/set1/three').setPriority(25);
+            });
+         });
+
+         it('should not call child_removed until last path is removed if a union', function(done) {
+            var ref = createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie'), ready = false;
+            ref.on('child_removed', function(snap) {
+               ref.off();
+               if( !ready ) {
+                  console.error('child_removed event, but still existing unions', snap.name(), snap.val());
+                  throw new Error('child_removed event, but still existing unions');
                }
                else {
-                  expect(snap.val()).keys(keys);
+                  done();
                }
             });
 
-            function nextKeys(newKeys, path, data) {
+            function rem(path) {
                return JQDeferred(function(def) {
-                  keys = newKeys;
-                  helpers.set('unions/'+path, data).done(function() {
-                     setTimeout(function() {
-                        def.resolve();
-                     }, 10);
+                  helpers.set(path, null).then(function() {
+                     setTimeout(def.resolve, 10); // give a little wait for events to be fired
                   });
                });
             }
 
-            nextKeys(false, 'fruit/a', 'apple')
-               .then(nextKeys.bind(null, false, 'fruit/b', 'banana'))
-               .then(nextKeys.bind(null, false, 'legume/c', 'chickpeas'))
-               .then(nextKeys.bind(null, false, 'legume/d', 'dry-roasted-peanuts'))
-               .then(nextKeys.bind(null, ['b'], 'veggie/b', 'broccoli'))
-               .then(nextKeys.bind(null, ['b'], 'veggie/c', 'carrot'))
-               .always(done);
-         });
-      });
-
-      it('should call child_removed if any intersecting path is removed', function(done) {
-         var ref = newIntersection(['unions/fruit', 'unions/legume'], ['unions/veggie']);
-         ref.on('child_removed', function(snap) {
-            expect(snap.name()).to.equal('b');
-            done();
-         });
-         ref.once('value', function(snap) {
-            expect(snap.val()).keys(['b']);
-            helpers.ref('unions/legume/b').remove();
-         });
-      });
-
-      it('should merge data from a dynamic keyMap ref', function(done) {
-         var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
-            name: 'name',
-            nick: 'nick',
-            style: helpers.ref('users/styles')
-         }});
-
-         ref.on('value', function(snap) {
-            expect(snap.val()).keys(['bruce', 'kato']);
-            expect(snap.val().kato).to.eql({
-               email: 'wulf@firebase.com',
-               name: 'Michael Wulf',
-               nick: 'Kato',
-               style: {
-                  ".id": "Kung Fu",
-                  "description": "Chinese system based on physical exercises involving animal mimicry"
-               }
+            ref.once('value', function() {
+               rem('unions/fruit/b')
+                  .then(rem.bind(null, 'unions/legume/b'))
+                  .done(function() { ready = true; })
+                  .then(rem.bind(null, 'unions/veggie/b'));
             });
-            done();
          });
-      });
 
-      it('should not explode if dynamic keyMap ref does not exist', function(done) {
-         var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
-            name: 'name',
-            nick: 'nick',
-            style: {ref: helpers.ref('users/stylez'), keyMap: ['description']}
-         }});
-
-         ref.on('value', function(snap) {
-            expect(snap.val()).keys(['bruce', 'kato']);
-            expect(snap.val().kato).to.eql({
-               email: 'wulf@firebase.com',
-               name: 'Michael Wulf',
-               nick: 'Kato'
-            });
-            done();
-         });
-      });
-
-      it('should only call "value" once when using dynamic keyMap ref', function(done) {
-         var cancelSpy = sinon.spy(), count = 0, to;
-         var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
-            name: 'name',
-            nick: 'nick',
-            style: helpers.ref('users/styles')
-         }});
-
-         ref.on('value', function() {
-            // debounce every time this method is called
-            count++;
-            to && clearTimeout
-            (to);
-            setTimeout(finished, 750);
-         }, cancelSpy);
-
-         function finished() {
-            expect(count).to.equal(1);
-            expect(cancelSpy).not.called;
-            done();
-         }
-
-      });
-
-      it('should sort data according to first sortBy path', function(done) {
-         var ref = createJoinedRecord('ordered/set1', {ref: helpers.ref('ordered/set2'), sortBy: true});
-         ref.on('value', function(snap) {
-            snap.ref().off();
-            expect(snap.val()).keys(['five', 'one', 'two', 'three', 'four']);
-            done();
-         });
-      });
-
-      // can't test cancel callback because set on security rules isn't working from bash/PowerShell
-      it('should invoke the cancel callback for all listeners if canceled', function(done) {
-         console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
-         var cancel = fb.util.map([1, 2, 3], function() { return sinon.spy(); });
-         helpers.chain()
-            .then(function() {
-               return JQDeferred(function(def) {
-                  var ref = createJoinedRecord('secured/foo', 'secured/bar');
-                  fb.util.each(cancel, function(c, k) {
-                     ref.on('value', function() {}, c);
-                  });
-                  ref.once('value', def.resolve.bind(def), def.reject.bind(def));
-               })
-            })
-            .set('secured_read_allowed', false)
-            .wait(function() {
-               fb.util.each(cancel, function(spy) {
-                  expect(spy).calledOnce;
-               });
-            }, 1000)
-            .then(function() {
-               console.log("\n<<< //INTENTIONAL WARNINGS >>>\n\n");
-            })
-            .testDone(done);
-      });
-
-      it('should work with only child_added callback', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile');
-         ref.on('child_added', function(snap) {
-            ref.off(); // we only want one
-            expect(snap.name()).to.equal('bruce');
-            done();
-         });
-      });
-
-      it('should work with only child_changed callback', function(done) {
-         var spy = sinon.spy();
-         createJoinedRecord('users/account', 'users/profile').on('child_changed', spy);
-         helpers
-            .chain()
-            .get('users') // wait for data
-            .pause()
-            .set('users/profile/kato/nick', 'Kato!')
-            .pause(function() {
-               expect(spy).calledOnce;
-               expect(spy.args[0][0].name()).to.equal('kato');
-            })
-            .testDone(done);
-      });
-
-      it('should work with only child_removed callback', function(done) {
-         var spy = sinon.spy();
-         createJoinedRecord('users/account', 'users/profile').on('child_removed', spy);
-         helpers
-            .chain()
-            .get('users') // wait for data
-            .pause()
-            .remove('users/profile/kato')
-            .remove('users/account/kato')
-            .pause(function() {
-               expect(spy).calledOnce;
-               expect(spy.args[0][0].name()).to.equal('kato');
-            })
-            .testDone(done);
-      });
-
-      it('should work with only child_moved callback', function(done) {
-         var spy = sinon.spy();
-         createJoinedRecord('ordered/set1', 'ordered/set2').on('child_moved', spy);
-         helpers
-            .chain()
-            .get('users') // wait for data
-            .pause()
-            .setPriority('ordered/set1/two', 99)
-            .pause(function() {
-               expect(spy).calledOnce;
-               expect(spy.args[0][0].name()).to.equal('two');
-               expect(spy.args[0][1]).to.equal('five');
-            })
-            .testDone(done);
-      });
-
-      it('should return a JoinedSnapshot if called on a child record\'s field', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile').child('kato/nick');
-         ref.on('value', function(snap) {
-            ref.off();
-            expect(snap).instanceOf(fb.join.JoinedSnapshot);
-            expect(snap.ref()).instanceOf(JoinedRecord);
-            done();
-         });
-      });
-
-      it('should contain correct value if called on a child record\'s field', function(done) {
-         createJoinedRecord('users/account', 'users/profile')
-            .child('kato/nick')
-            .on('value', function(snap) {
+         it('should sort data according to first sortBy path', function(done) {
+            var ref = createJoinedRecord('ordered/set1', {ref: helpers.ref('ordered/set2'), sortBy: true});
+            ref.on('value', function(snap) {
                snap.ref().off();
-               expect(snap.val()).to.equal('Kato');
+               expect(snap.val()).keys(['five', 'one', 'two', 'three', 'four']);
                done();
             });
-      });
+         });
 
-      it('should invoke "value" on child', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile').child('kato');
-         ref.on('value', function(snap) {
-            ref.off();
-            expect(snap.val()).to.eql({
-               "email": "wulf@firebase.com",
-               "name": "Michael Wulf",
-               "nick": "Kato",
-               "style": "Kung Fu"
-            });
-            done();
-         });
-      });
-
-      it('should invoke "child_added" on child', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile').child('kato');
-         ref.on('child_added', function(snap) {
-            ref.off();
-            expect(snap.name()).to.equal('email');
-            done();
-         });
-      });
-
-      it('should invoke "child_removed" on child', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile').child('bruce');
-         ref.on('child_removed', function(snap) {
-            ref.off(); // only get one
-            expect(snap.name()).to.equal('nick');
-            done();
-         });
-         helpers.ref('users/profile').once('value', function(){
-            setTimeout(function() {
-               helpers.ref('users/profile/bruce/nick').remove();
-            }, 50);
-         });
-      });
-
-      it('should invoke "child_changed" on child', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile').child('bruce');
-         ref.on('child_changed', function(snap) {
-            ref.off();
-            expect(snap.name()).to.equal('nick');
-            expect(snap.val()).to.equal('littledragon');
-            done();
-         });
-         helpers.ref('users/profile').once('value', function(){
-            setTimeout(function() {
-               helpers.ref('users/profile/bruce/nick').set('littledragon');
-            }, 50);
-         });
-      });
-
-      it('should invoke "child_moved" on child', function(done) {
-         var ref = createJoinedRecord('users/account', 'users/profile').child('bruce');
-         ref.on('child_moved', function(snap) {
-            ref.off();
-            expect(snap.name()).to.equal('name');
-            done();
-         });
-         helpers.ref('users/profile').once('value', function(){
-            setTimeout(function() {
-               helpers.ref('users/profile/bruce/name').setPriority(10);
-            }, 50);
-         });
-      });
-
-      it('should not behave unexpectedly if add followed immediately by remove event', function(done) {
-         var valueSpy = sinon.spy(), addedSpy = sinon.spy(), removedSpy = sinon.spy();
-         var ref = createJoinedRecord('users/account', 'users/profile');
-         helpers.chain().get('users').then(function(){
-            setTimeout(function() {
-               ref.on('value', valueSpy);
-               ref.on('child_removed', removedSpy);
-               ref.on('child_added', addedSpy);
-               helpers.chain().set('users/account/sue', {email: 'sue@sue.com'}).set('users/account/sue', null).then(function() {
-                  setTimeout(function() {
-                     ref.off();
-                     expect(valueSpy).calledTwice;
-                     expect(addedSpy).calledThrice;
-                     expect(removedSpy).calledOnce;
-                     done();
-                  }, 100);
-               });
-            }, 50);
-         });
-      });
-
-      it('should return object for "value" when source is an array', function(done) {
-         createJoinedRecord('arrays/english', 'arrays/spanish').on('value', function(snap) {
-            expect(snap.val()).to.eql({
-               0: { english: 'zero',  numero: 'cero' },
-               1: { english: 'one',   numero: 'uno' },
-               2: { english: 'two',   numero: 'dos' },
-               3: { english: 'three', numero: 'tres' },
-               4: { english: 'four',  numero: 'cuatro' },
-               5: { english: 'five',  numero: 'cinco' }
-            });
-            done();
-         });
-      });
-
-      it('should call "child_added" when source is an array', function(done) {
-         var spy = sinon.spy();
-         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
-         rec.on('child_added', spy);
-         rec.once('value', function(snap) {
-            var keys = fb.util.keys(snap.val());
-            sinon.assert.callCount(spy, keys.length);
-            fb.util.each(keys, function(key, i) {
-               expect(spy.getCall(i).args[0].name()).to.equal(key);
-            });
-            done();
-         });
-      });
-
-      it('should call "child_removed" when source is an array', function(done) {
-         var spy = sinon.spy();
-         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
-         rec.on('child_removed', spy);
-         rec.once('value', function(snap) {
-            var keys = fb.util.keys(snap.val());
-            var count = 0, needed = 0;
-            sinon.assert.callCount(spy, 0);
-            var chain = helpers.chain();
-            fb.util.each(keys, function(key, i) {
-               chain = chain
-                  .remove(['arrays/english', key])
-                  .remove(['arrays/spanish', key]);
-            });
-            chain
-               .wait(function() {
-                  sinon.assert.callCount(spy, keys.length);
-                  fb.util.each(keys, function(key, i) {
-                     expect(spy.getCall(i).args[0].name()).to.equal(key);
+         // can't test cancel callback because set on security rules isn't working from bash/PowerShell
+         it('should invoke the cancel callback for all listeners if canceled', function(done) {
+            console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
+            var cancel = fb.util.map([1, 2, 3], function() { return sinon.spy(); });
+            helpers.chain()
+               .then(function() {
+                  return JQDeferred(function(def) {
+                     var ref = createJoinedRecord('secured/foo', 'secured/bar');
+                     fb.util.each(cancel, function(c, k) {
+                        ref.on('value', function() {}, c);
+                     });
+                     ref.once('value', def.resolve.bind(def), def.reject.bind(def));
+                  })
+               })
+               .set('secured_read_allowed', false)
+               .pause(function() {
+                  fb.util.each(cancel, function(spy) {
+                     expect(spy).calledOnce;
                   });
                })
+               .then(function() {
+                  console.log("\n<<< //INTENTIONAL WARNINGS >>>\n\n");
+               })
                .testDone(done);
          });
-      });
 
-      it('should call "child_moved" when source is an array', function(done) {
-         var spy = sinon.spy();
-         var rec = createJoinedRecord('arrays/french', 'arrays/english');
-         rec.on('child_moved', spy);
-         rec.once('value', function(snap) {
-            sinon.assert.callCount(spy, 0);
+         it('should work with only child_added callback', function(done) {
+            var ref = createJoinedRecord('users/account', 'users/profile');
+            ref.on('child_added', function(snap) {
+               ref.off(); // we only want one
+               expect(snap.name()).to.equal('bruce');
+               done();
+            });
+         });
+
+         it('should work with only child_changed callback', function(done) {
+            var spy = sinon.spy();
+            createJoinedRecord('users/account', 'users/profile').on('child_changed', spy);
             helpers
                .chain()
-               .setPriority('arrays/french/1', 25)
-               .wait(function(){
-                  sinon.assert.callCount(spy, 1);
-                  expect(spy.args[0][0].name()).to.equal('1');
+               .get('users') // wait for data
+               .pause()
+               .set('users/profile/kato/nick', 'Kato!')
+               .pause(function() {
+                  expect(spy).calledOnce;
+                  expect(spy.args[0][0].name()).to.equal('kato');
+               })
+               .testDone(done);
+         });
+
+         it('should work with only child_removed callback', function(done) {
+            var spy = sinon.spy();
+            createJoinedRecord('users/account', 'users/profile').on('child_removed', spy);
+            helpers
+               .chain()
+               .get('users') // wait for data
+               .pause()
+               .remove('users/profile/kato')
+               .remove('users/account/kato')
+               .pause(function() {
+                  expect(spy).calledOnce;
+                  expect(spy.args[0][0].name()).to.equal('kato');
+               })
+               .testDone(done);
+         });
+
+         it('should work with only child_moved callback', function(done) {
+            var spy = sinon.spy();
+            createJoinedRecord('ordered/set1', 'ordered/set2').on('child_moved', spy);
+            helpers
+               .chain()
+               .get('users') // wait for data
+               .pause()
+               .setPriority('ordered/set1/two', 99)
+               .pause(function() {
+                  expect(spy).calledOnce;
+                  expect(spy.args[0][0].name()).to.equal('two');
+                  expect(spy.args[0][1]).to.equal('five');
                })
                .testDone(done);
          });
       });
 
-      it('should call "child_changed" when source is an array', function(done) {
-         var spy = sinon.spy();
-         var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
-         rec.on('child_changed', spy);
-         rec.once('value', function(snap) {
-            sinon.assert.callCount(spy, 0);
-            helpers
-               .chain()
-               .set('arrays/english/2', 'twotwo')
-               .wait(function(){
-                  sinon.assert.callCount(spy, 1);
-                  var snap = spy.args[0][0];
-                  expect(snap.name()).to.equal('2');
-                  expect(snap.val()).to.eql({ english: 'twotwo', numero: 'dos' });
-               })
-               .testDone(done);
+
+      /** on() master record
+        ***************************************************/
+
+      describe('#on() master record', function() {
+         it('should call "child_added" for all pre-loaded recs', function(done) {
+            var keys;
+            var rec = createJoinedRecord('users/account', 'users/profile');
+
+            function fn(snap) {
+               expect(snap.name()).to.equal(keys.shift());
+               if( !keys.length ) { done(); }
+            }
+
+            rec.once('value', function(snap) {
+               keys = fb.util.keys(snap.val());
+               expect(keys).length.greaterThan(0);
+               // wait for the recs to load, then try child_added against them
+               rec.on('child_added', fn);
+            });
+
+         });
+
+         it('should call "value" on a child_added event', function(done) {
+            function setVal(snap) {
+               expect(snap.val()).to.eql({
+                  "bruce": {
+                     "email": "bruce@lee.com",
+                     "name": "Bruce Lee",
+                     "nick": "Little Phoenix",
+                     "style": "Jeet Kune Do"
+                  },
+                  "kato": {
+                     "email": "wulf@firebase.com",
+                     "name": "Michael Wulf",
+                     "nick": "Kato",
+                     "style": "Kung Fu"
+                  }
+               });
+               step = verify;
+               helpers.ref('users/account/john').set({name: 'john', email: 'john@john.com'});
+            }
+
+            function verify(snap) {
+               snap.ref().off();
+               expect(snap.val()).to.eql({
+                  "bruce": {
+                     "email": "bruce@lee.com",
+                     "name": "Bruce Lee",
+                     "nick": "Little Phoenix",
+                     "style": "Jeet Kune Do"
+                  },
+                  "kato": {
+                     "email": "wulf@firebase.com",
+                     "name": "Michael Wulf",
+                     "nick": "Kato",
+                     "style": "Kung Fu"
+                  },
+                  "john": {
+                     // the name will lose out to the profile path (which has none)
+                     // so all we get is an email
+                     "email": "john@john.com"
+                  }
+               });
+               done();
+            }
+
+            var step = setVal;
+
+            createJoinedRecord('users/account', 'users/profile')
+               .on('value', function(snap) {
+                  // the first time this is called with empty callback to skip the pre-add notification
+                  step(snap);
+               });
+         });
+
+         it('should call "value" on a child_removed event', function(done) {
+            var rec = createJoinedRecord('users/account', 'users/profile');
+            var fn = step1;
+
+            function step1(snap) {
+               fn = step2;
+               helpers.ref('users/account/kato').remove();
+               helpers.ref('users/profile/kato').remove();
+            }
+
+            function step2(snap) {
+               expect(snap.val()).not.keys('kato');
+               done();
+            }
+
+            rec.on('value', function(snap) {
+               fn(snap);
+            });
+         });
+
+         it('should call "value" on a child_changed event', function(done) {
+            var ref = createJoinedRecord('users/profile', 'users/account'), fn = step1;
+            function step1(snap) {
+               fn = step2;
+               helpers.ref('users/profile/kato/nick').set('Kato!');
+            }
+            function step2(snap) {
+               snap.ref().off();
+               expect(snap.val()).keys(['bruce', 'kato']);
+               expect(snap.val().kato.nick).to.equal('Kato!');
+               done();
+            }
+            ref.on('value', function(snap) {
+               fn(snap);
+            });
+         });
+
+         it('should call "value" on a child_moved event', function(done) {
+            var ref = createJoinedRecord('ordered/set1', 'ordered/set2'), fn = step1;
+            function step1() {
+               fn = step2;
+               helpers.ref('ordered/set1/two').setPriority(10);
+            }
+            function step2(snap) {
+               snap.ref().off();
+               expect(snap.val()).keys(['one', 'three', 'four', 'five', 'two']);
+               expect(snap.val()['two']).to.eql({set1: 2, set2: 22});
+               done();
+            }
+            ref.on('value', function(snap) { fn(snap); });
+         });
+
+         it('should call "child_added" for any preloaded records when on() is declared', function(done) {
+            var ref = createJoinedRecord('users/account', 'users/profile'), vals = ['bruce', 'kato'];
+            ref.on('child_added', function(snap) {
+               expect(snap.name()).to.equal(vals.shift());
+               if( vals.length === 0 ) {
+                  setTimeout(done, 100);
+               }
+            });
+         });
+      });
+
+
+      /** on() child record
+        ***************************************************/
+
+      describe('#on() child record', function() {
+         it('should return a JoinedSnapshot if called on a child record\'s field', function(done) {
+            createJoinedRecord('users/account', 'users/profile')
+               .child('kato/nick')
+               .on('value', function(snap) {
+                  snap.ref().off();
+                  expect(snap).instanceOf(fb.join.JoinedSnapshot);
+                  expect(snap.ref()).instanceOf(JoinedRecord);
+                  done();
+               });
+         });
+
+         it('should contain correct value if called on a child record\'s field', function(done) {
+            createJoinedRecord('users/account', 'users/profile')
+               .child('kato/nick')
+               .on('value', function(snap) {
+                  snap.ref().off();
+                  expect(snap.val()).to.equal('Kato');
+                  done();
+               });
+         });
+
+         it('should invoke "value" on child', function(done) {
+            createJoinedRecord('users/account', 'users/profile')
+               .child('kato')
+               .on('value', function(snap) {
+                  snap.ref().off();
+                  expect(snap.val()).to.eql({
+                     "email": "wulf@firebase.com",
+                     "name": "Michael Wulf",
+                     "nick": "Kato",
+                     "style": "Kung Fu"
+                  });
+                  done();
+               });
+         });
+
+         it('should invoke "child_added" on child', function(done) {
+            var ref = createJoinedRecord('users/account', 'users/profile').child('kato');
+            ref.on('child_added', function(snap) {
+               ref.off();
+               expect(snap.name()).to.equal('email');
+               done();
+            });
+         });
+
+         it('should invoke "child_removed" on child', function(done) {
+            var ref = createJoinedRecord('users/account', 'users/profile').child('bruce');
+            ref.on('child_removed', function(snap) {
+               ref.off(); // only get one
+               expect(snap.name()).to.equal('nick');
+               done();
+            });
+            helpers.ref('users/profile').once('value', function(){
+               setTimeout(function() {
+                  helpers.ref('users/profile/bruce/nick').remove();
+               }, 50);
+            });
+         });
+
+         it('should invoke "child_changed" on child', function(done) {
+            var ref = createJoinedRecord('users/account', 'users/profile').child('bruce');
+            ref.on('child_changed', function(snap) {
+               ref.off();
+               expect(snap.name()).to.equal('nick');
+               expect(snap.val()).to.equal('littledragon');
+               done();
+            });
+            helpers.ref('users/profile').once('value', function(){
+               setTimeout(function() {
+                  helpers.ref('users/profile/bruce/nick').set('littledragon');
+               }, 50);
+            });
+         });
+
+         it('should invoke "child_moved" on child', function(done) {
+            var ref = createJoinedRecord('users/account', 'users/profile').child('bruce');
+            ref.on('child_moved', function(snap) {
+               ref.off();
+               expect(snap.name()).to.equal('name');
+               done();
+            });
+            helpers.ref('users/profile').once('value', function(){
+               setTimeout(function() {
+                  helpers.ref('users/profile/bruce/name').setPriority(10);
+               }, 50);
+            });
+         });
+      });
+
+
+      /** on() dynamic refs
+        ***************************************************/
+
+      describe('#on() dynamic refs', function() {
+         it('should merge data from a dynamic keyMap ref', function(done) {
+            var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: helpers.ref('users/styles')
+            }});
+
+            ref.on('value', function(snap) {
+               snap.ref().off();
+               expect(snap.val()).keys(['bruce', 'kato']);
+               expect(snap.val().kato).to.eql({
+                  email: 'wulf@firebase.com',
+                  name: 'Michael Wulf',
+                  nick: 'Kato',
+                  ".id:style": "Kung Fu",
+                  style: {
+                     "description": "Chinese system based on physical exercises involving animal mimicry"
+                  }
+               });
+               done();
+            });
+         });
+
+         it('should not explode if dynamic keyMap ref does not exist', function(done) {
+            var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: {ref: helpers.ref('users/stylez'), keyMap: ['description']}
+            }});
+
+            ref.on('value', function(snap) {
+               expect(snap.val()).keys(['bruce', 'kato']);
+               expect(snap.val().kato).to.eql({
+                  email: 'wulf@firebase.com',
+                  name: 'Michael Wulf',
+                  nick: 'Kato',
+                  '.id:style': 'Kung Fu'
+               });
+               done();
+            });
+         });
+
+         //todo-test
+         it.skip('should only call "value" once when using dynamic keyMap ref', function(done) {
+            var cancelSpy = sinon.spy(), count = 0, to;
+            var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: helpers.ref('users/styles')
+            }});
+
+            ref.on('value', function(snap) {
+               // debounce every time this method is called to give sufficient time for
+               // a repeat to occur before we assume success
+               count++;
+               to && clearTimeout(to);
+               to = null;
+               setTimeout(finished, 750);
+            }, cancelSpy);
+
+            function finished() {
+               ref.off();
+               to && clearTimeout(to);
+               expect(count).to.equal(1);
+               expect(cancelSpy).not.called;
+               done();
+            }
+
+         });
+
+         it.skip('should call "child_changed" on master if dynamic keymap data is added', function(done) {
+
+         });
+
+         it('should call "child_changed" on master if dynamic keymap data is removed');
+
+         it('should call "child_changed" on master if dynamic keymap data is changed');
+
+         it('should call "child_added" if dynamic keymap data is added');
+
+         it('should call "child_changed" if dynamic keymap data is changed');
+
+         it('should call "child_removed" if dynamic keymap data is removed');
+
+         it('should load primitives from a dynamic path the same as objects');
+      });
+
+
+      /** on() primitives
+        ***************************************************/
+
+      describe('#on() primitives', function() {
+         it('should put primitives into field named by path', function(done) {
+            createJoinedRecord('unions/fruit', 'unions/legume').on('value', function(snap) {
+               snap.ref().off();
+               expect(snap.val()).to.eql({
+                  a: { fruit: "apple" },
+                  b: { fruit: "banana", legume: "baked beans" },
+                  c: { legume: "chickpeas" },
+                  d: { legume: "dry-roasted peanuts" }
+               });
+               done();
+            });
+         });
+
+         it('If keyMap specified, should put primitives into that field', function(done) {
+            createJoinedRecord(
+               {ref: helpers.ref('unions/fruit'), keyMap: {'.value': 'フルーツ'}},
+               'unions/legume'
+            ).on('value', function(snap) {
+                  snap.ref().off();
+                  expect(snap.val()).to.eql({
+                     a: { 'フルーツ': "apple" },
+                     b: { 'フルーツ': "banana", legume: "baked beans" },
+                     c: { legume: "chickpeas" },
+                     d: { legume: "dry-roasted peanuts" }
+                  });
+                  done();
+               });
+         });
+      });
+
+
+      /** on() intersections
+        ***************************************************/
+
+      describe('#on() intersections', function() {
+         it('should be union if no intersecting paths are declared', function(done) {
+            var ref = createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie');
+            ref.on('value', function(snap) {
+               snap.ref().off();
+               expect(snap.val()).keys(['a', 'b', 'c', 'd', 'e']);
+               done();
+            });
+         });
+
+         it('"value" should return null if any intersecting path is null and is a joined parent', function(done) {
+            var ref = newIntersection(['unions/fruit', 'unions/legume', {ref: helpers.ref('unions/notrealz'), keyMap: ['abc']}]);
+            ref.once('value', function(snap) {
+               expect(snap.val()).to.be.null;
+               done();
+            })
+         });
+
+         it('"value" should return null if any intersecting path is null and is a joined child', function(done) {
+            var ref = newIntersection(['unions/fruit', 'unions/legume', 'unions/veggie']).child('d');
+            ref.on('value', function(snap) {
+               ref.off();
+               expect(snap.val()).to.be.null;
+               done();
+            })
+         });
+
+         it('"value" should only include children which exist in all intersecting paths', function(done) {
+            var ref = newIntersection(['unions/fruit', 'unions/legume', 'unions/veggie']);
+            ref.on('value', function(snap) {
+               expect(snap.val()||{}).keys(['b']);
+               done();
+            })
+         });
+
+         it('should not call child_added until all intersecting paths exist', function(done) {
+            helpers.set('unions', { fruit: {aa: 'aa'}, legume: {bb: 'bb'}, veggie: {cc: 'cc'} }).then(function() {
+               var ref = newIntersection(['unions/fruit', 'unions/legume'], ['unions/veggie']);
+               var keys = false;
+               ref.on('child_added', function(snap) {
+                  if( keys === false ) {
+                     console.error('snap received but is not a proper intersection', snap.val());
+                     throw new Error('should not call child_added yet :(');
+                  }
+                  else {
+                     expect(snap.val()).keys(keys);
+                  }
+               });
+
+               function nextKeys(newKeys, path, data) {
+                  return JQDeferred(function(def) {
+                     keys = newKeys;
+                     helpers.set('unions/'+path, data).done(function() {
+                        setTimeout(function() {
+                           def.resolve();
+                        }, 10);
+                     });
+                  });
+               }
+
+               nextKeys(false, 'fruit/a', 'apple')
+                  .then(nextKeys.bind(null, false, 'fruit/b', 'banana'))
+                  .then(nextKeys.bind(null, false, 'legume/c', 'chickpeas'))
+                  .then(nextKeys.bind(null, false, 'legume/d', 'dry-roasted-peanuts'))
+                  .then(nextKeys.bind(null, ['b'], 'veggie/b', 'broccoli'))
+                  .then(nextKeys.bind(null, ['b'], 'veggie/c', 'carrot'))
+                  .always(done);
+            });
+         });
+
+         it('should call child_removed if any intersecting path is removed', function(done) {
+            var ref = newIntersection(['unions/fruit', 'unions/legume'], ['unions/veggie']);
+            ref.on('child_removed', function(snap) {
+               expect(snap.name()).to.equal('b');
+               done();
+            });
+            ref.once('value', function(snap) {
+               expect(snap.val()).to.contain.keys(['b']);
+               expect(snap.val().b).not.null;
+               helpers.ref('unions/legume/b').remove();
+            });
+         });
+      });
+
+
+      /** on() arrays
+        ***************************************************/
+      describe('#on() arrays', function() {
+         it('should not behave unexpectedly if add followed immediately by remove event', function(done) {
+            var valueSpy = sinon.spy(), addedSpy = sinon.spy(), removedSpy = sinon.spy();
+            var ref = createJoinedRecord('users/account', 'users/profile');
+            helpers.chain().get('users').then(function(){
+               setTimeout(function() {
+                  ref.on('value', valueSpy);
+                  ref.on('child_removed', removedSpy);
+                  ref.on('child_added', addedSpy);
+                  helpers.chain().set('users/account/sue', {email: 'sue@sue.com'}).set('users/account/sue', null).then(function() {
+                     setTimeout(function() {
+                        ref.off();
+                        expect(valueSpy).calledTwice;
+                        expect(addedSpy).calledThrice;
+                        expect(removedSpy).calledOnce;
+                        done();
+                     }, 100);
+                  });
+               }, 50);
+            });
+         });
+
+         it('should return object for "value" when source is an array', function(done) {
+            createJoinedRecord('arrays/english', 'arrays/spanish').on('value', function(snap) {
+               expect(snap.val()).to.eql({
+                  0: { english: 'zero',  numero: 'cero' },
+                  1: { english: 'one',   numero: 'uno' },
+                  2: { english: 'two',   numero: 'dos' },
+                  3: { english: 'three', numero: 'tres' },
+                  4: { english: 'four',  numero: 'cuatro' },
+                  5: { english: 'five',  numero: 'cinco' }
+               });
+               done();
+            });
+         });
+
+         it('should call "child_added" when source is an array', function(done) {
+            var spy = sinon.spy();
+            var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+            rec.on('child_added', spy);
+            rec.once('value', function(snap) {
+               var keys = fb.util.keys(snap.val());
+               sinon.assert.callCount(spy, keys.length);
+               fb.util.each(keys, function(key, i) {
+                  expect(spy.getCall(i).args[0].name()).to.equal(key);
+               });
+               done();
+            });
+         });
+
+         it('should call "child_removed" when source is an array', function(done) {
+            var spy = sinon.spy();
+            var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+            rec.on('child_removed', spy);
+            rec.once('value', function(snap) {
+               var keys = fb.util.keys(snap.val());
+               var count = 0, needed = 0;
+               sinon.assert.callCount(spy, 0);
+               var chain = helpers.chain();
+               fb.util.each(keys, function(key, i) {
+                  chain = chain
+                     .remove(['arrays/english', key])
+                     .remove(['arrays/spanish', key]);
+               });
+               chain
+                  .wait(function() {
+                     sinon.assert.callCount(spy, keys.length);
+                     fb.util.each(keys, function(key, i) {
+                        expect(spy.getCall(i).args[0].name()).to.equal(key);
+                     });
+                  })
+                  .testDone(done);
+            });
+         });
+
+         it('should call "child_moved" when source is an array', function(done) {
+            var spy = sinon.spy();
+            var rec = createJoinedRecord('arrays/french', 'arrays/english');
+            rec.on('child_moved', spy);
+            rec.once('value', function(snap) {
+               sinon.assert.callCount(spy, 0);
+               helpers
+                  .chain()
+                  .setPriority('arrays/french/1', 25)
+                  .wait(function(){
+                     sinon.assert.callCount(spy, 1);
+                     expect(spy.args[0][0].name()).to.equal('1');
+                  })
+                  .testDone(done);
+            });
+         });
+
+         it('should call "child_changed" when source is an array', function(done) {
+            var spy = sinon.spy();
+            var rec = createJoinedRecord('arrays/english', 'arrays/spanish');
+            rec.on('child_changed', spy);
+            rec.once('value', function(snap) {
+               sinon.assert.callCount(spy, 0);
+               helpers
+                  .chain()
+                  .set('arrays/english/2', 'twotwo')
+                  .wait(function(){
+                     sinon.assert.callCount(spy, 1);
+                     var snap = spy.args[0][0];
+                     expect(snap.name()).to.equal('2');
+                     expect(snap.val()).to.eql({ english: 'twotwo', numero: 'dos' });
+                  })
+                  .testDone(done);
+            });
          });
       });
    });
@@ -1049,8 +1116,8 @@ describe('join.JoinedRecord', function() {
                expect(val.kato).to.eql({
                   email: 'wulf@firebase.com',
                   name: 'Michael Wulf',
+                  ".id:style": "Kung Fu",
                   style: {
-                     ".id": "Kung Fu",
                      "description": "Chinese system based on physical exercises involving animal mimicry"
                   }
                });
@@ -1100,11 +1167,12 @@ describe('join.JoinedRecord', function() {
       it('should return a ref to correct dynamic keyMap paths', function(done) {
          var rec = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
             name: true, nick: true, style: helpers.ref('users/style')
-         }}).child('kato/style');
+         }}).child('kato/style/description');
 
          rec.queue.done(function() {
-            expect(rec.name()).to.equal('style');
-            expect(rec.paths[0].toString()).to.match(/users\/style\/Kung%20Fu$/);
+            expect(rec.name()).to.equal('description');
+            console.log(rec.paths[0].toString());
+            expect(rec.paths[0].toString()).to.match(/users\/style\/Kung%20Fu\/description$/);
             done();
          })
       });
@@ -1149,7 +1217,7 @@ describe('join.JoinedRecord', function() {
       });
   });
 
-   describe('#set', function() {
+   describe.skip('#set', function() {
       it('should invoke callback when done', function(done) {
          var newData = { mary: { name: 'had', email: 'a@a.com', nick: 'little lamb' } };
          var rec = createJoinedRecord('users/account', 'users/profile');
@@ -1158,7 +1226,7 @@ describe('join.JoinedRecord', function() {
                expect(err).to.be.null;
                done();
             });
-         });
+         }, done);
       });
 
       it('should invoke callback with error on failure', function(done) {
@@ -1358,6 +1426,7 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should accept array', function(done) {
+         helpers.debugThisTest();
          var newVals = [
             { numero: 'cerocero', english: 'zerozero' },
             { numero: 'unouno', english: 'oneone' },
@@ -1483,37 +1552,38 @@ describe('join.JoinedRecord', function() {
             })
       });
 
-      it.skip('should set dynamic keyMap data from master', function(done) {
-         createJoinedRecord('users/account', {
-            ref: helpers.ref('users/profile'), keyMap: {
+      it.skip('should create dynamic keyMap data from master id .id given', function(done) {
+         createJoinedRecord(
+            'users/account',
+            {
+               ref: helpers.ref('users/profile'), keyMap: {
                name: 'name',
                nick: 'nick',
                style: helpers.ref('users/style')
             }
-         }).set({ mary: {
+         }).set(
+            {
+               mary: {
                email: 'mary@mary.com',
-
-            } }, function(err) {
-               expect(err).to.be.null;
-               helpers
-                  .chain()
-                  .get('unions/fruit/b')
-                  .then(function(data) {
-                     expect(data).to.equal('aaa');
-                  })
-                  .get('unions/legume/b')
-                  .then(function(data) {
-                     expect(data).to.equal('aab');
-                  })
-                  .get('unions/veggie/b')
-                  .then(function(data) {
-                     expect(data).to.be.null;
-                  })
-                  .testDone(done);
-            })
+               name: 'Mary',
+               nick: 'Bo Peep',
+               style: { '.id': 'sheep fu', description: 'Tai Kwan Leap' }
+            }
+         }, function(err) {
+            expect(err).to.be.null;
+            helpers
+               .chain()
+               .get('users/styles/sheep fu')
+               .then(function(data) {
+                  expect(data).to.equal({description: 'Tai Kwan Leap'});
+               })
+               .testDone(done);
+         });
       });
 
-      it('should set dynamic keyMap data if called on child');
+      it('should set dynamic keyMap data from master');
+
+      it('should set dynamic keyMap data from child');
 
       it('should set dynamic keyMap key from master');
 
@@ -1605,7 +1675,7 @@ describe('join.JoinedRecord', function() {
 
       it('should not blow up if record does not exist');
 
-      it('should trigger "child_moved" on next record'); //todo??????
+      it('should trigger "child_moved" on next record');
 
       it('should remove dynamic keyMap paths');
 

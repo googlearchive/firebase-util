@@ -5,15 +5,15 @@
    /**
     * A simple observer model for watching events.
     * @param eventsMonitored
-    * @param [opts] can contain callbacks for onAdd, onRemove, and onEvent
+    * @param [opts] can contain callbacks for onAdd, onRemove, and onEvent, as well as a list of oneTimeEvents
     * @constructor
     */
    function Observable(eventsMonitored, opts) {
       opts || (opts = {});
       this._observableProps = util.extend(
-         { observers: {}, onAdd: util.noop, onRemove: util.noop, onEvent: util.noop },
+         { onAdd: util.noop, onRemove: util.noop, onEvent: util.noop, oneTimeEvents: [] },
          opts,
-         { eventsMonitored: eventsMonitored }
+         { eventsMonitored: eventsMonitored, observers: {}, oneTimeResults: {} }
       );
       this.resetObservers();
    }
@@ -31,14 +31,10 @@
             callback = args.nextReq('function');
             cancelFn = args.next('function');
             scope = args.next('object');
-            var obs = new util.Observer(event, callback, scope, cancelFn);
-            if( !util.has(this._observableProps.observers, event) ) {
-               log.warn('Observable.observe: invalid event type %s', event);
-            }
-            else {
-               this._observableProps.observers[event].push(obs);
-               this._observableProps.onAdd(event, obs);
-            }
+            var obs = new util.Observer(this, event, callback, scope, cancelFn);
+            this._observableProps.observers[event].push(obs);
+            this._observableProps.onAdd(event, obs);
+            this.isOneTimeEvent(event) && checkOneTimeEvents(event, this._observableProps, obs);
          }
          return obs;
       },
@@ -99,7 +95,7 @@
        */
       getObservers: function(events) {
          events = util.Args('getObservers', arguments).listFrom(this._observableProps.eventsMonitored, true);
-         return getObserversFor(this._observableProps.observers, events);
+         return getObserversFor(this._observableProps, events);
       },
 
       triggerEvent: function(event) {
@@ -108,13 +104,20 @@
          var passThruArgs = args.restAsList();
          if( events ) {
             util.each(events, function(e) {
+               if( this.isOneTimeEvent(event) ) {
+                  if( util.isArray(this._observableProps.oneTimeResults, event) ) {
+                     log.warn('One time event was triggered twice, should by definition be triggered once', event);
+                     return;
+                  }
+                  this._observableProps.oneTimeResults[event] = passThruArgs;
+               }
                var observers = this.getObservers(e), ct = 0;
    //            log('triggering %s for %d observers with args', event, observers.length, args, onEvent);
                util.each(observers, function(obs) {
-                  obs.notify.apply(obs, passThruArgs);
+                  obs.notify.apply(obs, passThruArgs.slice(0));
                   ct++;
                });
-               this._observableProps.onEvent.apply(null, [e, ct].concat(passThruArgs));
+               this._observableProps.onEvent.apply(null, [e, ct].concat(passThruArgs.slice(0)));
             }, this);
          }
       },
@@ -123,6 +126,25 @@
          util.each(this._observableProps.eventsMonitored, function(key) {
             this._observableProps.observers[key] = [];
          }, this);
+      },
+
+      isOneTimeEvent: function(event) {
+         return util.contains(this._observableProps.oneTimeEvents, event);
+      },
+
+      observeOnce: function(event, callback, cancelFn, scope) {
+         var args = util.Args('observeOnce', arguments, 2, 4);
+         event = args.nextFromWarn(this._observableProps.eventsMonitored);
+         if( event ) {
+            callback = args.nextReq('function');
+            cancelFn = args.next('function');
+            scope = args.next('object');
+            var obs = new util.Observer(this, event, callback, scope, cancelFn, true);
+            this._observableProps.observers[event].push(obs);
+            this._observableProps.onAdd(event, obs);
+            this.isOneTimeEvent(event) && checkOneTimeEvents(event, this._observableProps, obs);
+         }
+         return obs;
       }
    };
 
@@ -135,17 +157,25 @@
       });
    }
 
-   function getObserversFor(allObservers, events) {
+   function getObserversFor(props, events) {
       var out = [];
       util.each(events, function(event) {
-         if( !util.has(allObservers, event) ) {
+         if( !util.has(props.observers, event) ) {
             log.warn('Observable.hasObservers: invalid event type %s', event);
          }
-         else if( allObservers[event].length ) {
-            out = out.concat(allObservers[event]);
+         else {
+            if( props.observers[event].length ) {
+               out = out.concat(props.observers[event]);
+            }
          }
-      }, this);
+      });
       return out;
+   }
+
+   function checkOneTimeEvents(event, props, obs) {
+      if( util.has(props.oneTimeResults, event) ) {
+         obs.notify.apply(obs, props.oneTimeResults[event]);
+      }
    }
 
    util.Observable = Observable;

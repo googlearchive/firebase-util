@@ -45,7 +45,7 @@
       },
 
       _loadData: function(data) {
-         return util.isEmpty(data)? null : (util.isObject(data) && util.isEqual(util.keys(data), ['.value'])? data['.value'] : data);
+         return util.isEmpty(data)? null : (util.has(data, '.value') && util.keys(data).length === 1? data['.value'] : data);
       }
    };
 

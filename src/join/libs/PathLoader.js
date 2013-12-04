@@ -8,8 +8,9 @@
     * @constructor
     */
    function PathLoader(rawPathData) {
-      var childKey, pathSearch, sourcePaths;
+      var childKey;
       this._assertValidPaths(rawPathData);
+      this.finalPaths = [];
 
       if( isChildPathArgs(rawPathData) ) {
          // occurs when loading child paths from a JoinedRecord, which
@@ -18,49 +19,32 @@
          this.refName = rawPathData[0];
          this.rootRef = this.joinedParent.rootRef;
          childKey = this.refName;
-         pathSearch = !!this.joinedParent.joinedParent;
-         pathSearch || (sourcePaths = buildPaths(this.joinedParent.paths));
+         // when we load a child of a child, it's not possible to determine which
+         // branch the child comes off of until after the parent loads its keys
+         // so we do a little dance magic here to determine which parent it comes from
+         if( this.joinedParent.joinedParent ){
+            this.queue = this._loadDeepChild(childKey);
+         }
+         else {
+            this.queue = this._loadRecord(childKey);
+         }
       }
       else {
-         sourcePaths = buildPaths(rawPathData);
-         this.refName = makeMasterName(sourcePaths);
-         this.rootRef = sourcePaths[0].ref().root();
+         this.finalPaths = buildPaths(rawPathData);
+         this.refName = makeMasterName(this.finalPaths);
+         this.rootRef = this.finalPaths[0].ref().root();
+         this.queue = util.createQueue(pathCallbacks(this.finalPaths));
       }
 
-//      console.log('PathLoader', this.refName+'/'+childKey, rawPathData.length, !!this.joinedParent, pathSearch);
-
-      // when we load a child of a child, it's not possible to determine which
-      // branch the child comes off of until after the parent loads its keys
-      // so we do a little dance magic here to determine which parent it comes from
-      if( pathSearch ) {
-         this.finalPaths = [];
-         this.intersections = [];
-         this.q = this._performPathSearch(childKey);
-      }
-      else {
-         this.finalPaths = simplePaths(sourcePaths, childKey);
+      this.queue.done(function() {
          this.intersections = intersections(this.finalPaths);
          this.sortPath = findSortPath(this.finalPaths, this.intersections);
-         this.q = util.createQueue(pathCallbacks(this.finalPaths));
-      }
-
-      this.q.done(function() {
-         reconcilePathKeys(this.finalPaths);
          this._assertSortPath();
+         reconcilePathKeys(this.finalPaths);
       }, this);
    }
 
    PathLoader.prototype = {
-
-      done: function(fn, ctx) {
-         this.q.done(fn, ctx);
-         return this;
-      },
-
-      fail: function(fn, ctx) {
-         this.q.fail(fn, ctx);
-         return this;
-      },
 
       _assertValidPaths: function(paths) {
          if( !paths || !paths.length ) {
@@ -88,46 +72,50 @@
          }
       },
 
-      _performPathSearch: function(childKey) {
+      _loadDeepChild: function(childKey) {
          return util.createQueue()
             .addCriteria(function(cb) {
                this.joinedParent.queue.done(function() {
                   var parentPath = searchForParent(this.joinedParent.paths, childKey);
-                  if( parentPath ) {
-                     if( parentPath.isDynamicChild(childKey) ) {
-                        parentPath.dynamicChild(childKey, function(path) {
-                           this._finalizeSearchPath(path);
-                           cb();
-                        }, this);
-                     }
-                     else {
-                        this._finalizeSearchPath(parentPath.child(childKey));
-                        cb();
-                     }
+                  if( parentPath.isDynamic() ) {
+                     this.finalPaths.push(new join.Path({
+                        ref: parentPath.ref()||parentPath.props.ref.push(),
+                        keyMap: {'.value': '.value'}
+                     }, parentPath));
                   }
+                  else {
+                     this.finalPaths.push(parentPath.child(childKey));
+                  }
+                  cb();
                }, this);
             }, this);
       },
 
-      _finalizeSearchPath: function(path) {
-         if( path ) {
-            this.sortPath = path;
-            this.finalPaths.push(this.sortPath);
-            this.sortPath.isIntersection() && this.intersections.push(this.sortPath);
-         }
+      _loadRecord: function(childKey) {
+         var q = util.createQueue();
+         var finalPaths = this.finalPaths;
+         var joinedParent = this.joinedParent;
+         q.addCriteria(function(cb) {
+            joinedParent.queue.done(function() {
+               util.each(joinedParent.paths, function(parentPath) {
+                  var childPath = parentPath.child(childKey);
+                  finalPaths.push(childPath);
+                  util.each(parentPath.getDynamicKeys(), function(path, key) {
+                     var aliasedKey = parentPath.aliasedKey(key);
+                     childPath.removeConflictingKey(key);
+                     finalPaths.push(path.dynamicChild(childPath.child(key).ref(), aliasedKey));
+                  })
+               });
+               util.createQueue(pathCallbacks(finalPaths)).done(cb);
+            });
+         }, this);
+         return q;
       }
    };
 
    function buildPaths(paths) {
       return util.map(paths, function(props) {
          return props instanceof join.Path? props : new join.Path(props);
-      })
-   }
-
-   function simplePaths(paths, childKey) {
-      var b = !util.isEmpty(childKey);
-      return util.map(paths, function(p) {
-         return b? p.child(childKey) : p;
       })
    }
 
@@ -150,7 +138,7 @@
    function pathCallbacks(paths) {
       return util.map(paths, function(path) {
          return function(cb) {
-            path.observe('keyMapLoaded', cb.bind(null, null));
+            path.observeOnce('keyMapLoaded', cb.bind(null, null));
          }
       });
    }
