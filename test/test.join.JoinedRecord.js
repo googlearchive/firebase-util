@@ -442,6 +442,7 @@ describe('join.JoinedRecord', function() {
             var ref = createJoinedRecord('users/account', 'users/profile'), vals = ['bruce', 'kato'];
             ref.on('child_added', function(snap) {
                expect(snap.name()).to.equal(vals.shift());
+               if( vals.length === 0 ) { done(); }
             });
          });
       });
@@ -631,23 +632,81 @@ describe('join.JoinedRecord', function() {
                .then(function() {
                   expect(spy).to.have.been.called;
                   var data = spy.args[0][0].val();
+                  expect(spy.args[0][0].name()).to.equal('kato');
                   expect(data).to.be.an('object');
                   expect(data.style).to.eql({ description: 'foobar' });
                })
                .testDone(done);
          });
 
-         it('should trigger "child_changed" on master if dynamic keymap data is removed');
+         it('should trigger "child_changed" on master if dynamic keymap data is removed', function(done) {
+            var spy = sinon.spy();
+            var rec = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: helpers.ref('users/styles')
+            }});
 
-         it('should trigger "child_changed" on master if dynamic keymap data is changed');
+            rec.on('child_changed', spy);
+            rec.on('value', function() {
+               helpers.remove('users/styles/Jeet Kune Do');
+            });
 
-         it('should trigger "child_added" if dynamic keymap data is added');
+            helpers
+               .chain()
+               .until(function() { return spy.callCount > 0 })
+               .then(function() {
+                  expect(spy).to.have.been.called;
+                  var data = spy.args[0][0].val();
+                  expect(spy.args[0][0].name()).to.equal('bruce');
+                  expect(data).to.be.an('object');
+                  expect(data.style).to.be.undefined;
+               })
+               .testDone(done);
+         });
 
-         it('should trigger "child_changed" if dynamic keymap data is changed');
+         it('should trigger "child_changed" on master if dynamic keymap data is changed', function(done) {
+            var spy = sinon.spy();
+            var rec = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: helpers.ref('users/styles')
+            }});
 
-         it('should trigger "child_removed" if dynamic keymap data is removed');
+            rec.on('child_changed', spy);
+            rec.on('value', function() {
+               helpers.set('users/styles/Jeet Kune Do/description', 'foobar');
+            });
 
-         it('should use aliasedKey if provided');
+            helpers
+               .chain()
+               .until(function() { return spy.callCount > 0 })
+               .then(function() {
+                  expect(spy).to.have.been.called;
+                  var data = spy.args[0][0].val();
+                  expect(spy.args[0][0].name()).to.equal('bruce');
+                  expect(data).to.be.an('object');
+                  expect(data).to.contain.key('style');
+                  expect(data.style.description).to.eql('foobar');
+               })
+               .testDone(done);
+         });
+
+         it('should use aliasedKey if provided', function(done) {
+            var rec = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: {ref: helpers.ref('users/styles'), aliasedKey: 'stylez'}
+            }});
+            rec.on('value', function(snap) {
+               var data = snap.val();
+               expect(data).to.be.an('object');
+               expect(data).to.have.keys(['bruce', 'kato']);
+               expect(data.kato).to.contain.key('stylez');
+               expect(data.kato.stylez).to.contain.key('description');
+               done();
+            })
+         });
 
          it('should load primitives from a dynamic path the same as objects', function(done) {
             var ref = createJoinedRecord({ref: helpers.ref('unions/dynamic'), keyMap: {
@@ -1173,7 +1232,10 @@ describe('join.JoinedRecord', function() {
             .chain()
             .pause()
             .get('users') // wait for data
-            .pause(function() {
+            .until(function() {
+               return spy.callCount > 0;
+            })
+            .then(function() {
                expect(spy).calledOnce;
                var val = spy.args[0][0] && spy.args[0][0].val();
                expect(val).keys(['bruce', 'kato']);
