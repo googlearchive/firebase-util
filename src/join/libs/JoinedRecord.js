@@ -347,7 +347,7 @@
          this._assertIsParent('_addChildRec');
          var childName = rec.name();
          if( rec.currentValue !== null && !this._isChildLoaded(childName) ) {
-            log('JoinedRecord(%s) Added child rec %s after %s', rec, this.name(), prevName);
+            log('JoinedRecord(%s) Added child rec %s after %s', this.name(), rec.name(), prevName);
             // the record is new and has already loaded its value and no intersection path returned null,
             // so now we can add it to our child recs
             this._placeRecAfter(rec, prevName);

@@ -204,7 +204,7 @@ helpers.turnOffAfterTest = function(ref) {
  */
 helpers.wait = function(callback, milliseconds) {
    if( typeof(callback) === 'number' ) {
-      milliseconds = callback;
+      milliseconds = arguments[0];
       callback = null;
    }
    return JQDeferred(function(def) {
@@ -225,11 +225,48 @@ helpers.wait = function(callback, milliseconds) {
 };
 
 /**
+ * Wait until the condition is met or for maxWait (2 seconds)
+ */
+helpers.until = function(checkFn, maxWait) {
+   return JQDeferred(function(def) {
+      var cto = setTimeout(finish, maxWait||2000);
+      var ito = setInterval(function() {
+         if( checkFn() ) { finish(); }
+      }, 25);
+      function finish() {
+         clearTimeout(cto);
+         clearTimeout(ito);
+         def.resolve();
+      }
+   });
+};
+
+/**
+ * Wait for condition to be met or reject after maxWait (2 seconds)
+ */
+helpers.untilOrFail = function(checkFn, maxWait) {
+   return JQDeferred(function(def) {
+      var cto = setTimeout(fail, maxWait||2000);
+      var ito = setInterval(function() {
+         if( checkFn() ) { finish(); }
+      }, 25);
+      function fail() {
+         clearTimeout(ito);
+         def.reject(fb.util.printf('untilOrFail never completed (timed out at %s)', maxWait));
+      }
+      function finish() {
+         clearTimeout(cto);
+         def.resolve();
+      }
+   });
+};
+
+/**
  * A wrapper on wait() that defaults to a short pause rather than 0
  * @param callback
  */
 helpers.pause = function(callback) {
-   return helpers.wait(callback, 250);
+   return helpers.wait(callback, 100);
 };
 
 /**

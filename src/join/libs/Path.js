@@ -428,7 +428,7 @@
          }
          q.done(function() {
             out = parseValue(out);
-            log.debug('Path(%s) _parseRecord %s: %j', this.name(), snap.name(), out);
+//            log('Path(%s) _parseRecord %s: %j', this.name(), snap.name(), out);
             callback.call(scope, out, snap);
          }, this);
          return callback;
@@ -531,14 +531,19 @@
       },
 
       _observeNewSourcePath: function(pathKey) {
-         var firstCall = this.props.dynamicKey === undefined;
-         var events = util.keys(this.subs);
-         util.each(events, this._stopObserving, this);
-         this.props.dynamicKey = pathKey;
-         if( pathKey !== null ) {
-            assertValidFirebaseKey(pathKey);
-            firstCall && this.triggerEvent('dynamicKeyLoaded', pathKey);
-            util.each(events, this._startObserving, this);
+         if( pathKey !== this.props.dynamicKey ) {
+            var oldPath = this.props.dynamicKey;
+            var firstCall = oldPath === undefined;
+            var events = util.keys(this.subs);
+            util.each(events, this._stopObserving, this);
+            firstCall || log('Path(%s) stopped observing dynamic key %s', this.name(), oldPath);
+            this.props.dynamicKey = pathKey;
+            if( pathKey !== null ) {
+               assertValidFirebaseKey(pathKey);
+               log('Path(%s) observing dynamic key %s', this.name(), pathKey);
+               firstCall && this.triggerEvent('dynamicKeyLoaded', pathKey);
+               util.each(events, this._startObserving, this);
+            }
          }
       },
 

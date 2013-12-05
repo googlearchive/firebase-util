@@ -442,9 +442,6 @@ describe('join.JoinedRecord', function() {
             var ref = createJoinedRecord('users/account', 'users/profile'), vals = ['bruce', 'kato'];
             ref.on('child_added', function(snap) {
                expect(snap.name()).to.equal(vals.shift());
-               if( vals.length === 0 ) {
-                  setTimeout(done, 100);
-               }
             });
          });
       });
@@ -507,9 +504,7 @@ describe('join.JoinedRecord', function() {
                done();
             });
             helpers.ref('users/profile').once('value', function(){
-               setTimeout(function() {
-                  helpers.ref('users/profile/bruce/nick').remove();
-               }, 50);
+               helpers.ref('users/profile/bruce/nick').remove();
             });
          });
 
@@ -522,9 +517,7 @@ describe('join.JoinedRecord', function() {
                done();
             });
             helpers.ref('users/profile').once('value', function(){
-               setTimeout(function() {
-                  helpers.ref('users/profile/bruce/nick').set('littledragon');
-               }, 50);
+               helpers.ref('users/profile/bruce/nick').set('littledragon');
             });
          });
 
@@ -536,9 +529,7 @@ describe('join.JoinedRecord', function() {
                done();
             });
             helpers.ref('users/profile').once('value', function(){
-               setTimeout(function() {
-                  helpers.ref('users/profile/bruce/name').setPriority(10);
-               }, 50);
+               helpers.ref('users/profile/bruce/name').setPriority(10);
             });
          });
       });
@@ -590,7 +581,6 @@ describe('join.JoinedRecord', function() {
             });
          });
 
-         //todo-test
          it('should only call "value" once when using dynamic keyMap ref', function(done) {
             var cancelSpy = sinon.spy(), count = 0, to;
             var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
@@ -605,7 +595,7 @@ describe('join.JoinedRecord', function() {
                count++;
                to && clearTimeout(to);
                to = null;
-               setTimeout(finished, 750);
+               setTimeout(finished, 250);
             }, cancelSpy);
 
             function finished() {
@@ -618,19 +608,44 @@ describe('join.JoinedRecord', function() {
 
          });
 
-         it.skip('should call "child_changed" on master if dynamic keymap data is added', function(done) {
+         it('should trigger "child_changed" on master if dynamic keymap data is added', function(done) {
+            var spy = sinon.spy();
+            var ref = createJoinedRecord('users/account', {ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: helpers.ref('users/styles')
+            }});
 
+            helpers.chain()
+               .remove('users/styles/Kung Fu')
+               .def(function(def) {
+                  ref.once('value', function(){
+                     ref.on('child_changed', spy, done);
+                     def.resolve();
+                  }, def.reject)
+               })
+               .set('users/styles/Kung Fu/description', 'foobar')
+               .until(function() {
+                  return spy.callCount > 0;
+               })
+               .then(function() {
+                  expect(spy).to.have.been.called;
+                  var data = spy.args[0][0].val();
+                  expect(data).to.be.an('object');
+                  expect(data.style).to.eql({ description: 'foobar' });
+               })
+               .testDone(done);
          });
 
-         it('should call "child_changed" on master if dynamic keymap data is removed');
+         it('should trigger "child_changed" on master if dynamic keymap data is removed');
 
-         it('should call "child_changed" on master if dynamic keymap data is changed');
+         it('should trigger "child_changed" on master if dynamic keymap data is changed');
 
-         it('should call "child_added" if dynamic keymap data is added');
+         it('should trigger "child_added" if dynamic keymap data is added');
 
-         it('should call "child_changed" if dynamic keymap data is changed');
+         it('should trigger "child_changed" if dynamic keymap data is changed');
 
-         it('should call "child_removed" if dynamic keymap data is removed');
+         it('should trigger "child_removed" if dynamic keymap data is removed');
 
          it('should use aliasedKey if provided');
 
