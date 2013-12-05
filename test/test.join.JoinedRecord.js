@@ -170,9 +170,7 @@ describe('join.JoinedRecord', function() {
                done();
             });
             rec.once('value', function(snap) {
-               helpers.wait(function() {
-                  helpers.ref('users/profile/kato/nick').set('Kato!');
-               }, 100);
+               helpers.ref('users/profile/kato/nick').set('Kato!');
             });
          });
 
@@ -204,9 +202,7 @@ describe('join.JoinedRecord', function() {
 
             function rem(path) {
                return JQDeferred(function(def) {
-                  helpers.chain().remove(path).wait(function() {
-                     def.resolve();
-                  }, 10);
+                  helpers.remove(path).then(def.resolve);
                });
             }
 
@@ -940,7 +936,6 @@ describe('join.JoinedRecord', function() {
             rec.on('child_removed', spy);
             rec.once('value', function(snap) {
                var keys = fb.util.keys(snap.val());
-               var count = 0, needed = 0;
                sinon.assert.callCount(spy, 0);
                var chain = helpers.chain();
                fb.util.each(keys, function(key, i) {
@@ -963,12 +958,13 @@ describe('join.JoinedRecord', function() {
             var spy = sinon.spy();
             var rec = createJoinedRecord('arrays/french', 'arrays/english');
             rec.on('child_moved', spy);
-            rec.once('value', function(snap) {
+            rec.once('value', function() {
                sinon.assert.callCount(spy, 0);
                helpers
                   .chain()
                   .setPriority('arrays/french/1', 25)
-                  .wait(function(){
+                  .until(function() { return spy.callCount > 0 })
+                  .then(function(){
                      sinon.assert.callCount(spy, 1);
                      expect(spy.args[0][0].name()).to.equal('1');
                   })
@@ -985,7 +981,8 @@ describe('join.JoinedRecord', function() {
                helpers
                   .chain()
                   .set('arrays/english/2', 'twotwo')
-                  .wait(function(){
+                  .until(function() { return spy.callCount > 0 })
+                  .then(function(){
                      sinon.assert.callCount(spy, 1);
                      var snap = spy.args[0][0];
                      expect(snap.name()).to.equal('2');
@@ -1141,7 +1138,7 @@ describe('join.JoinedRecord', function() {
          createJoinedRecord('users/account', 'users/profile').once('value', spy);
          helpers.chain()
             .get('users')
-            .wait(function() {
+            .pause(function() {
                expect(spy).calledOnce;
                expect(spy.args[0][0].val()).to.eql({
                   "bruce": {
