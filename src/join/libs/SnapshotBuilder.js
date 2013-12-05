@@ -69,7 +69,7 @@
                dat = mergeValue(this.pendingPaths, this.valueParts);
             }
             this.snapshot = new join.JoinedSnapshot(this.rec, dat);
-            log.debug('SnapshotBuilder: Finalized snapshot "%s": "%j"', this.rec, this.snapshot.val(), dat);
+            log.debug('SnapshotBuilder: Finalized snapshot "%s": %j', this.rec, this.snapshot.val());
             this._notify();
          }
       },
