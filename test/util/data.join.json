@@ -48,6 +48,12 @@
          "b": "broccoli",
          "d": "daikon raddish",
          "e": "elephant garlic"
+      },
+      "dynamic": {
+         "a_": { "fruit": "a", "legume": "a" },
+         "b_": { "fruit": "b", "legume": "b", "veggie": "b" },
+         "c_": { "fruit": "c" },
+         "d_": { "veggie": "d" }
       }
    },
 
@@ -64,7 +70,7 @@
          "two":   { ".value": 22, ".priority": 22 },
          "three": { ".value": 33, ".priority": 33 },
          "four":  { ".value": 44, ".priority": 44 },
-         "five":  { ".value": 0, ".priority": 0 }
+         "five":  { ".value": 0,  ".priority": 0 }
       }
    },
 

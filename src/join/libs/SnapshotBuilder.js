@@ -216,9 +216,7 @@
          if( rec.joinedParent ) {
             out = {};
             util.each(rec.paths, function(path) {
-//               console.log('adding path', path.toString(), path.getKeyMap()); //debug
                path.eachKey(data, function(sourceKey, aliasedKey, value) {
-//                  console.log('eachKey', sourceKey, aliasedKey, value); //debug
                   if( value === null ) { return; }
                   if( path.hasDynamicChild(sourceKey) ) {
                      out['.id:'+aliasedKey] = value;

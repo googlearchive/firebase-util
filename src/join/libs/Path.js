@@ -393,9 +393,16 @@
          var out = {}, self = this;
          var q = util.createQueue();
          parentSnap.forEach(function(recSnap) {
+            var aliasedKey = recSnap.name();
+            out[aliasedKey] = null; // placeholder to enforce ordering
             q.addCriteria(function(cb) {
                self._parseRecord(recSnap, function(childData) {
-                  childData === null || (out[recSnap.name()] = childData);
+                  if( childData === null ) {
+                     delete out[aliasedKey];
+                  }
+                  else {
+                     out[aliasedKey] = childData;
+                  }
                   cb();
                })
             })
@@ -430,14 +437,17 @@
       _parseValue: function(queue, out, snap, sourceKey, aliasedKey, value) {
          if( value !== null ) {
             if( this.hasDynamicChild(sourceKey) ) {
+               out[aliasedKey] = null; // placeholder for sorting
                out['.id:'+aliasedKey] = value;
                queue.addCriteria(function(cb) {
-                  this._parseDynamicChild(
-                     snap,
-                     sourceKey,
-                     aliasedKey,
+                  this._parseDynamicChild(snap, sourceKey, aliasedKey,
                      function(dynData) {
-                        util.isObject(dynData) && (out[aliasedKey] = dynData);
+                        if( dynData === null ) {
+                           delete out[aliasedKey];
+                        }
+                        else {
+                           out[aliasedKey] = dynData;
+                        }
                         cb();
                      });
                }, this);

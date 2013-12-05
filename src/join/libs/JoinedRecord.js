@@ -524,10 +524,10 @@
          return this.joinedParent? undefined : this.childRecs[keyName];
       },
 
-      _loadCachedChildren: function() {
+      _loadCachedChildren: function(newValue) {
          this._assertIsParent('_loadCachedChildren');
          var prev = null;
-         util.each(this.currentValue, function(v, k) {
+         util.each(newValue, function(v, k) {
             if( !this._isChildLoaded(k) ) {
                var rec = this.child(k);
                rec.currentValue = v;

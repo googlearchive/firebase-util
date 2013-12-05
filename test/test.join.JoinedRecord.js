@@ -632,7 +632,56 @@ describe('join.JoinedRecord', function() {
 
          it('should call "child_removed" if dynamic keymap data is removed');
 
-         it('should load primitives from a dynamic path the same as objects');
+         it('should use aliasedKey if provided');
+
+         it('should load primitives from a dynamic path the same as objects', function(done) {
+            var ref = createJoinedRecord({ref: helpers.ref('unions/dynamic'), keyMap: {
+               'fruit': helpers.ref('unions/fruit'),
+               'legume': helpers.ref('unions/legume'),
+               'veggie': helpers.ref('unions/veggie')
+            }});
+
+            var cancelSpy = sinon.spy(), count = 0, to;
+
+            ref.on('value', function(snap) {
+               expect(snap.val()).to.eql({
+                  "a_": {
+                     ".id:fruit": "a",
+                     "fruit": "apple",
+                     ".id:legume": "a"
+                  },
+                  "b_": {
+                     ".id:fruit": "b",
+                     "fruit": "banana",
+                     ".id:legume": "b",
+                     "legume": "baked beans",
+                     ".id:veggie": "b",
+                     "veggie": "broccoli"
+                  },
+                  "c_": {
+                     ".id:fruit": "c"
+                  },
+                  "d_": {
+                     ".id:veggie": "d",
+                     "veggie": "daikon raddish"
+                  }
+               });
+               // debounce every time this method is called to give sufficient time for
+               // a repeat to occur before we assume success
+               count++;
+               to && clearTimeout(to);
+               to = null;
+               setTimeout(finished, 250);
+            }, cancelSpy);
+
+            function finished() {
+               ref.off();
+               to && clearTimeout(to);
+               expect(count).to.equal(1);
+               expect(cancelSpy).not.called;
+               done();
+            }
+         });
       });
 
 
