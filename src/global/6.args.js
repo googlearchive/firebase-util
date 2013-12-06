@@ -25,9 +25,18 @@
 
    Args.prototype = {
       /**
+       * Grab the original list of args
        * @return {Array} containing the original arguments
        */
       orig: function() { return this.origArgs.slice(0); },
+
+      /**
+       * Return whatever args remain as a list
+       * @returns {Array|string|Buffer|Blob|*}
+       */
+      restAsList: function() {
+         return this.argList.slice(0);
+      },
 
       /**
        * Advance the argument list by one and discard the value
@@ -104,7 +113,7 @@
        * which will be coerced into an array). All values in the argument must be in choices or they are removed
        * from the choices and a warning is logged. If no valid value is present, return defaultValue.
        * @param {Array} choices a list of allowed values
-       * @param [defaultValue]
+       * @param [defaultValue] a set of defaults, setting this to true uses the `choices` as default
        */
       listFrom: function(choices, defaultValue) {
          return this._list(choices, defaultValue, false);
@@ -115,7 +124,7 @@
        * which will be coerced into an array). All values in the argument must be in choices or they are removed
        * from the choices and a warning is logged. If no valid value is present, return defaultValue and log a warning.
        * @param {Array} choices a list of allowed values
-       * @param [defaultValue]
+       * @param [defaultValue] a set of defaults, setting this to true uses the `choices` as default
        */
       listFromWarn: function(choices, defaultValue) {
          return this._list(choices, defaultValue, 'warn');
@@ -129,10 +138,6 @@
        */
       listFromReq: function(choices) {
          return this._list(choices, null, true);
-      },
-
-      restAsList: function() {
-         return this.argList.slice(0);
       },
 
       _arg: function(types, defaultValue, required) {

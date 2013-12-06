@@ -10,10 +10,10 @@ A JoinedRecord can be used anywhere a normal Firebase reference would work, incl
  - [Usage](#usage)
     - [Writing data: set, update, remove, and push](#writing_data)
     - [Working with primitives](#working_with_primitives)
-    - [Dynamic child paths](#dynamic_path_names)
     - [Dealing with conflicting fields (key maps)](#keymaps)
     - [Queries: limit, startAt, and endAt](#queries)
     - [Configuration options](#configuration_options)
+    - [Dynamic paths as keys](#dynamic_path_names)
  - [Limitations](#limitations)
  - [Troubleshooting and Help](#troubleshooting)
  - [API](#api)
@@ -172,11 +172,40 @@ ref.once('value', ...);
 ```
 
 Note that, because we declared a keyMap for the first ref, but didn't include email, it doesn't exist in the results.
-Thus, a keymap could also be used to filter data added into the join. Be careful using this in conjunction with set()
-as values not in the keyMap are removed!
+Thus, a keymap could also be used to filter data added into the join.
+
+Be careful using this in conjunction with set() as values not in the keyMap are removed on set ops! (You can use
+update() to avoid this)
+
+<a name="queries"></a>
+## Queries: limit, startAt, and endAt
+
+If you attempt to call limit(), startAt(), or endAt() on a [JoinedRecord](#api_joinedrecord) it will throw an Error.
+The desired behavior is very difficult to define in a global manner. (Feel free to send feedback if you come up
+with some applicable use cases! wulf@firebase.com)
+
+You can use query operations on a Firebase reference before passing it into the join/union/intersection methods. However,
+ this probably only makes sense for intersecting paths, and probably only if exactly one path has these constraints. Otherwise,
+ results are likely to contain logically senseless unions of unmatched data.
+
+```javascript
+var indexRef = new Firebase('URL/index_path').limit(10);
+Firebase.Util.intersection( indexRef, new Firebase('URL/data_path') );
+```
+
+<a name="configuration_options"></a>
+## Configuration options
+
+The `paths` elements passed to the FirebaseJoin constructor contain a Firebase ref, a function, or a hash.
+The hash is structured as follows:
+
+   - **ref**: {Firebase|Function} (required!) ref to the parent path for this set of records
+   - **intersects**: {boolean} defaults to false, if true the join will only contain records that exist for (i.e. intersect) this path
+   - **sortBy**: {boolean} sort records using this path's data?
+   - **keyMap**: {Array|Object} map fields specific to each Firebase ref, see [key maps](#keymaps)
 
 <a name="dynamic_path_names"></a>
-## Dynamic Child Paths
+## Dynamic Paths as Keys
 
 To include records from paths which don't have matching key hierarchies, a Firebase ref can
 be put into the keyMap. It will be loaded when the source path is loaded and its contents put into the key.
@@ -235,60 +264,50 @@ ref.on('value', ...);
 // }
 ```
 
-### Setting dynamic path data
+### Aliasing dynamic keys
 
-We can set the key for a dynamic path with an object containing `.id`:
-
-```javascript
-// all of these work
-ref.update({style: {'.id': 'MMA'}});
-ref.child('style').set({'.id': 'MMA'});
-```
-
-We can set the data in a dynamic path by setting it normally. All set ops must include the ID!:
+Dynamic keys can be aliased like any other key by passing an object and adding an `aliasedKey` property:
 
 ```javascript
-ref.update({style: {description: 'Mixed Martial Arts'}});
-
-// also works great
-ref.child('style').set({description: 'Mixed Martial Arts'});
+Firebase.Util.join(
+   new Firebase('INSTANCE/account'),
+   {
+      ref: new Firebase('INSTANCE/profile'),
+      keyMap: {
+         name: 'name',
+         nick: 'nick',
+         style: { ref: new Firebase('INSTANCE/styles'), aliasedKey: 'dojo' }
+      }
+   }
+);
 ```
 
-We can also do both at the same time:
+### Setting dynamic data
+
+We can set the key for a dynamic path by using the special `.id:<field_name>` property:
 
 ```javascript
-ref.update({style: {'.id': 'MMA', description: 'Mixed Martial Arts'}});
-
-// or for a primitive...
-ref.update({widget: {'.id': 'blue', '.value': 'I am blue'});
+ref.update({'.id:style': 'MMA'}); // Kato the Tank Abbot!
 ```
 
-<a name="queries"></a>
-## Queries: limit, startAt, and endAt
-
-If you attempt to call limit(), startAt(), or endAt() on a [JoinedRecord](#api_joinedrecord) it will throw an Error.
-The desired behavior is very difficult to define in a global manner. (Feel free to send feedback if you come up
-with some applicable use cases! wulf@firebase.com)
-
-You can use query operations on a Firebase reference before passing it into the join/union/intersection methods. However,
- this probably only makes sense for intersecting paths, and probably only if exactly one path has these constraints. Otherwise,
- results are likely to contain logically senseless unions of unmatched data.
+By default, the data in a dynamic key is READ ONLY. Thus, it is not synced during set/update/etc ops.
+To set a dynamic child's data, call .child() with the key:
 
 ```javascript
-var indexRef = new Firebase('URL/index_path').limit(10);
-Firebase.Util.intersection( indexRef, new Firebase('URL/data_path') );
+var ref = Firebase.Util.join(
+   new Firebase('INSTANCE/account'),
+   {
+      ref: new Firebase('INSTANCE/profile'),
+      keyMap: {
+         name: 'name',
+         nick: 'nick',
+         style: new Firebase('INSTANCE/styles')
+      }
+   }
+);
+
+ref.child('kato/style').set({description: 'Mixed Martial Arts'});
 ```
-
-<a name="configuration_options"></a>
-## Configuration options
-
-The `paths` elements passed to the FirebaseJoin constructor contain a Firebase ref, a function, or a hash.
-The hash is structured as follows:
-
-   - **ref**: {Firebase|Function} (required!) ref to the parent path for this set of records
-   - **intersects**: {boolean} defaults to false, if true the join will only contain records that exist for (i.e. intersect) this path
-   - **sortBy**: {boolean} sort records using this path's data?
-   - **keyMap**: {Array|Object} map fields specific to each Firebase ref, see [key maps](#keymaps)
 
 <a name="limitations"></a>
 # LIMITATIONS

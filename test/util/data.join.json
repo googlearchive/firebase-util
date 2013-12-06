@@ -34,6 +34,13 @@
       }
    },
 
+   "union_index": {
+      "a_": { "fruit":  "a", "legume": "a" },
+      "b_": { "fruit":  "b", "legume": "b", "veggie": "b" },
+      "c_": { "fruit":  "c" },
+      "d_": { "veggie": "d" }
+   },
+
    "unions": {
       "fruit": {
          "a": "apple",
@@ -48,12 +55,6 @@
          "b": "broccoli",
          "d": "daikon raddish",
          "e": "elephant garlic"
-      },
-      "dynamic": {
-         "a_": { "fruit": "a", "legume": "a" },
-         "b_": { "fruit": "b", "legume": "b", "veggie": "b" },
-         "c_": { "fruit": "c" },
-         "d_": { "veggie": "d" }
       }
    },
 

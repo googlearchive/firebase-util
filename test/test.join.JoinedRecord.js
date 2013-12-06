@@ -705,7 +705,7 @@ describe('join.JoinedRecord', function() {
          });
 
          it('should load primitives from a dynamic path the same as objects', function(done) {
-            var ref = createJoinedRecord({ref: helpers.ref('unions/dynamic'), keyMap: {
+            var ref = createJoinedRecord({ref: helpers.ref('union_index'), keyMap: {
                'fruit': helpers.ref('unions/fruit'),
                'legume': helpers.ref('unions/legume'),
                'veggie': helpers.ref('unions/veggie')
@@ -1340,7 +1340,7 @@ describe('join.JoinedRecord', function() {
       });
   });
 
-   describe.skip('#set', function() { //todo-test
+   describe('#set', function() {
       it('should invoke callback when done', function(done) {
          var newData = { mary: { name: 'had', email: 'a@a.com', nick: 'little lamb' } };
          var rec = createJoinedRecord('users/account', 'users/profile');
@@ -1549,7 +1549,6 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should accept array', function(done) {
-         helpers.debugThisTest();
          var newVals = [
             { numero: 'cerocero', english: 'zerozero' },
             { numero: 'unouno', english: 'oneone' },
@@ -1637,6 +1636,7 @@ describe('join.JoinedRecord', function() {
                a: { fruit: 'aaa', legume: 'aab' },
                b: { legume: 'bbb' },
                c: null
+               // d is implied null by its absence
             }, function(err) {
                expect(err).to.be.null;
                helpers
@@ -1675,7 +1675,7 @@ describe('join.JoinedRecord', function() {
             })
       });
 
-      it.skip('should create dynamic keyMap data from master id .id given', function(done) {
+      it('should not write to dynamic data from a parent path (dynamic keys are read only)', function(done) {
          createJoinedRecord(
             'users/account',
             {
@@ -1684,45 +1684,69 @@ describe('join.JoinedRecord', function() {
                nick: 'nick',
                style: helpers.ref('users/style')
             }
-         }).set(
-            {
-               mary: {
-               email: 'mary@mary.com',
-               name: 'Mary',
-               nick: 'Bo Peep',
-               style: { '.id': 'sheep fu', description: 'Tai Kwan Leap' }
-            }
-         }, function(err) {
-            expect(err).to.be.null;
-            helpers
-               .chain()
-               .get('users/styles/sheep fu')
-               .then(function(data) {
-                  expect(data).to.equal({description: 'Tai Kwan Leap'});
-               })
-               .testDone(done);
-         });
+            }).child('kato').set({
+               email: 'wulf@firebase.com',
+               name: 'Katooooo?',
+               nick: 'Kato!',
+               '.id:style': 'Kung Fu',
+               style: { description: 'Tai Kwan Leap' }
+            }, function(err) {
+               expect(err).to.be.null;
+               helpers
+                  .chain()
+                  .get('users/styles/Kung Fu/description')
+                  .then(function(data) {
+                     expect(data).to.equal('Chinese system based on physical exercises involving animal mimicry');
+                  })
+                  .get('users/profile/kato/style')
+                  .then(function(data) {
+                     expect(data).to.equal('Kung Fu');
+                  })
+                  .testDone(done);
+            });
       });
 
-      it('should set dynamic keyMap data from master');
+      it('should set dynamic key from master', function(done) {
+         createJoinedRecord(
+            'users/account',
+            {
+               ref: helpers.ref('users/profile'), keyMap: {
+               name: 'name',
+               nick: 'nick',
+               style: helpers.ref('users/style')
+            }
+            }).set(
+            {
+               mary: {
+                  email: 'mary@mary.com',
+                  name: 'Mary',
+                  nick: 'Bo Peep',
+                  '.id:style': 'Sheep Fu',
+                  style: 'This should be ignored (read only)'
+               }
+            }, function(err) {
+               expect(err).to.be.null;
+               helpers
+                  .chain()
+                  .get('users/profile/mary/style')
+                  .then(function(data) {
+                     expect(data).to.equal('Sheep Fu');
+                  })
+                  .testDone(done);
+            });
+      });
 
-      it('should set dynamic keyMap data from child');
+      it('should set dynamic key from child');
 
-      it('should set dynamic keyMap key from master');
+      it('should delete dynamic keys from master');
 
-      it('should set dynamic keyMap key from child');
+      it('should delete dynamic keys from child');
 
-      it('should delete dynamic keyMap paths');
+      it('should fail in any path is empty and has no keymap');
 
-      it('should delete dynamic keyMap paths on child');
+      it('should utilize .value');
 
-      it('should set primitive at dynamic keyMap path');
-
-      it('should ??? for an empty path and no keyMap');
-
-      it('should ??? if all paths are empty and no keyMap');
-
-      it('should set properly if given a single .value keyMap which points to a dynamic path');
+      it('should utilize .priority if this is sort path');
    });
 
    describe('#setWithPriority', function() {

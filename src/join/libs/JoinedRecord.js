@@ -122,12 +122,17 @@
          onComplete = util.Args('set', arguments, 1, 2).skip().next('function', util.noop);
          this.queue.done(function() {
             if( assertValidSet(this.paths, value, onComplete) ) {
+               if( isPrimitiveValue(value) ) {
+                  value = (function(oldVal, path) {
+                     var out = {}, key = path.aliasedKey('.value')||'.value';
+                     out[key] = oldVal;
+                     return out;
+                  })(value, this.paths[0]);
+               }
                var q = util.createQueue();
                util.each(this.paths, function(path) {
                   q.addCriteria(function(cb) {
-                     path.pickAndSet(value, function(err) {
-                        cb(err);
-                     });
+                     path.pickAndSet(value, cb);
                   });
                });
                q.handler(onComplete);
@@ -601,12 +606,20 @@
    }
 
    function assertValidSet(paths, value, onComplete) {
-      var b = value !== null && !util.isObject(value) && (paths.length > 1 || !paths[0].isPrimitive());
-      if( b ) {
+      var b = !isPrimitiveValue(value) || isSinglePrimitive(paths);
+      if( !b ) {
          log.error('Attempted to call set() using a primitive, but this is a joined record (there is no way to split a primitive between multiple paths)');
          onComplete(new Error('Attempted to call set() using a primitive, but this is a joined record (there is no way to split a primitive between multiple paths)'));
       }
-      return !b;
+      return b;
+   }
+
+   function isSinglePrimitive(paths) {
+      return paths.length  === 1 && paths[0].isPrimitive();
+   }
+
+   function isPrimitiveValue(value) {
+      return !util.isObject(value) && value !== null;
    }
 
    /** add JoinedRecord to package

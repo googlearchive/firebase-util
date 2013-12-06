@@ -47,7 +47,8 @@
          return new Path({
             ref: this.ref(),
             dynamicSource: sourceRef,
-            keyMap: {'.value': aliasedKey}
+            keyMap: {'.value': aliasedKey},
+            sync: this.props.sync
          }, this);
       },
 
@@ -74,22 +75,20 @@
       },
 
       pickAndSet: function(data, callback) {
-         if( this.isReadyForOps() ) {
-            var ref = this._getOrSetDynamicSource(data);
-            if( ref !== null ) {
-               if( data === null ) {
-                  ref.remove(callback);
-               }
-               else if( this.isJoinedChild() ) {
-                  ref.set(this._pickMyData(data), callback);
-               }
-               else {
-                  ref.set(util.mapObject(data, this._pickMyData, this), callback);
-               }
-            }
+         if( this.isDynamic() ) {
+            log.debug('Path(%s) is dynamic (ready only), so pickAndSet was ignored', this.name());
+            callback(null);
          }
          else {
-            log.info('Tried to call set() on Path(%s) but it is a dynamic path with no key (nowhere to go)');
+            if( data === null ) {
+               this.ref().remove(callback);
+            }
+            else if( this.isJoinedChild() ) {
+               this.ref().set(this._pickMyData(data), callback);
+            }
+            else {
+               this.ref().set(util.mapObject(data, this._pickMyData, this), callback);
+            }
          }
       },
 
@@ -97,31 +96,31 @@
          if( !util.isObject(data) ) {
             throw new Error('Update failed: First argument must be an object containing the children to replace.');
          }
-         else if( this.isReadyForOps() ) {
-            var ref = this._getOrSetDynamicSource(data);
-            if( ref !== null ) {
-               if( this.isJoinedChild() ) {
-                  var filteredData = util.mapObject(data, function(val, key) {
-                     return this.hasKey(key);
-                  }, this);
-
-                  if( !util.isEmpty(filteredData) ){
-                     this.ref().update(filteredData, callback);
-                  }
-               }
-               else {
-                  var q = util.createQueue(), parentPath = this;
-                  util.each(data, function(childData, key) {
-                     q.addCriteria(function(cb) {
-                        parentPath.child(key).pickAndSet(childData, cb);
-                     });
-                  });
-                  q.handler(callback);
-               }
-            }
+         if( this.isDynamic() ) {
+            log.debug('Path(%s) is dynamic (ready only), so pickAndUpdate was ignored');
+            callback(null);
          }
          else {
-            log.info('Tried to call update() on Path(%s) but it is a dynamic path with no key (nowhere to go)');
+            if( this.isJoinedChild() ) {
+               //todo has to use eachKey and observe props.dynamicAbstracts
+               var filteredData = util.mapObject(data, function(val, key) {
+                  return this.hasKey(key);
+               }, this);
+
+               if( !util.isEmpty(filteredData) ){
+                  this.ref().update(filteredData, callback);
+               }
+            }
+            else {
+               var q = util.createQueue(), parentPath = this;
+               //todo has to use eachKey
+               util.each(data, function(childData, key) {
+                  q.addCriteria(function(cb) {
+                     parentPath.child(key).pickAndSet(childData, cb);
+                  });
+               });
+               q.handler(callback);
+            }
          }
       },
 
@@ -171,12 +170,22 @@
       },
 
       /**
-       * see the reconcilePaths() method in PathLoader.js
+       * Removes a key which exists in two paths. See the reconcilePaths() method in PathLoader.js
        * @param {string} sourceKey
-       * @param {Path} [owningPath]
+       * @param {Path} owningPath
        */
       removeConflictingKey: function(sourceKey, owningPath) {
-         owningPath && log('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, sourceKey, this.getKeyMap()[sourceKey], owningPath);
+         log('Path(%s) cannot use key %s->%s; that destination field is owned by Path(%s). You could specify a keyMap and map them to different destinations if you want both values in the joined data.', this, sourceKey, this.getKeyMap()[sourceKey], owningPath);
+         delete this.props.keyMap[sourceKey];
+      },
+
+      /**
+       * Removes a dynamic key which is going to be assigned as its own path. But keeps track of it so any
+       * .id: values will be processed accordingly.
+       * @param {string} sourceKey
+       */
+      suppressDynamicKey: function(sourceKey) {
+         this.props.dynamicAbstracts[sourceKey] = this.aliasedKey(sourceKey);
          delete this.props.keyMap[sourceKey];
       },
 
@@ -215,7 +224,7 @@
          this._iterateKeys(data, iterator, context, true);
       },
 
-      getDynamicKeys: function() {
+      getDynamicPaths: function() {
          return this.dynamicChildPaths;
       },
 
@@ -230,6 +239,15 @@
          var out = {};
          this.eachKey(data, function(sourceKey, aliasedKey, value) {
             out[sourceKey] = value;
+         });
+         // At the record level, dynamic keys are converted into their own paths. While this greatly
+         // simplifies the read process, writing the keys back into the data requires this additional
+         // step to make sure they are added to my data before set() or update() is called
+         util.each(this.props.dynamicAbstracts, function(aliasedKey, sourceKey) {
+            var dynKey = '.id:'+aliasedKey;
+            if( util.has(data, dynKey) ) {
+               out[sourceKey] = data[dynKey];
+            }
          });
          return util.isEmpty(out)? null : util.has(out, '.value')? out['.value'] : out;
       },
@@ -466,7 +484,7 @@
 
       _iterateKeys: function(data, callback, context, useSourceKey) {
          var map = this.getKeyMap();
-         if( map['.value'] ) {
+         if( useSourceKey && map['.value'] ) {
             callback.call(context, '.value', map['.value'], data);
          }
          else {
@@ -474,26 +492,6 @@
                var val = getFirebaseValue(this, data, this.hasDynamicChild(sourceKey), sourceKey, aliasedKey, useSourceKey);
                callback.call(context, sourceKey, aliasedKey, val);
             }, this);
-         }
-      },
-
-      _getOrSetDynamicSource: function(data) {
-         if( this.isDynamic() ) {
-            var dynamicKey = '.id:'+this.aliasedKey(this.props.dynamicSource.name());
-            if( util.has(data, dynamicKey) ) {
-               var newDynamicKey = data[dynamicKey];
-               if( newDynamicKey !== this.props.dynamicKey ) {
-                  newDynamicKey === null || assertValidFirebaseKey(newDynamicKey);
-                  this.props.dynamicSource.set(newDynamicKey);
-               }
-               return newDynamicKey === null? null : this.props.ref.child(newDynamicKey);
-            }
-            else {
-               return this.props.ref.child(this.props.dynamicKey);
-            }
-         }
-         else {
-            return this.ref();
          }
       },
 
@@ -594,6 +592,8 @@
          pathName: null,
          dynamicSource: null,
          dynamicKey: undefined,
+         dynamicAbstracts: {},
+         sync: false,
          callback: function(path, event, snap, prevChild) {}
       }, props);
 
@@ -638,18 +638,15 @@
    function getFirebaseValue(path, data, isDynamicChild, sourceKey, aliasedKey, useSourceKey) {
       var key = useSourceKey? sourceKey : aliasedKey;
       var val = null;
-      if( util.has(data, key) ) {
-         if( isDynamicChild && !useSourceKey ) {
-            if( util.has(data[key], '.id') && !util.isObject(data[key]['.id']) ) {
-               val = data[key]['.id'];
-            }
-            else {
-               log.warn('A value was added for dynamic key %s but it is not an object with a proper .id value. The dynamic ref will be removed from Path(%s), which you may not have intended', aliasedKey, path.toString());
-            }
+      var dynKey = '.id:'+aliasedKey;
+      if( isDynamicChild && !useSourceKey ) {
+         val = util.has(data, dynKey)? data[dynKey] : null;
+         if( val === null && util.has(data, key) ) {
+            log.warn('A value was added for dynamic key %s but %s was not found. The dynamic data will not be updated, which is probably not what you intended', aliasedKey, path.toString());
          }
-         else {
-            val = data[key];
-         }
+      }
+      else if( util.has(data, key) ) {
+         val = data[key];
       }
       return val;
    }

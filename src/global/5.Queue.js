@@ -20,7 +20,6 @@
          if( this.processing ) {
             throw new Error('Cannot call addCriteria() after invoking done(), fail(), or handler() methods');
          }
-         this.needs++;
          this.criteria.push(scope? [criteriaFn, scope] : criteriaFn);
          return this;
       },
@@ -45,7 +44,7 @@
 
       handler: function(fn, context) {
          this._runOrStore(function() {
-            fn.apply(context, this.getErrors());
+            fn.apply(context, this.hasErrors()? this.getErrors() : [null]);
          });
          return this;
       },
@@ -72,10 +71,11 @@
 
       _process: function() {
          this.processing = true;
-         util.each(this.criteria, this._invokeCriteria, this);
+         this.needs = this.criteria.length;
+         util.each(this.criteria, this._evaluateCriteria, this);
       },
 
-      _invokeCriteria: function(criteriaFn) {
+      _evaluateCriteria: function(criteriaFn) {
          var scope = null;
          if( util.isArray(criteriaFn) ) {
             scope = criteriaFn[1];

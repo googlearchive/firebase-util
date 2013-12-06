@@ -100,10 +100,14 @@
                util.each(joinedParent.paths, function(parentPath) {
                   var childPath = parentPath.child(childKey);
                   finalPaths.push(childPath);
-                  util.each(parentPath.getDynamicKeys(), function(path, key) {
-                     var aliasedKey = parentPath.aliasedKey(key);
-                     childPath.removeConflictingKey(key);
-                     finalPaths.push(path.dynamicChild(childPath.ref().child(key), aliasedKey));
+                  // at the record level, we convert dynamic paths into normal join paths
+                  // to greatly simplify the read and merge process, this is done by removing
+                  // the dynamic key from the child path and converting it into its own fully
+                  // functional path object
+                  util.each(parentPath.getDynamicPaths(), function(path, key) {
+                     // we then need to suppress the key in the child so it doesn't also try to include this data
+                     childPath.suppressDynamicKey(key);
+                     finalPaths.push(path.dynamicChild(childPath.ref().child(key), parentPath.aliasedKey(key)));
                   })
                });
                util.createQueue(pathCallbacks(finalPaths)).done(cb);

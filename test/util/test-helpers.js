@@ -185,7 +185,7 @@ helpers.rest = function(path, method, data) {
  * @param {String|RegExp} [grep]
  */
 helpers.debugThisTest = function(level, grep) {
-   doAfterTest(fb.log.logLevel(level===undefined? 'debug' : level, grep));
+   doAfterTest(fb.log.logLevel(fb.util.isEmpty(level)? 'debug' : level, grep));
 };
 
 /**
