@@ -74,7 +74,12 @@
          }, this);
       },
 
-      pickAndSet: function(data, callback) {
+      /**
+       * @param data
+       * @param callback
+       * @param [priority]
+       */
+      pickAndSet: function(data, callback, priority) {
          if( this.isDynamic() ) {
             log.debug('Path(%s) is dynamic (ready only), so pickAndSet was ignored', this.name());
             callback(null);
@@ -83,11 +88,14 @@
             if( data === null ) {
                this.ref().remove(callback);
             }
-            else if( this.isJoinedChild() ) {
-               this.ref().set(this._pickMyData(data), callback);
-            }
             else {
-               this.ref().set(util.mapObject(data, this._pickMyData, this), callback);
+               var finalDat = this._dataForSetOp(data);
+               if( this.isSortBy() && priority !== undefined ) {
+                  this.ref().setWithPriority(finalDat, priority, callback);
+               }
+               else {
+                  this.ref().set(finalDat, callback);
+               }
             }
          }
       },
@@ -228,6 +236,21 @@
          return this.dynamicChildPaths;
       },
 
+      equals: function(path) {
+         return this.isReadyForOps() && path.toString() === this.toString();
+      },
+
+      _dataForSetOp: function(data) {
+         var finalDat;
+         if( this.isJoinedChild() ) {
+            finalDat = this._pickMyData(data);
+         }
+         else {
+            finalDat = util.mapObject(data, this._pickMyData, this);
+         }
+         return finalDat;
+      },
+
       /**
        * Given a set of keyMapped data, return it to the raw format usable for use in my set/update
        * functions. Dynamic keyMap values are excluded.
@@ -310,100 +333,28 @@
          return util.has(this.dynamicChildPaths, sourceKey);
       },
 
+      isReadOnly: function() {
+         return this.props.readOnly;
+      },
+
       _buildKeyMap: function(parent) {
-         var km = this.props.keyMap;
-         if( !util.isObject(km) ) {
-            if( parent ) {
-               this._loadKeyMapFromParent(parent);
-            }
-            else {
-               this._loadKeyMapFromData();
-            }
+         if( parent && !parent.isJoinedChild() ) {
+            this.props.intersects = parent.isIntersection();
          }
-         else {
-            this._parseRawKeymap();
-            this._finishedKeyMap();
-         }
-      },
-
-      _parseRawKeymap: function() {
-         var km = this.props.keyMap;
-         var dynamicPaths = {};
-         util.each(km, function(v, k) {
-            if( util.isObject(v) ) {
-               var toKey = k;
-               if( v instanceof Firebase || v instanceof join.JoinedRecord ) {
-                  v = {
-                     ref: v,
-                     keyMap: {'.value': toKey}
-                  };
-               }
-               else if(v.aliasedKey) {
-                  toKey = v.aliasedKey;
-               }
-               km[k] = toKey;
-               dynamicPaths[k] = new Path(v);
+         join.getKeyMapLoader(this, parent).done(function(readOnly, parsedKeyMap, dynamicChildPaths) {
+            if( util.isEmpty(parsedKeyMap) ) {
+               log.warn('Path(%s) contains an empty keyMap', this.name());
             }
-         });
-         if( !util.isEmpty(dynamicPaths) ) { this.dynamicChildPaths = dynamicPaths; }
-      },
-
-      _loadKeyMapFromParent: function(parent) {
-         parent.observeOnce('keyMapLoaded', function(keyMap) {
-            if( parent.isJoinedChild() ) {
-               this.props.keyMap = { '.value': '.value' };
-               this._finishedKeyMap();
+            if( readOnly ) {
+               log.info('Path(%s) no keyMap specified and could not find data at path "%s", this data is now read-only!', this.name(), this.toString());
             }
-            else {
-               this.props.intersects = parent.isIntersection();
-               this.props.keyMap = util.extend({}, keyMap);
-               this._finishedKeyMap();
-            }
-         }, this);
-      },
-
-      _finishedKeyMap: function() {
-         if( util.isEmpty(this.props.keyMap) ) {
-            throw Error('Could not load a keyMap for Path(%s); declare one or add a record to this path. No data can be written to or read from this path without a keyMap:(', this);
-         }
-         this.observeOnce('dynamicKeyLoaded', function() {
-            log.debug('Finished keyMap for Path(%s)', this.toString(), this.props.keyMap);
-            this.triggerEvent('keyMapLoaded', this.props.keyMap);
-         }, this);
-      },
-
-      _loadKeyMapFromData: function() {
-         // sample several records (but not hundreds) and load the keys from each so
-         // we get an accurate union of the fields in the child data; they are supposed
-         // to be consistent, but some could have null values for various reasons,
-         // so this should help avoid inconsistent keys
-         this.ref().limit(25).once('value', function(samplingSnap) {
-            var b = util.isObject(samplingSnap.val()) && this.props.keyMap === null;
-            if( b ) {
-               var km = this.props.keyMap = {};
-               var keys = [];
-               var props = this.props;
-               // we sample several records and look for keys so if a key is missing from one or two
-               // we don't get funky and skewed results (we hope)
-               samplingSnap.forEach(function(snap) {
-                  keys.push(snap.name());
-                  if( util.isObject(snap.val()) ) {
-                     // got an object, add an keys in that object to our map
-                     util.each(snap.val(), function(v, k) { km[k] = k; });
-                     return false;
-                  }
-                  else if( !util.isEmpty(snap.val()) ) {
-                     // got a primitive, so the only key is .value and we cancel iterations
-                     km = props.keyMap = {'.value': props.pathName};
-                     return true;
-                  }
-                  else {
-                     return false;
-                  }
-               });
-               log.info('Loaded keyMap for Path(%s) from child records "%s": %j', this.toString(), keys, km);
-            }
-            this._finishedKeyMap();
+            this.props.readOnly = readOnly;
+            this.props.keyMap = parsedKeyMap;
+            this.dynamicChildPaths = dynamicChildPaths;
+            this.observeOnce('dynamicKeyLoaded', function() {
+               log.debug('Path(%s) finished keyMap: %j', this.toString(), this.getKeyMap());
+               this.triggerEvent('keyMapLoaded', parsedKeyMap);
+            }, this);
          }, this);
       },
 
@@ -658,22 +609,6 @@
          throw new Error('Invalid path in dynamic key, must be non-empty and cannot contain ".", "#", "$", "[" or "]"');
       }
    }
-
-//   function withoutDynamicKey(data, key) {
-//      var val = null;
-//      if( util.has(data, key) && !util.isArray(data[key]) ) {
-//         val = util.extend({}, data[key]);
-//         delete val['.id'];
-//      }
-//      return val;
-//   }
-
-//   function valueWithId(data, id) {
-//      if( !util.isObject(data) ) {
-//         data = { '.value': data };
-//      }
-//      return util.extend(data, {'.id': id});
-//   }
 
    join.Path = Path;
 

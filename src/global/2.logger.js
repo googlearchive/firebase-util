@@ -17,7 +17,7 @@
    exports.logLevel = logger.logLevel = function(level, grep) {
       if( typeof(level) !== 'number' ) { level = levelInt(level); }
 
-      if( oldDebuggingLevel === level ) { return; }
+      if( oldDebuggingLevel === level ) { return function() {}; }
 
       fb.util.each(['error', 'warn', 'info', 'log', 'debug'], function(k, i) {
          if( typeof(console) !== 'undefined' && level >= i+1 ) {

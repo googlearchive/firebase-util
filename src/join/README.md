@@ -15,6 +15,7 @@ A JoinedRecord can be used anywhere a normal Firebase reference would work, incl
     - [Configuration options](#configuration_options)
     - [Dynamic paths as keys](#dynamic_path_names)
  - [Limitations](#limitations)
+ - [Best Practices](#bestpractices)
  - [Troubleshooting and Help](#troubleshooting)
  - [API](#api)
     - [Firebase.Util.join](#api_join)
@@ -308,6 +309,15 @@ var ref = Firebase.Util.join(
 
 ref.child('kato/style').set({description: 'Mixed Martial Arts'});
 ```
+
+<a name="bestpractices"></a>
+# BEST PRACTICES
+
+- If you will be writing data (set/push/update/etc) then always specify a keyMap, otherwise if a data set is empty,
+  the write op will fail unexpectedly
+- Use update rather than set on data sets with dynamic values; data not in the keyMap will be removed by a set() op
+- Expect some shifting of ordered data. Use prevChild and expect records to move. Paths may load data out of
+  order and then move it when the sortPath decides where it belongs.
 
 <a name="limitations"></a>
 # LIMITATIONS

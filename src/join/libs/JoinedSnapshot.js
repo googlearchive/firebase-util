@@ -5,7 +5,7 @@
 
    function JoinedSnapshot(rec, data, priority) {
       this.rec = rec;
-      this.priority = priority;
+      this.priority = priority === undefined? rec.currentPriority : priority;
       this.data = this._loadData(data);
    }
 

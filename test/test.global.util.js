@@ -3,6 +3,7 @@ var expect = require('chai').expect;
 describe('global.js', function() {
    var undefined;
    var util = require('../firebase-utils.js')._ForTestingOnly.util;
+   var fbExports = require('../firebase-utils.js');
 
    describe('#isObject', function() {
       it('should be true for {}', function() {
@@ -500,5 +501,19 @@ describe('global.js', function() {
    describe('#filter', function() {
       it('should be tested');
    });
+
+   describe('NotSupportedError', function() {
+      it('should be instanceof Error', function() {
+         expect(new fbExports.NotSupportedError('hello world')).instanceOf(Error);
+      });
+
+      it('should have a stack trace', function() {
+         expect(new fbExports.NotSupportedError('hello world').stack).not.to.be.empty;
+      });
+
+      it('should preserve the message I give it', function() {
+         expect(new fbExports.NotSupportedError('hello world').toString()).to.contain('hello world');
+      });
+   })
 
 });

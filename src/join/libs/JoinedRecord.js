@@ -26,9 +26,7 @@
       this.intersections = [];
       this.refName = null;
       this.rootRef = null;
-      this.queue = this._loadPaths(util.toArray(arguments)).done(function() {
-         log.info('JoinedRecord(%s) is ready for use (all paths and dynamic keys loaded)', this.name());
-      }, this);
+      this.queue = this._loadPaths(util.toArray(arguments));
    }
 
    JoinedRecord.prototype = {
@@ -109,7 +107,7 @@
 
       parent:          function() {
          if( !this.joinedParent ) {
-            throw new fb.NotSupportedError('Cannot call parent() on a joined record');
+            throw new util.NotSupportedError('Cannot call parent() on a joined record');
          }
          return this.joinedParent;
       },
@@ -121,18 +119,13 @@
       set: function(value, onComplete) {
          onComplete = util.Args('set', arguments, 1, 2).skip().next('function', util.noop);
          this.queue.done(function() {
-            if( assertValidSet(this.paths, value, onComplete) ) {
-               if( isPrimitiveValue(value) ) {
-                  value = (function(oldVal, path) {
-                     var out = {}, key = path.aliasedKey('.value')||'.value';
-                     out[key] = oldVal;
-                     return out;
-                  })(value, this.paths[0]);
-               }
+            if( assertWritable(this.paths, onComplete) && assertValidSet(this.paths, value, onComplete) ) {
+               var parsedValue = extractValueForSetOps(value, isSinglePrimitive(this.paths)? this.paths[0] : null);
+               var pri = extractPriorityForSetOps(value);
                var q = util.createQueue();
                util.each(this.paths, function(path) {
                   q.addCriteria(function(cb) {
-                     path.pickAndSet(value, cb);
+                     path.pickAndSet(parsedValue, cb, pri);
                   });
                });
                q.handler(onComplete);
@@ -141,7 +134,18 @@
       },
 
       setWithPriority: function(value, priority, onComplete) {},
-      setPriority:     function(priority, onComplete) {},
+
+      setPriority:     function(priority, onComplete) {
+         var args = util.Args('setPriority', arguments, 1, 2);
+         priority = args.nextReq(true);
+         onComplete = args.next('function', util.noop);
+         this.queue.done(function() {
+            if( assertWritable(this.paths, onComplete) ) {
+               this.sortPath.ref().setPriority(priority, onComplete);
+            }
+         }, this);
+      },
+
       update:          function(value, onComplete) {},
       remove:          function(onComplete) {},
       push:            function(value, onComplete) {},
@@ -152,11 +156,11 @@
       toString: function() { return '['+util.map(this.paths, function(p) { return p.toString(); }).join('][')+']'; },
 
       //////// methods that are not allowed
-      onDisconnect:    function() { throw new fb.NotSupportedError('onDisconnect() not supported on JoinedRecord'); },
-      limit:           function() { throw new fb.NotSupportedError('limit not supported on JoinedRecord; try calling limit() on ref before passing into join'); },
-      endAt:           function() { throw new fb.NotSupportedError('endAt not supported on JoinedRecord; try calling endAt() on ref before passing into join'); },
-      startAt:         function() { throw new fb.NotSupportedError('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into join'); },
-      transaction:     function() { throw new fb.NotSupportedError('transactions not supported on JoinedRecord'); },
+      onDisconnect:    function() { throw new util.NotSupportedError('onDisconnect() not supported on JoinedRecord'); },
+      limit:           function() { throw new util.NotSupportedError('limit not supported on JoinedRecord; try calling limit() on ref before passing into join'); },
+      endAt:           function() { throw new util.NotSupportedError('endAt not supported on JoinedRecord; try calling endAt() on ref before passing into join'); },
+      startAt:         function() { throw new util.NotSupportedError('startAt not supported on JoinedRecord; try calling startAt() on ref before passing into join'); },
+      transaction:     function() { throw new util.NotSupportedError('transactions not supported on JoinedRecord'); },
 
       _monitorEvent: function(eventType) {
          if( this.getObservers(eventType).length === 1 ) {
@@ -284,12 +288,18 @@
          return util
             .createQueue()
             .chain(pathLoader.queue)
+            .done(this._assertSortPath, this)
             .done(function() {
                this.intersections = pathLoader.intersections;
                this.sortPath = pathLoader.sortPath;
+               log.info('JoinedRecord(%s) is ready for use (all paths and dynamic keys loaded)', this.name());
             }, this)
-            .done(this._assertSortPath, this)
-            .fail(function(err) { throw err; });
+            .fail(function() {
+               var name = this.name();
+               util.each(arguments, function(err) {
+                  log.error('Path(%s): %s', name, err);
+               })
+            }, this);
       },
 
       /**
@@ -577,6 +587,10 @@
             // trigger a 'value' event as soon as my data loads
             this._myValueChanged();
          }
+      },
+
+      _isSortPath: function(p) {
+         return this.sortPath.equals(p);
       }
    };
 
@@ -605,13 +619,50 @@
       }
    }
 
+   function assertWritable(paths, onComplete) {
+      var readOnlyNames = util.map(paths, function(p) { return p.isReadOnly()? p.toString() : undefined });
+      if( readOnlyNames.length ) {
+         var txt = util.printf('Unable to write to the following paths because they are read-only (no keyMap was not specified and the path contains no data): %s', readOnlyNames);
+         log.error(txt);
+         onComplete(new util.NotSupportedError(txt));
+         return false;
+      }
+      return true;
+   }
+
    function assertValidSet(paths, value, onComplete) {
       var b = !isPrimitiveValue(value) || isSinglePrimitive(paths);
       if( !b ) {
          log.error('Attempted to call set() using a primitive, but this is a joined record (there is no way to split a primitive between multiple paths)');
-         onComplete(new Error('Attempted to call set() using a primitive, but this is a joined record (there is no way to split a primitive between multiple paths)'));
+         onComplete(new util.NotSupportedError('Attempted to call set() using a primitive, but this is a joined record (there is no way to split a primitive between multiple paths)'));
       }
       return b;
+   }
+
+   function extractValueForSetOps(value, primitivePath) {
+      var out = value;
+      if( util.has(value, '.priority') ) {
+         out = util.filter(value, function(v,k) { return k !== '.priority' });
+      }
+      // we support .value in set() ops like normal Firebase, so extract that here if this is a joined value
+      if( util.has(value, '.value') ) {
+         out = value['.value'];
+      }
+      if( primitivePath && isPrimitiveValue(out) ) {
+         out = (function(oldVal) {
+            var newVal = {};
+            newVal[primitivePath.aliasedKey('.value')||'.value'] = oldVal;
+            return newVal;
+         })(out);
+      }
+      return out;
+   }
+
+   function extractPriorityForSetOps(value) {
+      if( util.has(value, '.priority') ) {
+         return value['.priority'];
+      }
+      return undefined;
    }
 
    function isSinglePrimitive(paths) {

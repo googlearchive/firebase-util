@@ -36,7 +36,7 @@ helpers.set = function(path, data) {
 helpers.get = function(path) {
    return JQDeferred(function(def) {
       helpers.ref(path).once('value', function(snap) {
-         def.resolve(snap.val());
+         def.resolve(snap.val(), snap.name(), snap);
       }, def.reject);
    });
 };
@@ -58,9 +58,15 @@ helpers.remove = function(path) {
  */
 helpers.setPriority = function(path, newPri) {
    return JQDeferred(function(def) {
-      helpers.ref(path).setPriority(newPri, function(err) {
-         def.resolve();
-      })
+      helpers.ref(path).setPriority(newPri, helpers.handle(def));
+   });
+};
+
+helpers.getPriority = function(path) {
+   return JQDeferred(function(def) {
+      helpers.get(path).then(function(val, key, snap) {
+         def.resolve(snap.getPriority());
+      }, def.reject);
    });
 };
 

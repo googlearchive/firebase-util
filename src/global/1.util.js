@@ -449,7 +449,7 @@ else {
       this.stack = (new Error()).stack;
    }
    NotSupportedError.prototype = new Error;
-   exports.NotSupportedError = NotSupportedError;
+   exports.NotSupportedError = util.NotSupportedError = NotSupportedError;
 
    // for running test units and debugging only
    exports._ForTestingOnly = fb;

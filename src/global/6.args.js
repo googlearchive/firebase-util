@@ -6,7 +6,7 @@
    var log = fb.pkg('log');
 
    function Args(fnName ,args, minArgs, maxArgs) {
-      if( typeof(fnName) !== 'string' ) { throw new Error('Args requires at least 2 args: fnName, arguments[, minArgs, maxArgs]')}
+      if( typeof(fnName) !== 'string' || !util.isObject(args) ) { throw new Error('Args requires at least 2 args: fnName, arguments[, minArgs, maxArgs]')}
       if( !(this instanceof Args) ) { // allow it to be called without `new` prefix
          return new Args(fnName, args, minArgs, maxArgs);
       }

@@ -2,6 +2,7 @@
    "use strict";
    var util = fb.pkg('util');
    var join = fb.pkg('join');
+   var log  = fb.pkg('log');
 
    /**
     * @param {Array} rawPathData
@@ -39,6 +40,7 @@
       this.queue.done(function() {
          this.intersections = intersections(this.finalPaths);
          this.sortPath = findSortPath(this.finalPaths, this.intersections);
+         enforceSingleSortPath(this.finalPaths, this.sortPath);
          this._assertSortPath();
          reconcilePathKeys(this.finalPaths);
       }, this);
@@ -106,8 +108,8 @@
                   // functional path object
                   util.each(parentPath.getDynamicPaths(), function(path, key) {
                      // we then need to suppress the key in the child so it doesn't also try to include this data
-                     childPath.suppressDynamicKey(key);
                      finalPaths.push(path.dynamicChild(childPath.ref().child(key), parentPath.aliasedKey(key)));
+                     childPath.suppressDynamicKey(key);
                   })
                });
                util.createQueue(pathCallbacks(finalPaths)).done(cb);
@@ -130,6 +132,19 @@
    function findSortPath(paths, intersections) {
       return util.find(paths, function(p) { return p.isSortBy(); })
          || (util.isEmpty(intersections)? paths[0] : intersections[0]);
+   }
+
+   function enforceSingleSortPath(paths, sortPath) {
+      if( sortPath ) {
+         sortPath.setSortBy(true);
+         log.debug('Path(%s) is the sort path for this join', sortPath.name());
+         util.each(paths, function(p) {
+            if(p.isSortBy() && !p.equals(sortPath)) {
+               log.warn('Multiple sort paths found. Ignoring Path(%s)', p.name());
+               p.setSortBy(false);
+            }
+         });
+      }
    }
 
    function intersections(paths) {

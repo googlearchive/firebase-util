@@ -62,12 +62,21 @@ describe('join.JoinedRecord', function() {
 
    describe('#unauth', function() {
       it('should cause .info/authenticated to become false', function(done) {
+         var ref = createJoinedRecord('unions/fruit');
          helpers.chain()
             .auth('test-user')
             .get('.info/authenticated')
             .then(function(v) {
                expect(v).to.be.true;
-               createJoinedRecord('unions/fruit').unauth();
+            })
+            .then(function() {
+               // wait for ref to load
+               return helpers.def(function(def) {
+                  ref.queue.done(def.resolve);
+               });
+            })
+            .then(function() {
+               ref.unauth();
             })
             .pause()
             .get('.info/authenticated')
@@ -119,6 +128,18 @@ describe('join.JoinedRecord', function() {
                      "style": "Kung Fu"
                   }
                });
+               done();
+            });
+
+         });
+
+         it('should create read-only paths if they have no data and no keyMap', function(done) {
+            var rec = createJoinedRecord('users/profile', 'users/notarealpath');
+            rec.queue.done(function() {
+               expect(rec.paths[0].name()).to.equal('profile');
+               expect(rec.paths[0].isReadOnly()).to.be.false;
+               expect(rec.paths[1].name()).to.equal('notarealpath');
+               expect(rec.paths[1].isReadOnly()).to.be.true;
                done();
             });
          });
@@ -1305,7 +1326,7 @@ describe('join.JoinedRecord', function() {
       it('should throw an error on the joined parent', function() {
          expect(function() {
             fakeMappedRecord('alpha/one', 'bravo/two').parent();
-         }).throws(fb.NotSupportedError);
+         }).throws(fb.util.NotSupportedError);
       });
 
       it('should return joined master for joined child', function() {
@@ -1342,14 +1363,20 @@ describe('join.JoinedRecord', function() {
 
    describe('#set', function() {
       it('should invoke callback when done', function(done) {
+         var spy = sinon.spy();
          var newData = { mary: { name: 'had', email: 'a@a.com', nick: 'little lamb' } };
          var rec = createJoinedRecord('users/account', 'users/profile');
-         rec.once('value', function(snap) {
-            rec.set(newData, function(err) {
-               expect(err).to.be.null;
-               done();
-            });
-         }, done);
+         rec.once('value', function() {
+            rec.set(newData, spy);
+         });
+         helpers
+            .chain()
+            .until(function() { return spy.callCount > 0 })
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+               expect(spy.args[0][0]).to.be.null;
+            })
+            .testDone(done);
       });
 
       it('should invoke callback with error on failure', function(done) {
@@ -1493,7 +1520,8 @@ describe('join.JoinedRecord', function() {
          helpers.debugThisTest(false);
          var rec = createJoinedRecord('users/profile').child('kato');
          rec.set('SOMEONE SET UP US THE BOMB', function(err) {
-            expect(err).instanceOf(Error);
+            expect(err).instanceOf(fb.util.NotSupportedError);
+            expect(err).to.match(/primitive/);
             helpers.get('users/profile/kato').done(function(data) {
                expect(data).to.be.an('object');
                done();
@@ -1676,21 +1704,20 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should not write to dynamic data from a parent path (dynamic keys are read only)', function(done) {
-         createJoinedRecord(
-            'users/account',
-            {
-               ref: helpers.ref('users/profile'), keyMap: {
-               name: 'name',
-               nick: 'nick',
-               style: helpers.ref('users/style')
-            }
-            }).child('kato').set({
+         var profilePath = {
+            ref: helpers.ref('users/profile'),
+            keyMap: { name: 'name', nick: 'nick', style: helpers.ref('users/style') }
+         };
+         var newData = {
+            kato: {
                email: 'wulf@firebase.com',
                name: 'Katooooo?',
                nick: 'Kato!',
                '.id:style': 'Kung Fu',
                style: { description: 'Tai Kwan Leap' }
-            }, function(err) {
+            }
+         };
+         createJoinedRecord( 'users/account', profilePath ).set(newData, function(err) {
                expect(err).to.be.null;
                helpers
                   .chain()
@@ -1707,46 +1734,195 @@ describe('join.JoinedRecord', function() {
       });
 
       it('should set dynamic key from master', function(done) {
-         createJoinedRecord(
-            'users/account',
-            {
-               ref: helpers.ref('users/profile'), keyMap: {
-               name: 'name',
-               nick: 'nick',
-               style: helpers.ref('users/style')
+         var profilePath = {
+            ref: helpers.ref('users/profile'),
+            keyMap: { name: 'name', nick: 'nick', style: helpers.ref('users/style') }
+         };
+         var newData = {
+            mary: {
+               email: 'mary@mary.com',
+               name: 'Mary',
+               nick: 'Bo Peep',
+               '.id:style': 'Sheep Fu',
+               style: 'This should be ignored (read only)'
             }
-            }).set(
-            {
-               mary: {
-                  email: 'mary@mary.com',
-                  name: 'Mary',
-                  nick: 'Bo Peep',
-                  '.id:style': 'Sheep Fu',
-                  style: 'This should be ignored (read only)'
-               }
-            }, function(err) {
+         };
+         createJoinedRecord( 'users/account', profilePath ).set(newData, function(err) {
+            expect(err).to.be.null;
+            helpers
+               .chain()
+               .get('users/profile/mary/style')
+               .then(function(data) {
+                  expect(data).to.equal('Sheep Fu');
+               })
+               .testDone(done);
+         });
+      });
+
+      it('should set dynamic key from child', function(done) {
+         var profilePath = {
+            ref: helpers.ref('users/profile'),
+            keyMap: { name: 'name', nick: 'nick', style: helpers.ref('users/style') }
+         };
+         var newData = {
+            email: 'wulf@firebase.com',
+            name: 'Michael Wulf',
+            nick: 'Kato!',
+            '.id:style': 'MMA',
+            style: 'This should be ignored (read only)'
+         };
+         createJoinedRecord( 'users/account', profilePath).child('kato').set(newData, function(err) {
+            expect(err).to.be.null;
+            helpers
+               .chain()
+               .get('users/profile/kato/style')
+               .then(function(data) {
+                  expect(data).to.equal('MMA');
+               })
+               .testDone(done);
+         });
+      });
+
+      it('should delete dynamic keys from master', function(done) {
+         var profilePath = {
+            ref: helpers.ref('users/profile'),
+            keyMap: { name: 'name', nick: 'nick', style: helpers.ref('users/style') }
+         };
+         var newData = {
+            kato: {
+               email: 'wulf@firebase.com',
+               name: 'Katooooo?',
+               nick: 'Kato!'
+            }
+         };
+         createJoinedRecord( 'users/account', profilePath ).set(newData, function(err) {
                expect(err).to.be.null;
                helpers
                   .chain()
-                  .get('users/profile/mary/style')
+                  .get('users/profile/kato/style')
                   .then(function(data) {
-                     expect(data).to.equal('Sheep Fu');
+                     expect(data).to.be.null;
                   })
                   .testDone(done);
             });
       });
 
-      it('should set dynamic key from child');
+      it('should delete dynamic keys from child', function(done) {
+         var profilePath = {
+            ref: helpers.ref('users/profile'),
+            keyMap: { name: 'name', nick: 'nick', style: helpers.ref('users/style') }
+         };
+         var newData = {
+            email: 'wulf@firebase.com',
+            name: 'Katooooo?',
+            nick: 'Kato!'
+         };
+         createJoinedRecord( 'users/account', profilePath).child('kato').set(newData, function(err) {
+            expect(err).to.be.null;
+            helpers
+               .chain()
+               .get('users/profile/kato/style')
+               .then(function(data) {
+                  expect(data).to.be.null;
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should delete dynamic keys from master');
+      it('should fail in any path is read only (empty and has no keymap)', function(done) {
+         helpers.debugThisTest('error'); // suppress the warning this generates
+         createJoinedRecord('users/account', 'users/badpathname').set({foo: 'bar'}, function(err) {
+            expect(err).instanceOf(fb.util.NotSupportedError);
+            expect(err).to.match(/read-only/);
+            done();
+         });
+      });
 
-      it('should delete dynamic keys from child');
+      it('should utilize .value at master level', function(done) {
+         createJoinedRecord('users/account', 'users/profile').set({
+            '.value': {mary: { name: 'had', email: 'a@a.com', nick: 'little lamb' }}
+         }, function(err) {
+            expect(err).to.be.null;
+            helpers.chain()
+               .get('users/account')
+               .then(function(data) {
+                  expect(data).to.have.keys(['mary']);
+               })
+               .get('users/profile')
+               .then(function(data) {
+                  expect(data).to.have.keys(['mary']);
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should fail in any path is empty and has no keymap');
+      it('should utilize .value at child level', function(done) {
+         createJoinedRecord('users/account', 'users/profile').child('bruce').set({
+            '.value': {name: 'Bruce Levis', email: 'brucey@brucey.com', nick: 'Little Joacim'}
+         }, function(err) {
+            expect(err).to.be.null;
+            helpers.chain()
+               .get('users/account/bruce')
+               .then(function(data) {
+                  expect(data).to.eql({email: 'brucey@brucey.com'});
+               })
+               .get('users/profile/bruce')
+               .then(function(data) {
+                  expect(data).to.eql({name: 'Bruce Levis', nick: 'Little Joacim'})
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should utilize .value');
+      it('should utilize .priority if this is sort path', function(done) {
+         var ref = createJoinedRecord('users/account', 'users/profile').child('bruce');
+         ref.once('value', function(snap) {
+            var newData = {'.value': snap.val(), '.priority': 20};
+            ref.set(newData, function(err) {
+               expect(err).to.be.null;
+               helpers.chain()
+                  .getPriority('users/account/bruce')
+                  .then(function(pri) {
+                     expect(pri).to.eql(20);
+                  })
+                  .getPriority('users/profile/bruce')
+                  .then(function(pri) {
+                     expect(pri).to.equal(null);
+                  })
+                  .testDone(done);
+            });
+         });
+      });
 
-      it('should utilize .priority if this is sort path');
+      it('should utilize .priority on master sort path', function(done) {
+         var ref = createJoinedRecord('users/account', 'users/profile');
+         var newData = {'bruce': {name: 'Bruce Levis', email: 'brucey@brucey.com', nick: 'Little Joacim'}, '.priority': 20};
+         ref.set(newData, function(err) {
+            expect(err).to.be.null;
+            helpers.chain()
+               .get('users/account')
+               .then(function(data) {
+                  expect(data).to.have.keys(['bruce']);
+               })
+               .getPriority('users/account')
+               .then(function(pri) {
+                  expect(pri).to.eql(20);
+               })
+               .getPriority('users/account/bruce')
+               .then(function(pri) {
+                  expect(pri).to.eql(null);
+               })
+               .get('users/profile')
+               .then(function(data) {
+                  expect(data).to.have.keys(['bruce']);
+               })
+               .getPriority('users/profile')
+               .then(function(pri) {
+                  expect(pri).to.equal(null);
+               })
+               .testDone(done);
+         });
+      });
    });
 
    describe('#setWithPriority', function() {
@@ -1756,13 +1932,15 @@ describe('join.JoinedRecord', function() {
 
       it('should set the priority on the sortPath');
 
+      it('should not set priority on any non-sort path');
+
       it('should trigger child_moved if priority changes');
 
       it('should not trigger child_moved if priority does not change');
 
       it('should trigger value if data changes');
 
-      it('should not trigger vaule if data does not change');
+      it('should not trigger value if data does not change');
 
       it('should work with primitive');
 
@@ -1770,23 +1948,134 @@ describe('join.JoinedRecord', function() {
 
       it('should work on child record\'s fields');
 
-      it('should work on child records with primitives');
+      it('should return correct priority in value snapshot');
    });
 
    describe('#setPriority', function() {
-      it('should invoke callback when done');
+      it('should invoke callback when done', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('users/account', 'users/profile').setPriority(99, spy);
+         helpers
+            .chain()
+            .until(function() { return spy.callCount > 0 })
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+               expect(spy.args[0][0]).to.be.null;
+            })
+            .testDone(done);
+      });
 
-      it('should invoke callback with error on failure');
+      it('should invoke callback with error on failure', function(done) {
+         var spy = sinon.spy();
+         helpers
+            .chain()
+            .set('secured_write_allowed', false)
+            .then(function() {
+               createJoinedRecord('secured/foo', 'secured/bar').setPriority(99, spy);
+            })
+            .until(function() { return spy.callCount > 0 })
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+               expect(spy.args[0][0]).instanceOf(Error);
+            })
+            .testDone(done);
+      });
 
-      it('should set priority on first path if no sortBy');
+      it('should accept null', function(done) {
+         var spy = sinon.spy();
+         helpers
+            .chain()
+            .setPriority('users/account/kato', 99)
+            .then(function() {
+               createJoinedRecord('users/account', 'users/profile').child('kato').setPriority(null, spy);
+            })
+            .until(function() { return spy.callCount > 0 })
+            .getPriority('users/account/kato')
+            .then(function(pri) {
+               expect(spy).to.be.calledOnce;
+               expect(pri).to.be.null;
+            })
+            .testDone(done);
+      });
 
-      it('should set priority on sortBy path if provided');
+      it('should accept number', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('users/account', 'users/profile').child('kato').setPriority(25, spy);
+         helpers
+            .chain()
+            .until(function() { return spy.callCount > 0 })
+            .getPriority('users/account/kato')
+            .then(function(pri) {
+               expect(spy).to.be.calledOnce;
+               expect(pri).to.equal(25);
+            })
+            .testDone(done);
+      });
 
-      it('should accept null');
+      it('should accept string', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('users/account', 'users/profile').child('kato').setPriority('foobar', spy);
+         helpers
+            .chain()
+            .until(function() { return spy.callCount > 0 })
+            .getPriority('users/account/kato')
+            .then(function(pri) {
+               expect(spy).to.be.calledOnce;
+               expect(pri).to.equal('foobar');
+            })
+            .testDone(done);
+      });
 
-      it('should accept number');
+      it('should fail if provided undefined', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile').child('kato');
+         rec.queue.done(function() {
+            expect(function() {
+               rec.setPriority(undefined, spy);
+            }).throws(Error);
+            done();
+         });
+      });
 
-      it('should accept string');
+      it('should fail if provided an object', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile').child('kato');
+         rec.queue.done(function() {
+            expect(function() {
+               rec.setPriority({foo: 'bar'}, spy);
+            }).throws(Error);
+            done();
+         });
+      });
+
+      it('should fail if provided an array', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile').child('kato');
+         rec.queue.done(function() {
+            expect(function() {
+               rec.setPriority(['foo', 'bar'], spy);
+            }).throws(Error);
+            done();
+         });
+      });
+
+      it.skip('should return correct priority in value snapshot', function(done) {
+         helpers.debugThisTest(null, /JoinedRecord.* Received/);
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile').child('kato');
+         rec.setPriority('foobar', spy);
+         helpers
+            .chain()
+            .until(function() { return spy.callCount > 0 })
+            .def(function(def) {
+               expect(spy).to.be.calledOnce;
+               rec.once('value', function(snap) {
+                  expect(snap.getPriority()).to.equal('foobar');
+                  def.resolve();
+               }, def.reject);
+            })
+            .testDone(done);
+      });
    });
 
    describe('#update', function() {
@@ -1904,7 +2193,7 @@ describe('join.JoinedRecord', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
             createJoinedRecord('unions/fruit', 'unions/legume').onDisconnect();
-         }).to.throw(fb.NotSupportedError);
+         }).to.throw(fb.util.NotSupportedError);
       });
   });
 
@@ -1912,7 +2201,7 @@ describe('join.JoinedRecord', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
             createJoinedRecord('unions/fruit', 'unions/legume').limit();
-         }).to.throw(fb.NotSupportedError);
+         }).to.throw(fb.util.NotSupportedError);
       });
   });
 
@@ -1920,7 +2209,7 @@ describe('join.JoinedRecord', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
             createJoinedRecord('unions/fruit', 'unions/legume').endAt();
-         }).to.throw(fb.NotSupportedError);
+         }).to.throw(fb.util.NotSupportedError);
       });
   });
 
@@ -1928,7 +2217,7 @@ describe('join.JoinedRecord', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
             createJoinedRecord('unions/fruit', 'unions/legume').startAt();
-         }).to.throw(fb.NotSupportedError);
+         }).to.throw(fb.util.NotSupportedError);
       });
   });
 
@@ -1936,7 +2225,7 @@ describe('join.JoinedRecord', function() {
       it('should throw a NotSupportedError', function() {
          expect(function() {
             createJoinedRecord('unions/fruit', 'unions/legume').transaction();
-         }).to.throw(fb.NotSupportedError);
+         }).to.throw(fb.util.NotSupportedError);
       });
   });
 
