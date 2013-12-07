@@ -1315,7 +1315,6 @@ describe('join.JoinedRecord', function() {
 
          rec.queue.done(function() {
             expect(rec.name()).to.equal('description');
-            console.log(rec.paths[0].toString());
             expect(rec.paths[0].toString()).to.match(/users\/style\/Kung%20Fu\/description$/);
             done();
          })
