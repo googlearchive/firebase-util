@@ -1,11 +1,18 @@
 (function(exports, fb) {
+   "use strict";
    var undefined;
    var util = fb.pkg('util');
    var log  = fb.pkg('log');
    var join = fb.pkg('join');
    var EVENTS = ['child_added', 'child_removed', 'child_changed', 'child_moved', 'value'];
 
-   function JoinedRecord() {
+   /**
+    * @class JoinedRecord
+    * @extends {join.Observer}
+    * @param {...object} firebaseRef
+    * @constructor
+    */
+   function JoinedRecord(firebaseRef) {
       this._super(this, EVENTS, util.bindAll(this, {
          onEvent: this._eventTriggered,
          onAdd: this._monitorEvent,
@@ -26,12 +33,12 @@
       this.intersections = [];
       this.refName = null;
       this.rootRef = null;
-      this.queue = this._loadPaths(util.toArray(arguments));
+      this.queue = this._loadPaths(Array.prototype.slice.call(arguments));
    }
 
    JoinedRecord.prototype = {
       auth: function(authToken, onComplete, onCancel) {
-         var args = util.Args('auth', arguments, 1, 3);
+         var args = util.Args('auth', Array.prototype.slice.call(arguments), 1, 3);
          authToken = args.nextReq('string');
          onComplete = args.next('function');
          onCancel = args.next('function');
@@ -47,7 +54,7 @@
       },
 
       on: function(eventType, callback, cancelCallback, context) {
-         var args = util.Args('on', arguments, 2, 4);
+         var args = util.Args('on', Array.prototype.slice.call(arguments), 2, 4);
          eventType = args.nextFromReq(EVENTS);
          callback = args.nextReq('function');
          cancelCallback = args.next('function');
@@ -60,7 +67,7 @@
       },
 
       off: function(eventType, callback, context) {
-         var args = util.Args('off', arguments, 0, 3);
+         var args = util.Args('off', Array.prototype.slice.call(arguments), 0, 3);
          eventType = args.nextFrom(EVENTS);
          callback = args.next('function');
          context = args.next('object');
@@ -71,7 +78,7 @@
       },
 
       once: function(eventType, callback, failureCallback, context) {
-         var args = util.Args('once', arguments, 2, 4);
+         var args = util.Args('once', Array.prototype.slice.call(arguments), 2, 4);
          eventType = args.nextFromReq(EVENTS);
          callback = args.nextReq('function');
          failureCallback = args.next('function');
@@ -88,7 +95,8 @@
       },
 
       child: function(childPath) {
-         childPath = util.Args('child', arguments, 1, 1).nextReq(['string', 'number']);
+         var args = util.Args('child', Array.prototype.slice.call(arguments), 1, 1);
+         childPath = args.nextReq(['string', 'number']);
          var rec;
          var parts = (childPath+'').split('/'), firstPart = parts.shift();
          if( this._isChildLoaded(firstPart) ) {
@@ -117,11 +125,13 @@
       },
 
       set: function(value, onComplete) {
-         onComplete = util.Args('set', arguments, 1, 2).skip().next('function', util.noop);
+         var args = util.Args('set', Array.prototype.slice.call(arguments), 1, 2).skip();
+         onComplete = args.next('function', util.noop);
          this.queue.done(function() {
             if( assertWritable(this.paths, onComplete) && assertValidSet(this.paths, value, onComplete) ) {
                var parsedValue = extractValueForSetOps(value, isSinglePrimitive(this.paths)? this.paths[0] : null);
                var pri = extractPriorityForSetOps(value);
+               if( pri !== undefined ) { this.currentPriority = pri; }
                var q = util.createQueue();
                util.each(this.paths, function(path) {
                   q.addCriteria(function(cb) {
@@ -133,10 +143,19 @@
          }, this);
       },
 
-      setWithPriority: function(value, priority, onComplete) {},
+      setWithPriority: function(value, priority, onComplete) {
+         if( !util.isObject(value) ) {
+            value = {'.value': value};
+         }
+         else {
+            value = util.extend({}, value);
+         }
+         value['.priority'] = priority;
+         return this.set(value, onComplete);
+      },
 
       setPriority:     function(priority, onComplete) {
-         var args = util.Args('setPriority', arguments, 1, 2);
+         var args = util.Args('setPriority', Array.prototype.slice.call(arguments), 1, 2);
          priority = args.nextReq(true);
          onComplete = args.next('function', util.noop);
          this.queue.done(function() {
@@ -146,9 +165,45 @@
          }, this);
       },
 
-      update:          function(value, onComplete) {},
-      remove:          function(onComplete) {},
-      push:            function(value, onComplete) {},
+      update:          function(value, onComplete) {
+         onComplete = util.Args('set', Array.prototype.slice.call(arguments), 1, 2).skip().next('function', util.noop);
+         this.queue.done(function() {
+            if( assertWritable(this.paths, onComplete) && assertValidSet(this.paths, value, onComplete) ) {
+               var parsedValue = extractValueForSetOps(value, isSinglePrimitive(this.paths)? this.paths[0] : null);
+               var q = util.createQueue();
+               util.each(this.paths, function(path) {
+                  q.addCriteria(function(cb) {
+                     path.pickAndUpdate(parsedValue, cb);
+                  });
+               });
+               q.handler(onComplete);
+            }
+         }, this);
+      },
+
+      remove: function(onComplete) {
+         onComplete = util.Args('remove', Array.prototype.slice.call(arguments), 0, 1).next('function', util.noop);
+         this.queue.done(function() {
+            var q = util.createQueue();
+            util.each(this.paths, function(path) {
+               q.addCriteria(function(cb) {
+                  path.remove(cb);
+               })
+            });
+            q.handler(onComplete);
+         }, this);
+      },
+
+      push: function(value, onComplete) {
+         var args = util.Args('remove', Array.prototype.slice.call(arguments), 0, 2);
+         value = args.next();
+         onComplete = args.next('function', util.noop);
+         var child = this.child(this.rootRef.push().name());
+         if( !util.isEmpty(value) ) {
+            child.set(value, onComplete);
+         }
+         return child;
+      },
 
       root:            function() { return this.rootRef; },
       ref:             function() { return this; },
@@ -296,9 +351,10 @@
             }, this)
             .fail(function() {
                var name = this.name();
-               util.each(arguments, function(err) {
+               util.each(Array.prototype.slice.call(arguments), function(err) {
                   log.error('Path(%s): %s', name, err);
-               })
+               });
+               log.error('JoinedRecord(%s) could not be loaded.', name);
             }, this);
       },
 

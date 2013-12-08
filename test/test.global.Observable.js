@@ -295,11 +295,58 @@ describe('global.Observable.js', function() {
    });
 
    describe('observeOnce', function() {
-      it('should be tested');
+      it('should only be invoked once', function() {
+         var fn = sinon.spy();
+         var obs = new Observable(['test1', 'test2']);
+         obs.observeOnce('test1', fn);
+         obs.triggerEvent('test1');
+         obs.triggerEvent('test1');
+         obs.triggerEvent('test1');
+         expect(fn).to.be.calledOnce;
+      });
    });
 
    describe('isOneTimeEvent', function() {
-      it('should be tested');
+      it('should invoke all listeners first time triggered', function() {
+         var fn1 = sinon.spy();
+         var fn2 = sinon.spy();
+         var fn3 = sinon.spy();
+         var obs = new Observable(['test1', 'test2'], {oneTimeEvents: ['test1']});
+         obs.observeOnce('test1', fn1);
+         obs.observeOnce('test1', fn2);
+         obs.observeOnce('test1', fn3);
+         obs.triggerEvent('test1');
+         expect(fn1).to.be.calledOnce;
+         expect(fn2).to.be.calledOnce;
+         expect(fn3).to.be.calledOnce;
+      });
+
+      it('should immediately invoke any listener attached after it has been triggered', function() {
+         var fn1 = sinon.spy();
+         var fn2 = sinon.spy();
+         var fn3 = sinon.spy();
+         var obs = new Observable(['test1', 'test2'], {oneTimeEvents: ['test1']});
+         obs.observeOnce('test1', fn1);
+         obs.triggerEvent('test1');
+         obs.observeOnce('test1', fn2);
+         obs.observeOnce('test1', fn3);
+         expect(fn1).to.be.calledOnce;
+         expect(fn2).to.be.calledOnce;
+         expect(fn3).to.be.calledOnce;
+      });
+
+      it('should only ever invoke a listener once', function() {
+         var fn1 = sinon.spy();
+         var fn2 = sinon.spy();
+         var obs = new Observable(['test1', 'test2'], {oneTimeEvents: ['test1']});
+         obs.observeOnce('test1', fn1);
+         obs.triggerEvent('test1');
+         obs.observeOnce('test1', fn2);
+         obs.triggerEvent('test1');
+         obs.triggerEvent('test1');
+         expect(fn1).to.be.calledOnce;
+         expect(fn2).to.be.calledOnce;
+      });
    });
 
 });

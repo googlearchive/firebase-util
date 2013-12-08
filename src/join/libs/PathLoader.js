@@ -37,13 +37,19 @@
          this.queue = util.createQueue(pathCallbacks(this.finalPaths));
       }
 
-      this.queue.done(function() {
-         this.intersections = intersections(this.finalPaths);
-         this.sortPath = findSortPath(this.finalPaths, this.intersections);
-         enforceSingleSortPath(this.finalPaths, this.sortPath);
-         this._assertSortPath();
-         reconcilePathKeys(this.finalPaths);
-      }, this);
+      this.queue
+         .done(function() {
+            this.intersections = intersections(this.finalPaths);
+            this.sortPath = findSortPath(this.finalPaths, this.intersections);
+            enforceSingleSortPath(this.finalPaths, this.sortPath);
+            this._assertSortPath();
+            reconcilePathKeys(this.finalPaths);
+         }, this)
+         .fail(function() {
+            util.each(Array.prototype.slice.call(arguments), function(e) {
+               log.error(e);
+            })
+         });
    }
 
    PathLoader.prototype = {
@@ -88,8 +94,9 @@
                   else {
                      this.finalPaths.push(parentPath.child(childKey));
                   }
+
                   cb();
-               }, this);
+               }, this).fail(cb);
             }, this);
       },
 
@@ -113,7 +120,7 @@
                   })
                });
                util.createQueue(pathCallbacks(finalPaths)).done(cb);
-            });
+            }).fail(cb);
          }, this);
          return q;
       }
@@ -193,7 +200,7 @@
    }
 
    function isValidRef(ref) {
-      return ref instanceof Firebase || ref instanceof join.JoinedRecord || ref instanceof join.Path;
+      return ref instanceof util.Firebase || ref instanceof join.JoinedRecord || ref instanceof join.Path;
    }
 
    function isChildPathArgs(args) {

@@ -155,7 +155,7 @@
             else {
                util.extend(true, out, v);
             }
-            if( myPath.isDynamic() && myPath.isReadyForOps() ) {
+            if( myPath.isDynamic() ) {
                util.extend(out, makeObj('.id:'+myPath.aliasedKey('.value'), myPath.props.dynamicKey));
             }
          }

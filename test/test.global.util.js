@@ -491,15 +491,121 @@ describe('global.js', function() {
    });
 
    describe('#inherit', function() {
-      it('should be tested');
+      it('should be instanceof inherited class', function() {
+         function A() {}
+         function B() {}
+         util.inherit(B, A);
+         expect(new B).instanceOf(A);
+      });
+
+      it('should preserve prototype methods added before calling inherit', function() {
+         function A() {}
+         function B() {}
+         B.prototype.hello = function() { return 'world'; };
+         util.inherit(B, A);
+         var b = new B;
+         expect(b.hello).to.be.a('function');
+         expect(b.hello()).to.equal('world');
+      });
+
+      it('should override methods that exist in both source and dest', function() {
+         function A() {}
+         A.prototype.foo = function() { return 'A'; };
+         function B() {}
+         B.prototype.foo = function() { return 'B'; };
+         util.inherit(B, A);
+         var b = new B;
+         expect(b.foo).to.be.a('function');
+         expect(b.foo()).to.equal('B');
+      });
+
+      it('should copy prototype vars', function() {
+         function A() {}
+         A.prototype.foo = 'A';
+         function B() {}
+         B.prototype.bar = 'B';
+         util.inherit(B, A);
+         var b = new B;
+         expect(b.foo).to.equal('A');
+         expect(b.bar).to.equal('B');
+      });
+
+      it('should add additional methods passed into inherit', function() {
+         function A() {}
+         A.prototype.foo = 'A';
+         function B() {}
+         B.prototype.foo = 'B';
+         util.inherit(B, A, {foo: 'C'});
+         var b = new B;
+         expect(b.foo).to.equal('C');
+      });
+
+      it('should inherit super of inherited class', function() {
+         function A() {}
+         A.prototype.foo = 'A';
+         function B() {}
+         B.prototype.foo = 'B';
+         function C() {}
+         C.prototype.foo = 'C';
+         util.inherit(B, A);
+         util.inherit(C, B);
+         var c = new C;
+         expect(c).instanceOf(B);
+         expect(c).instanceOf(A);
+         expect(c.foo).to.equal('C');
+      });
    });
 
    describe('#bindAll', function() {
-      it('should be tested');
+      it('should return the object being bound', function() {
+         var o = { foo: function() {}, bar: function() {} };
+         expect(util.bindAll({}, o)).to.equal(o);
+      });
+
+      it('should set `this` for all methods', function() {
+         var a = {};
+         var o = {
+            foo: function() { expect(this).to.equal(a); },
+            bar: function() { expect(this).to.equal(a); }
+         };
+         util.bindAll(a, o);
+         o.foo.call();
+         o.bar.call();
+      });
+
+      it('should not affect anything but functions', function() {
+         var list = ['a', 'b'];
+         var o = {
+            foo: function() { expect(this).to.equal(a); },
+            bar: function() { expect(this).not.to.equal(a); },
+            omega: list
+         };
+         util.bindAll({}, o);
+         expect(o.omega).to.equal(list);
+      });
    });
 
    describe('#filter', function() {
-      it('should be tested');
+      it('should remove items from array', function() {
+         var vals = util.filter(['a', 'b', 'c', 'd', 'e'], function(v, k) {
+            return v !== 'c' && k !== 0;
+         });
+         expect(vals).to.eql(['b', 'd', 'e']);
+      });
+
+      it('should remove items from object', function() {
+         var vals = util.filter({one: 1, two: 2, three: 3, four: 4, five: 5}, function(v,k) {
+            return v !== 1 && k !== 'five';
+         });
+         expect(vals).to.eql({two: 2, three: 3, four: 4});
+      });
+
+      it('should set `this` to scope in fn', function() {
+         var a = {};
+         util.each(['a', 'b', 'c'], function() {
+            expect(this).to.equal(a);
+         }, a);
+      })
    });
 
    describe('NotSupportedError', function() {

@@ -35,7 +35,16 @@
          if( this.hasDynamicChild(sourceKey) ) {
             throw new Error('Cannot use child() to retrieve a dynamic keyMap ref; try loadChild() instead');
          }
-         return new Path(this.ref().child(sourceKey), this);
+         if( sourceKey === undefined ) {
+            log.info('Path(%s): Asked for child key "%s"; it is not in my key map', this.name(), aliasedKey);
+            sourceKey = aliasedKey;
+         }
+         if( sourceKey === '.value' ) {
+            return this;
+         }
+         else {
+            return new Path(this.ref().child(sourceKey), this);
+         }
       },
 
       /**
@@ -105,32 +114,24 @@
             throw new Error('Update failed: First argument must be an object containing the children to replace.');
          }
          if( this.isDynamic() ) {
-            log.debug('Path(%s) is dynamic (ready only), so pickAndUpdate was ignored');
+            log.debug('Path(%s) is dynamic (ready only), so pickAndUpdate was ignored', this.name());
             callback(null);
          }
          else {
-            if( this.isJoinedChild() ) {
-               //todo has to use eachKey and observe props.dynamicAbstracts
-               var filteredData = util.mapObject(data, function(val, key) {
-                  return this.hasKey(key);
-               }, this);
-
-               if( !util.isEmpty(filteredData) ){
-                  this.ref().update(filteredData, callback);
-               }
+            var finalDat = this._dataForSetOp(data, true);
+            if( util.isEmpty(finalDat) ) {
+               callback(null);
+            }
+            else if( this.isPrimitive() ) {
+               this.ref().set(finalDat, callback);
             }
             else {
-               var q = util.createQueue(), parentPath = this;
-               //todo has to use eachKey
-               util.each(data, function(childData, key) {
-                  q.addCriteria(function(cb) {
-                     parentPath.child(key).pickAndSet(childData, cb);
-                  });
-               });
-               q.handler(callback);
+               this.ref().update(finalDat, callback);
             }
          }
       },
+
+      remove: function(cb) { this.ref().remove(cb); },
 
       isIntersection: function() { return this.props.intersects; },
       isSortBy: function() { return this.props.sortBy; },
@@ -208,7 +209,7 @@
       /**
        * Iterate each key in this keyMap and call the iterator with args: sourceKey, aliasedKey, value
        * The value is obtained using an aliasedKey from data (which must be an object, primitives should use
-       * the aliased key or .value). Dynamic keyMap refs return the id value
+       * the aliased key or .value). Dynamic keyMap refs return the id value (not the dynamic data).
        *
        * @param data
        * @param iterator
@@ -221,8 +222,7 @@
       /**
        * Iterate each key in this keyMap and call the iterator with args: sourceKey, aliasedKey, value
        * The value is obtained using an sourceKey from data (which must be an object, primitives should use
-       * the aliased key or .value). Dynamic keyMap refs return whatever value is in data (assumed to be loaded
-       * from db already)
+       * the aliased key or .value). Dynamic keyMap refs return the id value (not the dynamic data).
        *
        * @param data
        * @param iterator
@@ -240,13 +240,15 @@
          return this.isReadyForOps() && path.toString() === this.toString();
       },
 
-      _dataForSetOp: function(data) {
+      _dataForSetOp: function(data, updatesOnly) {
          var finalDat;
          if( this.isJoinedChild() ) {
-            finalDat = this._pickMyData(data);
+            finalDat = this._pickMyData(data, updatesOnly);
          }
          else {
-            finalDat = util.mapObject(data, this._pickMyData, this);
+            finalDat = util.mapObject(data, function(rec) {
+               return this._pickMyData(rec, updatesOnly);
+            }, this);
          }
          return finalDat;
       },
@@ -256,20 +258,14 @@
        * functions. Dynamic keyMap values are excluded.
        *
        * @param data
+       * @param {boolean} updatesOnly only include keys in data, no nulls for other keymap entries
        * @private
        */
-      _pickMyData: function(data) {
+      _pickMyData: function(data, updatesOnly) {
          var out = {};
-         this.eachKey(data, function(sourceKey, aliasedKey, value) {
-            out[sourceKey] = value;
-         });
-         // At the record level, dynamic keys are converted into their own paths. While this greatly
-         // simplifies the read process, writing the keys back into the data requires this additional
-         // step to make sure they are added to my data before set() or update() is called
-         util.each(this.props.dynamicAbstracts, function(aliasedKey, sourceKey) {
-            var dynKey = '.id:'+aliasedKey;
-            if( util.has(data, dynKey) ) {
-               out[sourceKey] = data[dynKey];
+         this.eachKey(data, function(sourceKey, aliasedKey, value, dynKey) {
+            if( !updatesOnly || (dynKey && util.has(data, dynKey)) || (!dynKey && util.has(data, aliasedKey)) ) {
+               out[sourceKey] = value;
             }
          });
          return util.isEmpty(out)? null : util.has(out, '.value')? out['.value'] : out;
@@ -433,16 +429,38 @@
          path.loadData(cb);
       },
 
+      /**
+       * @param data the data to be iterated
+       * @param {Function} callback
+       * @param {Object} [context]
+       * @param {boolean} [useSourceKey] if true, this is inbound data for Firebase, otherwise, its snapshot data headed out
+       * @private
+       */
       _iterateKeys: function(data, callback, context, useSourceKey) {
+         var args = util.Args('_iterateKeys', Array.prototype.slice.call(arguments), 2, 4).skip();
+         callback = args.nextReq('function');
+         context = args.next('object');
+         useSourceKey = args.next('boolean');
+
          var map = this.getKeyMap();
          if( useSourceKey && map['.value'] ) {
             callback.call(context, '.value', map['.value'], data);
          }
          else {
             util.each(map, function(aliasedKey, sourceKey) {
-               var val = getFirebaseValue(this, data, this.hasDynamicChild(sourceKey), sourceKey, aliasedKey, useSourceKey);
+               var val = getFirebaseValue(this, data, sourceKey, aliasedKey, useSourceKey);
                callback.call(context, sourceKey, aliasedKey, val);
             }, this);
+
+            if( !useSourceKey ) {
+               // At the record level, dynamic keys are converted into their own paths. While this greatly
+               // simplifies the read process, writing the keys back into the data requires this additional
+               // step to make sure they are added to my data before set() or update() is called
+               util.each(this.props.dynamicAbstracts, function(aliasedKey, sourceKey) {
+                  var dynKey = '.id:'+aliasedKey;
+                  callback.call(context, sourceKey, aliasedKey, util.has(data, dynKey)? data[dynKey] : null, dynKey);
+               });
+            }
          }
       },
 
@@ -525,7 +543,7 @@
     ***************************************************/
 
    function buildPathProps(props, parent) {
-      if( props instanceof Firebase || props instanceof join.JoinedRecord ) {
+      if( props instanceof util.Firebase || props instanceof join.JoinedRecord ) {
          props = propsFromRef(props);
       }
       else {
@@ -586,15 +604,12 @@
       return data;
    }
 
-   function getFirebaseValue(path, data, isDynamicChild, sourceKey, aliasedKey, useSourceKey) {
+   function getFirebaseValue(path, data, sourceKey, aliasedKey, useSourceKey) {
       var key = useSourceKey? sourceKey : aliasedKey;
       var val = null;
-      var dynKey = '.id:'+aliasedKey;
-      if( isDynamicChild && !useSourceKey ) {
+      if( !useSourceKey && path.hasDynamicChild(sourceKey) ) {
+         var dynKey = '.id:'+aliasedKey;
          val = util.has(data, dynKey)? data[dynKey] : null;
-         if( val === null && util.has(data, key) ) {
-            log.warn('A value was added for dynamic key %s but %s was not found. The dynamic data will not be updated, which is probably not what you intended', aliasedKey, path.toString());
-         }
       }
       else if( util.has(data, key) ) {
          val = data[key];

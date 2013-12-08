@@ -1,5 +1,5 @@
 
-# Firebase.Util.Join
+# Firebase.util.join
 
 Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use all your favorite
 Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
@@ -14,13 +14,12 @@ A JoinedRecord can be used anywhere a normal Firebase reference would work, incl
     - [Queries: limit, startAt, and endAt](#queries)
     - [Configuration options](#configuration_options)
     - [Dynamic paths as keys](#dynamic_path_names)
- - [Limitations](#limitations)
  - [Best Practices](#bestpractices)
+ - [Limitations](#limitations)
  - [Troubleshooting and Help](#troubleshooting)
  - [API](#api)
-    - [Firebase.Util.join](#api_join)
-    - [Firebase.Util.union](#api_union)
-    - [Firebase.Util.intersection](#api_intersection)
+    - [Firebase.util.join](#api_join)
+    - [Firebase.util.intersection](#api_intersection)
     - [JoinedRecord](#api_joinedrecord)
     - [JoinedSnapshot](#api_joinedsnapshot)
  - [Contributing](#contributing)
@@ -54,7 +53,7 @@ We could do any of these ops:
    var fb = new Firebase(URL);
 
    // all your paths are belong to us
-   var ref = Firebase.Util.join( fb.child('path1'), fb.child('path2') )
+   var ref = Firebase.util.join( fb.child('path1'), fb.child('path2') )
 
    ref.child('foo').set({a: 11, c: 33});
    // sets path1/foo to: {a: 11 /* b removed! */}
@@ -89,7 +88,7 @@ For example, given this data:
 We could do this:
 
 ```javascript
-var ref = Firebase.Util.join( new Firebase("INSTANCE/car"), new Firebase("INSTANCE/truck") );
+var ref = Firebase.util.join( new Firebase("INSTANCE/car"), new Firebase("INSTANCE/truck") );
 
 ref.once("value", ...);
 // results: { 123: {car: "Ford GT", truck: "Ford F150"} }
@@ -108,7 +107,7 @@ But what if we had two conflicting paths like this?
 The conflicting path names can be resolved using the `keyMap` property ([see key maps](#keymaps)):
 
 ```javascript
-ver ref = Firebase.Util.join(
+ver ref = Firebase.util.join(
    {ref: new Firebase('INSTANCE/model/car'), keyMap: {'.value': 'model'}},
    {ref: new Firebase('INSTANCE/year/car'), keyMap: {'.value': 'year'}}
 )
@@ -150,7 +149,7 @@ We could use this:
 
 ```javascript
 var fb = new Firebase(URL);
-var ref = Firebase.Util.join(
+var ref = Firebase.util.join(
    fb.child('profile'),
    // only fetch id from facebook_profile
    {ref: fb.child('facebook_profile'), keyMap: ['id']}
@@ -163,7 +162,7 @@ Or we could get both names and remove the email using this:
 
 ```javascript
 var fb = new Firebase(URL);
-var ref = Firebase.Util.join(
+var ref = Firebase.util.join(
    {ref: fb.child('profile'), keyMap: {'name': 'profile_name'}},
    fb.child('facebook_profile')
 );
@@ -191,7 +190,7 @@ You can use query operations on a Firebase reference before passing it into the 
 
 ```javascript
 var indexRef = new Firebase('URL/index_path').limit(10);
-Firebase.Util.intersection( indexRef, new Firebase('URL/data_path') );
+Firebase.util.intersection( indexRef, new Firebase('URL/data_path') );
 ```
 
 <a name="configuration_options"></a>
@@ -241,7 +240,7 @@ For example, given this data structure:
 We could use this join:
 
 ```javascript
-var ref = Firebase.Util.join(
+var ref = Firebase.util.join(
     new Firebase('INSTANCE/account'),
     {
        ref: new Firebase('INSTANCE/profile'),
@@ -270,7 +269,7 @@ ref.on('value', ...);
 Dynamic keys can be aliased like any other key by passing an object and adding an `aliasedKey` property:
 
 ```javascript
-Firebase.Util.join(
+Firebase.util.join(
    new Firebase('INSTANCE/account'),
    {
       ref: new Firebase('INSTANCE/profile'),
@@ -295,7 +294,7 @@ By default, the data in a dynamic key is READ ONLY. Thus, it is not synced durin
 To set a dynamic child's data, call .child() with the key:
 
 ```javascript
-var ref = Firebase.Util.join(
+var ref = Firebase.util.join(
    new Firebase('INSTANCE/account'),
    {
       ref: new Firebase('INSTANCE/profile'),
@@ -333,20 +332,20 @@ ref.child('kato/style').set({description: 'Mixed Martial Arts'});
 
 ## Helpful tips to isolate a problem
  - Start by reading the [limitations](#limitations) above
- - Turn on debugging by calling `Firebase.Util.logLevel(true);` (use 'info', 'log' or 'debug' to tweak verbosity)
+ - Turn on debugging by calling `Firebase.util.logLevel(true);` (use 'info', 'log' or 'debug' to tweak verbosity)
  - Check your JavaScript console for error messages
  - Add a keyMap to every path and see if the problem resolves
 
 ## Questions and bug reports
 
  - Submit bugs and problems via the GitHub issue tracker: https://www.github.com/firebase/firebase-utils
- - Be sure to call `Firebase.Util.logLevel('log') and attach it to your report
+ - Be sure to call `Firebase.util.logLevel('log') and attach it to your report
 
 <a name="api"></a>
 # API
 
 <a name="api_join"></a>
-## Firebase.Util.join( path[, path...] )
+## Firebase.util.join( path[, path...] )
 
 `@param {Firebase|Object} path`: any number of paths to be joined, see [config](#configuration_options)
 
@@ -376,7 +375,7 @@ By default, unless `intersects` is specified in the props for a path, this retur
 Calling join with all three paths:
 
 ```javascript
-Firebase.Util.union(
+Firebase.util.join(
    new Firebase('INSTANCE/fruit'),
    new Firebase('INSTANCE/legume'),
    new Firebase('INSTANCE/veggie')
@@ -396,7 +395,7 @@ Produces this:
 ```
 
 <a name="api_intersection"></a>
-## Firebase.Util.intersection( path[, path...] )
+## Firebase.util.intersection( path[, path...] )
 
 `@param {Firebase|Object} path`: any number of paths to be joined, see [config](#configuration_options)
 
@@ -426,7 +425,7 @@ For example, given this data
 Calling intersection with these paths:
 
 ```javascript
-Firebase.Util.intersection(
+Firebase.util.intersection(
     new Firebase('INSTANCE/fruit'),
     new Firebase('INSTANCE/legume'),
     new Firebase('INSTANCE/veggie')

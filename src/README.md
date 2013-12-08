@@ -1,5 +1,5 @@
 
-# Adding Libraries to Firebase.Util
+# Adding Libraries to Firebase.util
 
 ## Development setup
 
@@ -10,7 +10,7 @@ See the [README.md](../README.md) in the root folder for setup instructions and 
 Your package should be placed in src/`mypackage`/ and should contain the following structure:
 
     src/package/libs/*.js  (dependencies and libs used by exports.js; if you need to enforce order of inclusion, prefix file names with a number)
-    src/package/exports.js (functions to be put into the Firebase.Util public scope belong here and should be added onto exports)
+    src/package/exports.js (functions to be put into the Firebase.util public scope belong here and should be added onto exports)
     src/package/README.md  (documentation and instructions for your package)
 
 Two global variables are made available to your library, `exports` and `fb`. Your library should look something like the following:
@@ -23,12 +23,12 @@ Two global variables are made available to your library, `exports` and `fb`. You
    // available to any internal library by using fb.mypackage.utilityMethod
    mypackage.utilityMethod = function() {};
 
-   // becomes Firebase.Util.publicMethod
+   // becomes Firebase.util.publicMethod
    exports.publicMethod = function() {};
 }(exports, fb);
 ```
 
-Anything placed on the `exports` object will automagically be included into Firebase.Util. The README.md
+Anything placed on the `exports` object will automagically be included into Firebase.util. The README.md
 instructions will automagically be linked from the root README.md file.
 
 The `fb` object also contains a [utils library](global/util.js) and a [logger](global/logger.js) for dealing with common JavaScript shortcomings

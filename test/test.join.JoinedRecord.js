@@ -19,10 +19,16 @@ describe('join.JoinedRecord', function() {
 
    describe('<constructor>', function() {
       it('should accept a single path', function(done) {
-         new JoinedRecord(helpers.ref('users/account')).once('value', function(snap) {
-            expect(snap.val()||{}).keys(['bruce', 'kato']);
-            done();
-         })
+         var spy = sinon.spy();
+         new JoinedRecord(helpers.ref('users/account')).once('value', spy);
+
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+               expect(spy.args[0][0].val()||{}).keys(['bruce', 'kato']);
+            })
+            .testDone(done);
       });
 
       it('should accept paths that don\'t exist (that just return null)', function(done) {
@@ -265,7 +271,7 @@ describe('join.JoinedRecord', function() {
                   });
                })
                .then(function() {
-                  console.log("\n<<< //INTENTIONAL WARNINGS >>>\n\n");
+                  console.log("\n<<< ///INTENTIONAL WARNINGS >>>\n\n");
                })
                .testDone(done);
          });
@@ -671,7 +677,7 @@ describe('join.JoinedRecord', function() {
 
             helpers
                .chain()
-               .until(function() { return spy.callCount > 0 })
+               .until(spyCalled(spy))
                .then(function() {
                   expect(spy).to.have.been.called;
                   var data = spy.args[0][0].val();
@@ -697,7 +703,7 @@ describe('join.JoinedRecord', function() {
 
             helpers
                .chain()
-               .until(function() { return spy.callCount > 0 })
+               .until(spyCalled(spy))
                .then(function() {
                   expect(spy).to.have.been.called;
                   var data = spy.args[0][0].val();
@@ -965,6 +971,7 @@ describe('join.JoinedRecord', function() {
                      .remove(['arrays/spanish', key]);
                });
                chain
+                  .until(spyCalled(spy))
                   .wait(function() {
                      sinon.assert.callCount(spy, keys.length);
                      fb.util.each(keys, function(key, i) {
@@ -984,7 +991,7 @@ describe('join.JoinedRecord', function() {
                helpers
                   .chain()
                   .setPriority('arrays/french/1', 25)
-                  .until(function() { return spy.callCount > 0 })
+                  .until(spyCalled(spy))
                   .then(function(){
                      sinon.assert.callCount(spy, 1);
                      expect(spy.args[0][0].name()).to.equal('1');
@@ -1002,7 +1009,7 @@ describe('join.JoinedRecord', function() {
                helpers
                   .chain()
                   .set('arrays/english/2', 'twotwo')
-                  .until(function() { return spy.callCount > 0 })
+                  .until(spyCalled(spy))
                   .then(function(){
                      sinon.assert.callCount(spy, 1);
                      var snap = spy.args[0][0];
@@ -1370,7 +1377,7 @@ describe('join.JoinedRecord', function() {
          });
          helpers
             .chain()
-            .until(function() { return spy.callCount > 0 })
+            .until(spyCalled(spy))
             .then(function() {
                expect(spy).to.be.calledOnce;
                expect(spy.args[0][0]).to.be.null;
@@ -1925,29 +1932,211 @@ describe('join.JoinedRecord', function() {
    });
 
    describe('#setWithPriority', function() {
-      it('should invoke callback when done');
+      //todo-bug these all have to have keymaps for https://app.asana.com/0/5737846577904/9043789101359
+      var aProps = {
+         ref: helpers.ref('users/account'),
+         keyMap: ['email']
+      };
+      var pProps = {
+         ref: helpers.ref('users/profile'),
+         keyMap: ['name', 'nick', 'style']
+      };
 
-      it('should invoke callback with error on failure');
+      var o1Props = {
+         ref: helpers.ref('ordered/set1'),
+         keyMap: {'.value': 'set1'}
+      };
 
-      it('should set the priority on the sortPath');
+      var o2Props = {
+         ref: helpers.ref('ordered/set2'),
+         keyMap: {'.value': 'set2'}
+      };
 
-      it('should not set priority on any non-sort path');
+      it('should invoke callback when done', function(done) {
+         var spy = sinon.spy();
+         var newData = { chuck: {email: 'chuck@norris.com', name: 'Chuck Norris', nick: 'Chucky', style: 'Karate'} };
+         createJoinedRecord(aProps, pProps).setWithPriority(newData, 99, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .testDone(done);
+      });
 
-      it('should trigger child_moved if priority changes');
+      it('should invoke callback with error on failure', function(done) {
+         var spy = sinon.spy();
+         var newData = { chuck: {email: 'chuck@norris.com', name: 'Chuck Norris', nick: 'Chucky', style: 'Karate'} };
+         helpers.chain()
+            .set('secured_write_allowed', false)
+            .then(function() {
+               console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
+               createJoinedRecord(
+                  { ref: helpers.ref('secured/foo'), keyMap: {'.value': 'foo'} },
+                  { ref: helpers.ref('secured/bar'), keyMap: {'.value': 'bar'} }
+               ).setWithPriority(newData, 99, spy);
+            })
+            .until(spyCalled(spy))
+            .then(function() {
+               console.log("\n<<< ///INTENTIONAL WARNINGS >>>\n\n");
+               expect(spy).to.be.calledOnce;
+               expect(spy.args[0][0]).instanceOf(Error);
+            })
+            .testDone(done);
+      });
 
-      it('should not trigger child_moved if priority does not change');
+      it('should only set the priority on the sortPath', function(done) {
+         var spy = sinon.spy();
+         var newData = { chuck: {email: 'chuck@norris.com', name: 'Chuck Norris', nick: 'Chucky', style: 'Karate'} };
+         createJoinedRecord(aProps, pProps).setWithPriority(newData, 99, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .get('users/account')
+            .then(function(data, id, snap) {
+               expect(snap.getPriority()).to.equal(99);
+            })
+            .get('users/profile')
+            .then(function(data, id, snap) {
+               expect(snap.getPriority()).to.equal(null);
+            })
+            .testDone(done);
+      });
 
-      it('should trigger value if data changes');
+      it('should trigger child_moved if priority changes', function(done) {
+         var moveSpy = sinon.spy(), setSpy = sinon.spy();
+         var rec = createJoinedRecord(o1Props, o2Props);
+         rec.once('value', function(){
+            rec.on('child_moved', moveSpy);
+            rec.child('two').setWithPriority({set1: 212, set2: 222}, 200, setSpy);
+            helpers.chain()
+               .until(spyCalled(moveSpy))
+               .until(spyCalled(setSpy))
+               .then(function() {
+                  expect(moveSpy).calledOnce;
+                  expect(moveSpy.args[0][0].name()).to.equal('two');
+                  expect(moveSpy.args[0][0].getPriority()).to.equal(200);
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should not trigger value if data does not change');
+      it('should not trigger child_moved if priority does not change', function(done) {
+         var moveSpy = sinon.spy(), setSpy = sinon.spy();
+         var rec = createJoinedRecord(o1Props, o2Props);
+         rec.once('value', function(){
+            rec.on('child_moved', moveSpy);
+            rec.child('two').setWithPriority({set1: 212, set2: 222}, 2, setSpy);
+            helpers.chain()
+               .until(spyCalled(moveSpy)) // wait to ensure it's not called
+               .until(spyCalled(setSpy))
+               .then(function() {
+                  expect(moveSpy).not.called;
+                  expect(setSpy).calledOnce;
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should work with primitive');
+      it('should trigger value if data changes', function(done) {
+         var valSpy = sinon.spy(), setSpy = sinon.spy();
+         var newData = {set1: 212, set2: 222};
+         var rec = createJoinedRecord(o1Props, o2Props).child('two');
+         rec.once('value', function(){
+            rec.on('value', valSpy);
+            rec.setWithPriority(newData, 2, setSpy);
+            helpers.chain()
+               .until(spyCalled(valSpy, 2))
+               .until(spyCalled(setSpy))
+               .then(function() {
+                  expect(valSpy).calledTwice;
+                  var snap = valSpy.args[1][0];
+                  var dat = snap.val();
+                  expect(snap.name()).to.equal('two');
+                  expect(dat).to.eql(newData);
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should work with null');
+      it('should not trigger value if data does not change', function(done) {
+         var valSpy = sinon.spy(), setSpy = sinon.spy();
+         var rec = createJoinedRecord(o1Props, o2Props).child('two');
+         rec.once('value', function(){
+            rec.on('value', valSpy);
+            rec.setWithPriority({set1: 2, set2: 22}, 200, setSpy);
+            helpers.chain()
+               .until(spyCalled(valSpy))
+               .until(spyCalled(setSpy))
+               .then(function() {
+                  expect(valSpy).calledOnce;
+                  expect(setSpy).calledOnce;
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should work on child record\'s fields');
+      it('should work with primitive', function(done) {
+         var setSpy = sinon.spy();
+         var rec = createJoinedRecord(o1Props, o2Props);
+         rec.child('three/set1').once('value', function(snap) {
+            snap.ref().setWithPriority(350, 351, setSpy);
+            helpers.chain()
+               .until(spyCalled(setSpy))
+               .then(function() {
+                  expect(setSpy).calledOnce;
+               })
+               .get('ordered/set1/three')
+               .then(function(data, id, snap) {
+                  expect(data).to.equal(350);
+                  expect(snap.getPriority()).to.equal(351);
+               })
+               .testDone(done);
+         });
+      });
 
-      it('should return correct priority in value snapshot');
+      it('should work with null', function(done) {
+         var setSpy = sinon.spy();
+         var rec = createJoinedRecord(o1Props, o2Props);
+         helpers.chain()
+            .setPriority('ordered/set1/three', 999)
+            .then(function() {
+               rec.child('three/set1').setWithPriority(null, null, setSpy);
+            })
+            .until(spyCalled(setSpy))
+            .then(function() {
+               expect(setSpy).calledOnce;
+               expect(setSpy.args[0][0]).to.be.null;
+            })
+            .get('ordered/set1/three')
+            .then(function(data, id, snap) {
+               expect(data).to.equal(null);
+               expect(snap.getPriority()).to.equal(null);
+            })
+            .testDone(done);
+      });
+
+      it('should return correct priority in value snapshot', function(done) {
+         var setSpy = sinon.spy();
+         var rec = createJoinedRecord(o1Props, o2Props).child('three');
+         helpers.chain()
+            .then(function() {
+               rec.setWithPriority(331, 332, setSpy);
+            })
+            .until(spyCalled(setSpy))
+            .then(function() {
+               expect(setSpy).calledOnce;
+            })
+            .def(function(def) {
+               rec.once('value', function(snap) {
+                  expect(snap.getPriority()).to.equal(332);
+                  def.resolve();
+               });
+            })
+            .testDone(done);
+      });
    });
 
    describe('#setPriority', function() {
@@ -1956,7 +2145,7 @@ describe('join.JoinedRecord', function() {
          createJoinedRecord('users/account', 'users/profile').setPriority(99, spy);
          helpers
             .chain()
-            .until(function() { return spy.callCount > 0 })
+            .until(spyCalled(spy))
             .then(function() {
                expect(spy).to.be.calledOnce;
                expect(spy.args[0][0]).to.be.null;
@@ -1972,7 +2161,7 @@ describe('join.JoinedRecord', function() {
             .then(function() {
                createJoinedRecord('secured/foo', 'secured/bar').setPriority(99, spy);
             })
-            .until(function() { return spy.callCount > 0 })
+            .until(spyCalled(spy))
             .then(function() {
                expect(spy).to.be.calledOnce;
                expect(spy.args[0][0]).instanceOf(Error);
@@ -1988,7 +2177,7 @@ describe('join.JoinedRecord', function() {
             .then(function() {
                createJoinedRecord('users/account', 'users/profile').child('kato').setPriority(null, spy);
             })
-            .until(function() { return spy.callCount > 0 })
+            .until(spyCalled(spy))
             .getPriority('users/account/kato')
             .then(function(pri) {
                expect(spy).to.be.calledOnce;
@@ -2002,7 +2191,7 @@ describe('join.JoinedRecord', function() {
          createJoinedRecord('users/account', 'users/profile').child('kato').setPriority(25, spy);
          helpers
             .chain()
-            .until(function() { return spy.callCount > 0 })
+            .until(spyCalled(spy))
             .getPriority('users/account/kato')
             .then(function(pri) {
                expect(spy).to.be.calledOnce;
@@ -2016,7 +2205,7 @@ describe('join.JoinedRecord', function() {
          createJoinedRecord('users/account', 'users/profile').child('kato').setPriority('foobar', spy);
          helpers
             .chain()
-            .until(function() { return spy.callCount > 0 })
+            .until(spyCalled(spy))
             .getPriority('users/account/kato')
             .then(function(pri) {
                expect(spy).to.be.calledOnce;
@@ -2058,83 +2247,527 @@ describe('join.JoinedRecord', function() {
          });
       });
 
-      it.skip('should return correct priority in value snapshot', function(done) {
+      it('should return correct priority in value snapshot', function(done) {
          helpers.debugThisTest(null, /JoinedRecord.* Received/);
          var spy = sinon.spy();
-         var rec = createJoinedRecord('users/account', 'users/profile').child('kato');
+         //todo-bug must have a keymap for https://app.asana.com/0/5737846577904/9043789101359
+         var rec = createJoinedRecord({
+            ref: helpers.ref('users/account'),
+            keyMap: ['email']
+         }, {
+            ref: helpers.ref('users/profile'),
+            keyMap: ['name', 'nick', 'style']
+         }).child('kato');
          rec.setPriority('foobar', spy);
          helpers
             .chain()
-            .until(function() { return spy.callCount > 0 })
-            .def(function(def) {
+            .until(spyCalled(spy))
+            .then(function(def) {
                expect(spy).to.be.calledOnce;
-               rec.once('value', function(snap) {
-                  expect(snap.getPriority()).to.equal('foobar');
-                  def.resolve();
-               }, def.reject);
+            })
+            .get('users/account/kato')
+            .then(function(data, id, snap) {
+               expect(snap.getPriority()).to.equal('foobar');
             })
             .testDone(done);
       });
    });
 
    describe('#update', function() {
-      it('should invoke callback when done');
+      it('should invoke callback when done', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('users/account', 'users/profile').child('kato').update({email: 'kato@kato.com'}, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .get('users/account/kato/email')
+            .then(function(email) {
+               expect(email).to.equal('kato@kato.com');
+            })
+            .testDone(done);
+      });
 
-      it('should invoke callback with error on failure');
+      it('should invoke callback with error on failure', function(done) {
+         var rec = createJoinedRecord( 'secured/bar', 'secured/foo' ).child('one');
+         helpers.chain()
+            .def(function(def) {
+               rec.queue.when(def);
+            })
+            .then(function() {
+               console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
+            })
+            .set('secured_write_allowed', false)
+            .def(function(def) {
+               var newData = { foo: 11, bar: 12 };
+               rec.update(newData, function(err) {
+                  expect(err).instanceOf(Error);
+                  expect(err).to.match(/PERMISSION_DENIED/);
+                  def.resolve();
+               });
+            })
+            .then(function() {
+               console.log("\n<<< ///INTENTIONAL WARNINGS >>>\n\n");
+            })
+            .testDone(done);
+      });
 
-      it('should only modify fields specified (ignores extra fields in data passed to set)');
+      it('should only modify fields specified (ignores extra fields in data passed to set)', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord( 'users/profile', 'users/account' ).child('kato');
+         var newData = { email: 'kato@kato.com', widget: 'should be ignored', 'nick': 'Kato??' };
+         helpers.chain()
+            .def(function(def) {
+               rec.queue.when(def);
+            })
+            .then(function() {
+               rec.update(newData, spy);
+            })
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .get('users/profile/kato/widget')
+            .then(function(data) {
+               expect(data).to.be.null;
+            })
+            .get('users/account/kato/widget')
+            .then(function(data) {
+               expect(data).to.be.null;
+            })
+            .testDone(done);
+      });
 
-      it('should preserve fields not in the keyMap (they are not overwritten or set to null)');
+      it('should preserve fields not in the update (they are not overwritten or set to null)', function(done) {
+         var spy = sinon.spy();
+         var newData = { email: 'kato@kato.net', foo: 'bar' };
+         var proData, accData;
+         helpers.chain()
+            .get('users/account/kato')
+            .then(function(data) { accData = data; })
+            .get('users/profile/kato')
+            .then(function(data) {
+               proData = data;
+               createJoinedRecord('users/profile', 'users/account').child('kato').update(newData, spy);
+            })
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .get('users/account/kato')
+            .then(function(data) {
+               expect(data).to.eql(fb.util.extend(data, {email: accData.email}));
+            })
+            .get('users/profile/kato')
+            .then(function(data) {
+               expect(data).to.eql(proData);
+            })
+            .testDone(done);
+      });
 
-      it('should set data on dynamic keyMap paths');
+      it('should set keys on dynamic keyMap paths', function(done) {
+         var spy = sinon.spy();
+         var newData = { email: 'kato@kato.net', '.id:style': 'MMA', style: 'should be ignored' };
+         createJoinedRecord('users/account', {
+            ref: helpers.ref('users/profile'),
+            keyMap: { 'nick': 'nick', 'name': 'name', 'style': helpers.ref('users/styles') }
+         }).child('kato').update(newData, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .get('users/account/kato/email')
+            .then(function(data) {
+               expect(data).to.equal(newData.email);
+            })
+            .get('users/profile/kato/style')
+            .then(function(data) {
+               expect(data).to.equal(newData['.id:style'])
+            })
+            .testDone(done);
+      });
 
-      it('should update multiple records if called on joined parent');
+      it('should accept null values', function(done) {
+         var spy = sinon.spy();
+         var newData = { email: null, nick: null, name: 'Kato' };
+         createJoinedRecord('users/account', 'users/profile').child('kato').update(newData, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .get('users/account/kato')
+            .then(function(data) {
+               expect(data).to.eql({name: 'kato'});
+            })
+            .get('users/profile/kato')
+            .then(function(data) {
+               expect(data).to.eql({ name: 'Kato', 'style': 'Kung Fu' });
+            })
+            .testDone(done);
+      });
 
-      it('should update multiple fields if called on joined child');
+      it('should accept primitives', function(done) {
+         var spy = sinon.spy();
+         var expData;
+         var newData = {
+            a: { fruit: 'apricot', legume: 'apricot seed', veggie: 'Arugula' }
+         };
+         helpers.chain()
+            .get('unions')
+            .then(function(data) {
+               expData = fb.util.extend(true, data, {
+                  fruit: { a: newData.a.fruit },
+                  legume: { a: newData.a.legume },
+                  veggie: { a: newData.a.veggie }
+               });
+               createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie').update(newData, spy);
+            })
+            .until(spyCalled(spy))
+            .get('unions')
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+               expect(data).to.eql(expData);
+            })
+            .testDone(done);
+      });
 
-      it('should accept null values');
+      it('should call set on children if update invoked on master', function(done) {
+         var spy = sinon.spy();
+         var expData;
+         var newData = {
+            kato: { email: 'kato@kato.com', nick: 'katowulf' }
+         };
+         createJoinedRecord('users/account', 'users/profile').update(newData, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .get('users/account/kato')
+            .then(function(data) {
+               expect(data).to.eql({email: newData.kato.email});
+            })
+            .get('users/profile/kato')
+            .then(function(data) {
+               expect(data).to.eql({nick: newData.kato.nick});
+            })
+            .testDone(done);
+      });
 
-      it('should accept primitives');
+      it('should trigger value event', function(done) {
+         var valueSpy = sinon.spy(), updateSpy = sinon.spy();
+         var newData = { kato: { email: 'kato@kato.com', nick: 'katowulf' } };
+         var rec = createJoinedRecord('users/account', 'users/profile');
+         rec.once('value', function() {
+            rec.on('value', valueSpy);
+            rec.update(newData, updateSpy);
+         });
+         helpers.chain()
+            .until(spyCalled(valueSpy, 2))
+            .until(spyCalled(updateSpy))
+            .then(function() {
+               expect(valueSpy).to.be.calledTwice;
+               expect(updateSpy).to.be.calledOnce;
+               expect(valueSpy.args[1][0].val().kato.email).to.eql('kato@kato.com');
+            })
+            .testDone(done);
+      });
 
-      it('should call set on children if update invoked on master');
+      it('should trigger child_changed event', function(done) {
+         var valueSpy = sinon.spy(), updateSpy = sinon.spy();
+         var newData = { kato: { email: 'kato@kato.com', nick: 'katowulf' } };
+         var rec = createJoinedRecord('users/account', 'users/profile');
+         rec.once('value', function() {
+            rec.on('child_changed', valueSpy);
+            rec.update(newData, updateSpy);
+         });
+         helpers.chain()
+            .until(spyCalled(valueSpy))
+            .until(spyCalled(updateSpy))
+            .then(function() {
+               expect(valueSpy).to.be.calledOnce;
+               expect(updateSpy).to.be.calledOnce;
+               expect(valueSpy.args[0][0].name()).to.equal('kato');
+            })
+            .testDone(done);
+      });
+
+      it('should trigger child_removed event if set to null', function(done) {
+         var valueSpy = sinon.spy(), updateSpy = sinon.spy();
+         var newData = { kato: null };
+         var rec = createJoinedRecord('users/account', 'users/profile');
+         rec.once('value', function() {
+            rec.on('child_removed', valueSpy);
+            rec.update(newData, updateSpy);
+         });
+         helpers.chain()
+            .until(spyCalled(valueSpy))
+            .until(spyCalled(updateSpy))
+            .then(function() {
+               expect(valueSpy).to.be.calledOnce;
+               expect(updateSpy).to.be.calledOnce;
+               expect(valueSpy.args[0][0].name()).to.equal('kato');
+            })
+            .testDone(done);
+      });
    });
 
    describe('#remove', function() {
-      it('should invoke callback when done');
+      it('should invoke callback when done', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie').remove(spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+            })
+            .testDone(done);
+      });
 
-      it('should invoke callback with error on failure');
+      it('should invoke callback with error on failure', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('secured/foo', 'secured/bar');
+         helpers.chain()
+            .def(function(def) {
+               rec.queue.when(def);
+            })
+            .set('secured_write_allowed', false)
+            .then(function() {
+               console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
+               rec.remove(spy);
+            })
+            .until(spyCalled(spy))
+            .then(function() {
+               console.log("\n<<< ///INTENTIONAL WARNINGS >>>\n\n");
+               expect(spy).to.be.calledOnce;
+               expect(spy.args[0][0]).instanceOf(Error);
+            })
+            .testDone(done);
+      });
 
-      it('should remove all records from all paths if called on joined parent');
+      it('should remove all records from all paths if called on joined parent', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie').remove(spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .get('unions')
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+               expect(data).to.be.null;
+            })
+            .testDone(done);
+      });
 
-      it('should remove record from all joined paths');
+      it('should remove record from all joined paths', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie').child('b').remove(spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .get('unions')
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+               expect(data||{}).to.have.keys(['fruit', 'legume', 'veggie']);
+               expect(data.fruit).to.have.keys(['a']);
+               expect(data.legume).to.have.keys(['c', 'd']);
+               expect(data.veggie).to.have.keys(['d', 'e']);
+            })
+            .testDone(done);
+      });
 
-      it('should not blow up if record does not exist');
+      it('should not blow up if record does not exist', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie').child('zzz').remove(spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).to.be.calledOnce;
+            })
+            .testDone(done);
+      });
 
-      it('should trigger "child_moved" on next record');
+      it('should remove dynamic data if called on dynamic child', function(done) {
+         var spy = sinon.spy();
+         createJoinedRecord('users/account', {
+            ref: helpers.ref('users/profile'),
+            keyMap: {nick: true, name: true, style: helpers.ref('users/styles')}
+         }).child('kato/style').remove(spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .get('users/styles/Kung Fu')
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+               expect(data).to.be.null;
+            })
+            .testDone(done);
+      });
 
-      it('should remove dynamic keyMap paths');
+      it('should work on deeply nested child paths', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile');
+         helpers.chain()
+            .set('users/profile/kato/nick/a/b/c', true)
+            .then(function() {
+               rec.child('kato/nick/a/b/c').remove(spy);
+            })
+            .until(spyCalled(spy))
+            .get('users/profile/kato/a/b/c')
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+               expect(data).to.be.null;
+            })
+            .testDone(done);
+      });
 
-      it('should delete entire record (including fields not in keyMap)');
+      it('should work on record fields', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile').child('kato/nick').remove(spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .get('users/profile/kato/nick')
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+               expect(data).to.be.null;
+            })
+            .testDone(done);
+      });
 
-      it('should work on nested paths');
-
-      it('should work on record fields');
+      it('should accept no arguments', function(done) {
+         createJoinedRecord('users/account', 'users/profile').child('kato/nick').remove();
+         helpers.chain()
+            .pause()
+            .get('users/profile/kato/nick')
+            .then(function(data) {
+               expect(data).to.be.null;
+            })
+            .testDone(done);
+      });
   });
 
    describe('#push', function() {
-      it('should invoke callback when done');
+      it('should invoke callback when done', function(done) {
+         var spy = sinon.spy();
+         var newData = {email: 'chuck@norris.com', name: 'Chuck Norris', nick: 'Chucky', style: 'Karate'};
+         var rec = createJoinedRecord('users/account', 'users/profile').push(newData, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function(data) {
+               expect(spy).to.be.calledOnce;
+            })
+            .testDone(done);
+      });
 
-      it('should invoke callback with error on failure');
+      it('should invoke callback with error on failure', function(done) {
+         var spy = sinon.spy();
+         var newData = {email: 'chuck@norris.com', name: 'Chuck Norris', nick: 'Chucky', style: 'Karate'};
+         helpers.set('secured_write_allowed', false).then(function() {
+            console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
+            var rec = createJoinedRecord('secured/foo', 'secured/bar').push(newData, spy);
+            helpers.chain()
+               .until(spyCalled(spy))
+               .then(function() {
+                  console.log("\n<<< ///INTENTIONAL WARNINGS >>>\n\n");
+                  expect(spy).calledOnce;
+                  expect(spy.args[0][0]).instanceOf(Error);
+               })
+               .get('users/account/'+rec.name())
+               .then(function(data) {
+                  expect(data).to.be.null;
+               })
+               .get('users/profile/'+rec.name())
+               .then(function(data) {
+                  expect(data).to.be.null;
+               })
+               .testDone(done);
+         })
+      });
 
-      it('should create new joined records');
+      it('should work without setting data', function() {
+         var rec = createJoinedRecord('users/account', 'users/profile').push();
+         expect(rec).instanceOf(fb.join.JoinedRecord);
+         expect(rec.name()).is.a('string');
+      });
 
-      it('should create new children in child records');
+      it('should work without a callback', function(done) {
+         var newData = {email: 'chuck@norris.com', name: 'Chuck Norris', nick: 'Chucky', style: 'Karate'};
+         var rec = createJoinedRecord('users/account', 'users/profile').push(newData);
+         helpers.chain()
+            .pause()
+            .get('users/account/'+rec.name())
+            .then(function(data) {
+               expect(data).to.be.an('object');
+            })
+            .get('users/profile/'+rec.name())
+            .then(function(data) {
+               expect(data).to.be.an('object');
+            })
+            .testDone(done);
+      });
 
-      it('should create new dynamic path records if they have data');
+      it('should create new joined records', function(done) {
+         var spy = sinon.spy();
+         var newData = {email: 'chuck@norris.com', name: 'Chuck Norris', nick: 'Chucky', style: 'Karate'};
+         var rec = createJoinedRecord('users/account', 'users/profile').push(newData, spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .then(function() {
+               expect(spy).calledOnce;
+            })
+            .get('users/account/'+rec.name())
+            .then(function(data) {
+               expect(data).to.eql({email: newData.email})
+            })
+            .get('users/profile/'+rec.name())
+            .then(function(data) {
+               expect(data).to.eql({name: newData.name, nick: newData.nick, style: newData.style})
+            })
+            .testDone(done);
+      });
 
-      it('should work on deep paths');
+      it('should create new fields in child records', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile').child('kato').push('foo', spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .get('users/account/kato/'+rec.name())
+            .then(function(data) {
+               expect(spy).calledOnce;
+               expect(data).to.equal('foo');
+            })
+            .testDone(done);
+      });
 
-      it('should work without setting data');
+      it('should create new dynamic path data', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', {
+            ref: helpers.ref('users/profile'),
+            keyMap: {name: true, nick: true, style: helpers.ref('users/styles')}
+         }).child('kato/style').push('foo', spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .get('users/styles/Kung Fu/'+rec.name())
+            .then(function(data) {
+               expect(spy).calledOnce;
+               expect(spy.args[0][0]).to.be.null;
+               expect(data).to.equal('foo');
+            })
+            .testDone(done);
+      });
+
+      it('should work on deep paths', function(done) {
+         var spy = sinon.spy();
+         var rec = createJoinedRecord('users/account', 'users/profile').child('kato/a/b/c').push('foo', spy);
+         helpers.chain()
+            .until(spyCalled(spy))
+            .get('users/account/kato/a/b/c/'+rec.name())
+            .then(function(data) {
+               expect(spy).calledOnce;
+               expect(data).to.equal('foo');
+            })
+            .testDone(done);
+      });
   });
 
    describe('#root', function() {
@@ -2239,7 +2872,7 @@ describe('join.JoinedRecord', function() {
       var args = fb.util.map(arguments, function(x) {
          return fb.util.isObject(x)? x : helpers.ref(x);
       });
-      var rec = construct(JoinedRecord, args);
+      var rec = fb.util.construct(JoinedRecord, args);
       helpers.turnOffAfterTest(rec);
       return rec;
    }
@@ -2257,7 +2890,7 @@ describe('join.JoinedRecord', function() {
             }
          }
          return path;
-      })
+      });
       return createJoinedRecord.apply(null, args);
    }
 
@@ -2283,13 +2916,14 @@ describe('join.JoinedRecord', function() {
       return createJoinedRecord.apply(null, [].concat(intersects, unions||[]));
    }
 
-   // credits: http://stackoverflow.com/questions/1606797/use-of-apply-with-new-operator-is-this-possible
-   function construct(constructor, args) {
-      function F() {
-         return constructor.apply(this, args);
-      }
-      F.prototype = constructor.prototype;
-      return new F();
+   /**
+    * @param spy
+    * @param [times]
+    * @returns {Function}
+    */
+   function spyCalled(spy, times) {
+      if( times === undefined ) { times = 1 }
+      return function() { return spy.callCount >= times };
    }
 
 });

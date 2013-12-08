@@ -31,13 +31,17 @@
          }, this);
       },
 
+      fail: function(callback, context) {
+         this.queue.fail(callback, context);
+      },
+
       _parseRawKeymap: function(km) {
          var dynamicPaths = {};
          var finalKeyMap = {};
          util.each(km, function(v, k) {
             if( util.isObject(v) ) {
                var toKey = k;
-               if( v instanceof Firebase || v instanceof join.JoinedRecord ) {
+               if( v instanceof util.Firebase || v instanceof join.JoinedRecord ) {
                   v = { ref: v };
                }
                else if(v.aliasedKey) {
@@ -46,6 +50,9 @@
                v.keyMap = {'.value': toKey};
                finalKeyMap[k] = toKey;
                dynamicPaths[k] = new join.Path(v);
+            }
+            else if( v === true ) {
+               finalKeyMap[k] = k;
             }
             else {
                finalKeyMap[k] = v;

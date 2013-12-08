@@ -57,6 +57,17 @@
          return this;
       },
 
+      when: function(def) {
+         this._runOrStore(function() {
+            if( this.hasErrors() ) {
+               def.reject.apply(def, this.getErrors());
+            }
+            else {
+               def.resolve();
+            }
+         });
+      },
+
       addError: function(e) {
          this.errors.push(e);
       },

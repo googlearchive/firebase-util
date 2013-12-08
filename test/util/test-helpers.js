@@ -235,7 +235,7 @@ helpers.wait = function(callback, milliseconds) {
  */
 helpers.until = function(checkFn, maxWait) {
    return JQDeferred(function(def) {
-      var cto = setTimeout(finish, maxWait||2000);
+      var cto = setTimeout(finish, maxWait||1000);
       var ito = setInterval(function() {
          if( checkFn() ) { finish(); }
       }, 25);

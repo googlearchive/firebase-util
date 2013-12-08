@@ -5,7 +5,7 @@
    var util = fb.pkg('util');
    var log = fb.pkg('log');
 
-   function Args(fnName ,args, minArgs, maxArgs) {
+   function Args(fnName, args, minArgs, maxArgs) {
       if( typeof(fnName) !== 'string' || !util.isObject(args) ) { throw new Error('Args requires at least 2 args: fnName, arguments[, minArgs, maxArgs]')}
       if( !(this instanceof Args) ) { // allow it to be called without `new` prefix
          return new Args(fnName, args, minArgs, maxArgs);
@@ -13,7 +13,7 @@
       this.fnName = fnName;
       this.argList = util.toArray(args);
       this.origArgs = util.toArray(args);
-      var len = this.argList.length;
+      var len = this.length = this.argList.length;
       this.pos = -1;
       if( minArgs === undefined ) { minArgs = 0; }
       if( maxArgs === undefined ) { maxArgs = this.argList.length; }
@@ -142,6 +142,7 @@
 
       _arg: function(types, defaultValue, required) {
          this.pos++;
+         if( types === undefined || types === null ) { types = true; }
          if( this.argList.length && isOfType(this.argList[0], types) ) {
             return format(this.argList.shift(), types);
          }

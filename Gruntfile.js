@@ -12,7 +12,7 @@ module.exports = function(grunt) {
          '<%= pkg.homepage ? "* " + pkg.homepage + "\\n" : "" %>' +
          '* Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>\n' +
          '* MIT LICENSE */\n\n(function(exports) {\n\n',
-      footer: '\n\n})( typeof window !== "undefined"? [window.Firebase.Util = {}][0] : module.exports );\n',
+      footer: '\n\n})( typeof window !== "undefined"? [window.Firebase.util = {}][0] : module.exports );\n',
 
       concat: {
          app: {

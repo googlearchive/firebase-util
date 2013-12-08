@@ -2,18 +2,19 @@
  * @var {Object} a namespace to store internal utils for use by Firebase.Util methods
  */
 var fb = {};
-var Firebase;
-
-if( typeof(window) === 'undefined' ) {
-   Firebase = require('firebase');
-}
-else {
-   Firebase = window.Firebase;
-   if( !Firebase ) { throw new Error('Must include Firebase (http://cdn.firebase.com/v0/firebase.js) before firebase-utils.js'); }
-}
 
 (function(exports, fb) {
    var undefined;
+
+   var Firebase;
+
+   if( typeof(window) === 'undefined' ) {
+      Firebase = require('firebase');
+   }
+   else {
+      Firebase = window.Firebase;
+      if( !Firebase ) { throw new Error('Must include Firebase (http://cdn.firebase.com/v0/firebase.js) before firebase-utils.js'); }
+   }
 
    /**
     * Creates a namespace for packages inside the fb object
@@ -22,6 +23,7 @@ else {
    fb.pkg = function(name) { fb[name] || (fb[name] = {}); return fb[name]; };
 
    var util = fb.pkg('util');
+   util.Firebase = Firebase;
 
    util.isDefined = function(v) {
       return v !== undefined;
@@ -40,7 +42,12 @@ else {
       return startFrom > 0? newVals.slice(startFrom) : newVals;
    };
 
-   util.extend = function(){
+   /**
+    * @param {boolean} [recursive] if true, keys are merged recursively, otherwise, they replace the base
+    * @param {...object} base
+    * @returns {Object}
+    */
+   util.extend = function(recursive, base){
       var args = util.toArray(arguments);
       var recurse = args[0] === true && args.shift();
       var out = args.shift();
@@ -89,7 +96,7 @@ else {
    util.map = function(vals, iterator, scope) {
       var out = [];
       util.each(vals, function(v, k) {
-         var res = iterator.call(scope||null, v, k, vals);
+         var res = iterator.call(scope, v, k, vals);
          if( res !== undefined ) { out.push(res); }
       });
       return out;
@@ -122,13 +129,13 @@ else {
       if( isArguments(vals) ) { vals = Array.prototype.slice.call(vals, 0); }
       if( util.isArray(vals) ) {
          for(var i = 0, len = vals.length; i < len; i++) {
-            if( iterator.call(scope||null, vals[i], i, vals) === true ) { return vals[i]; }
+            if( iterator.call(scope, vals[i], i, vals) === true ) { return vals[i]; }
          }
       }
       else if( util.isObject(vals) ) {
          var key;
          for (key in vals) {
-            if (vals.hasOwnProperty(key) && iterator.call(scope||null, vals[key], key, vals) === true) {
+            if (vals.hasOwnProperty(key) && iterator.call(scope, vals[key], key, vals) === true) {
                return vals[key];
             }
          }
@@ -137,10 +144,16 @@ else {
    };
 
    util.filter = function(list, iterator, scope) {
-      var out = util.isArray(list) || !util.isObject(list)? [] : {};
+      var isArray = util.isArray(list);
+      var out = isArray? [] : {};
       util.each(list, function(v,k) {
-         if( iterator(v,k,list) ) {
-            out[k] = v;
+         if( iterator.call(scope, v, k, list) ) {
+            if( isArray ) {
+               out.push(v);
+            }
+            else {
+               out[k] = v;
+            }
          }
       });
       return out;
@@ -177,7 +190,7 @@ else {
          var key;
          for (key in vals) {
             if (vals.hasOwnProperty(key)) {
-               cb.call(scope||null, vals[key], key, vals);
+               cb.call(scope, vals[key], key, vals);
             }
          }
       }
@@ -328,6 +341,15 @@ else {
          template = template.replace(m, format(localArgs.shift(), m));
       });
       return template;
+   };
+
+   // credits: http://stackoverflow.com/questions/1606797/use-of-apply-with-new-operator-is-this-possible
+   util.construct = function(constructor, args) {
+      function F() {
+         return constructor.apply(this, args);
+      }
+      F.prototype = constructor.prototype;
+      return new F();
    };
 
    util.noop = function() {};
