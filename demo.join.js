@@ -215,7 +215,7 @@
    function buildKeyMap(km) {
       var out = {};
       angular.forEach(km, function(v,k) {
-         out[k] = v===true? k : new Firebase(v);
+         out[k] = v===true? k : new Firebase(FIREBASE_URL + v);
       });
       return out;
    }
