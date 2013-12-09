@@ -1,0 +1,52 @@
+
+<h2>Installation</h2>
+
+<h4>On the Web</h4>
+
+<pre class="prettyprint lang-html linenums">
+&lt;script src="http://static.firebase.com/v0/firebase.js"&gt;&lt;/script&gt;
+&lt;script src="firebase-utils.min.js"&gt;&lt;/script&gt;
+
+&lt;script&gt;
+    var ref = Firebase.util.join( new Firebase(PATH1), new Firebase(PATH2), ... );
+&lt;/script&gt;
+</pre>
+
+<h4>Node.js</h4>
+
+<pre class="prettyprint lang-js linenums">
+var Firebase = require('firebase');
+var FirebaseUtil = require('./firebase-utils.js');
+var ref = FirebaseUtil.join( new Firebase(PATH1), new Firebase(PATH2), ... );
+</pre>
+
+<h2>Global Utilities</h2>
+
+<h4>Firebase.util.logLevel(int)</h4>
+
+<p>Log debugging info to JavaScript console (or command line in node.js). Defaults to 'warn' (errors and warnings).
+This can be set or changed at any time to any of the following:</p>
+
+<pre class="prettyprint lang-js linenums">
+Firebase.util.logLevel(true);  // default logging (also accepts 'all' or 'on')
+Firebase.util.logLevel(false); // all logging off (also accepts 0, 'off' or 'none')
+Firebase.util.logLevel('error');
+Firebase.util.logLevel('warn');
+Firebase.util.logLevel('info');
+Firebase.util.logLevel('log');
+Firebase.util.logLevel('debug');
+</pre>
+
+<p>Additionally, the logLevel() method returns a `revert` function that can be used to restore the logging level to it's previous value:</p>
+
+<pre class="prettyprint lang-js linenums">
+// log a whole lotta junk
+var revert = Firebase.util.logLevel('debug');
+
+// ...run some code...
+
+// revert to default logging
+revert();
+</pre>
+
+<p>Debugging can also be enabled in the browser by adding `debugLevel=x` into the url's query parameters. This allows one to turn on debugging for quick troubleshooting without having to modify any code.</p>
