@@ -1,8 +1,8 @@
 {
-  "name": "FirebaseJoin",
+  "name": "Firebase-util",
   "version": "0.0.0",
-  "description": "A Firebase wrapper that joins several paths either as a union or intersection of the merged data sets.",
-  "homepage": "https://github.com/katowulf/FirebaseJoin",
+  "description": "A set of experimental power tools for Firebase.",
+  "homepage": "https://github.com/firebase/firebase-util",
   "author": {
     "name": "Michael \"Kato\" Wulf",
     "email": "katowulf@gmail.com"
@@ -15,10 +15,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/katowulf/FirebaseJoin.git"
+    "url": "https://github.com/firebase/firebase-util.git"
   },
   "bugs": {
-    "url": "https://github.com/katowulf/FirebaseJoin/issues"
+    "url": "https://github.com/firebase/firebase-util/issues"
   },
   "dependencies": {
     "firebase": "*"

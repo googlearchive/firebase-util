@@ -78,8 +78,8 @@ npm install -g grunt
 [Fork this project](https://help.github.com/articles/fork-a-repo) into your own GitHub repo
 
 ```bash
-git clone https://github.com/YOURNAME/FirebaseJoin.git
-cd FirebaseJoin
+git clone https://github.com/YOURNAME/firebase-util.git
+cd firebase-util
 npm install
 ```
 

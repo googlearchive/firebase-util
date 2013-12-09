@@ -10,7 +10,7 @@ A JoinedRecord can be used anywhere a normal Firebase reference would work, incl
  - [Usage](#usage)
     - [Writing data: set, update, remove, and push](#writing_data)
     - [Working with primitives](#working_with_primitives)
-    - [Dealing with conflicting fields (key maps)](#keymaps)
+    - [Key maps (dealing with conflicting fields)](#keymaps)
     - [Queries: limit, startAt, and endAt](#queries)
     - [Configuration options](#configuration_options)
     - [Dynamic paths as keys](#dynamic_path_names)
@@ -196,7 +196,7 @@ Firebase.util.intersection( indexRef, new Firebase('URL/data_path') );
 <a name="configuration_options"></a>
 ## Configuration options
 
-The `paths` elements passed to the FirebaseJoin constructor contain a Firebase ref, a function, or a hash.
+The `paths` elements passed to the JoinedRecord constructor contain a Firebase ref, a function, or a hash.
 The hash is structured as follows:
 
    - **ref**: {Firebase|Function} (required!) ref to the parent path for this set of records

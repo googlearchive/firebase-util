@@ -6,7 +6,7 @@ var Firebase = require('firebase');
 var helpers = require('./util/test-helpers.js');
 var data = require('./util/data.join.json');
 
-describe('join.FirebaseJoin', function() {
+describe('Firebase.util.join', function() {
    before(function(done) {
       helpers.reset(data, done);
    });
