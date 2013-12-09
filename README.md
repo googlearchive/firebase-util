@@ -1,11 +1,11 @@
 
-# Firebase.Util
+# Firebase-util
 
-This is a collection of power toys (mostly experimental) for use in Firebase.
+This is a collection of power toys (mostly experimental) for use in Firebase. Right now it consists of one library.
 
 ## Libraries
 
- - [Firebase.Util.Join](src/join/README.md)
+ - [Firebase.util.join](src/join/README.md)
    Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use all your favorite
    Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
    during set/update/remove ops.
@@ -21,7 +21,7 @@ This is a collection of power toys (mostly experimental) for use in Firebase.
 <script src="firebase-utils.min.js"></script>
 
 <script>
-   var ref = Firebase.Util.join( new Firebase(PATH1), new Firebase(PATH2), ... );
+   var ref = Firebase.util.join( new Firebase(PATH1), new Firebase(PATH2), ... );
    ref.on('child_added', function(snap) { console.log(snap.val()); });
 </script>
 ```
@@ -29,43 +29,38 @@ This is a collection of power toys (mostly experimental) for use in Firebase.
 ### In node.js:
 
 ```javascript
-var FirebaseUtil = require('FirebaseUtil');
+var Firebase = require('firebase');
+var FirebaseUtil = require('./firebase-utils.js');
 var ref = FirebaseUtil.join( new Firebase(PATH1), new Firebase(PATH2), ... );
 ref.on('child_added', function(snap) { console.log(snap.val()); });
 ```
 
-### Including specific packages
-
-Specific packages can be included separately by adding the package name:
-```html
-<script src="firebase-utils.join.min.js"></script>
-```
-
 # Global Utilities
 
-## Firebase.Util.logLevel(int)
+## Firebase.util.logLevel(int)
 
 Log debugging info to JavaScript console (or command line in node.js). Defaults to 'warn' (errors and warnings).
 This can be set or changed at any time to any of the following:
 
 ```javascript
-Firebase.Util.logLevel(true);  // default logging (also accepts 'all' or 'on')
-Firebase.Util.logLevel(false); // all logging off (also accepts 0, 'off' or 'none')
-Firebase.Util.logLevel('error');
-Firebase.Util.logLevel('warn');
-Firebase.Util.logLevel('info');
-Firebase.Util.logLevel('log');
-Firebase.Util.logLevel('debug');
+Firebase.util.logLevel(true);  // default logging (also accepts 'all' or 'on')
+Firebase.util.logLevel(false); // all logging off (also accepts 0, 'off' or 'none')
+Firebase.util.logLevel('error');
+Firebase.util.logLevel('warn');
+Firebase.util.logLevel('info');
+Firebase.util.logLevel('log');
+Firebase.util.logLevel('debug');
 ```
 Additionally, the logLevel() method returns a `revert` function that can be used to restore the logging level to it's previous value:
 
 ```javascript
 // log a whole lotta junk
-var revert = Firebase.Util.logLevel('debug');
-/*
-   ...call some Firbase.Util commands...
-*/
-revert(); // revert to default logging
+var revert = Firebase.util.logLevel('debug');
+
+// ...run some code...
+
+// revert to default logging
+revert();
 ```
 
 Debugging can also be enabled in the browser by adding `debugLevel=x` into the url's query parameters. This allows one to turn on debugging for quick troubleshooting without having to modify any code.

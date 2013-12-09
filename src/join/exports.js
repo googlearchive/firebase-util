@@ -7,7 +7,7 @@
     * An instance of this class should work if passed as a ref into angularFire objects.
     *
     * Accepts any number of {Firebase|Object} arguments, see README for details.
-    * @param {...object} refs
+    * @param {...Object} refs
     * @static
     */
    exports.join = function(refs) {
@@ -22,7 +22,7 @@
     * records existing in all paths provided are returned.
     *
     * Accepts any number of {Firebase|Object} arguments, see README for details.
-    * @param {...object} refs
+    * @param {...Object} refs
     * @static
     */
    exports.intersection = function(refs) {
@@ -35,6 +35,7 @@
    exports.JoinedRecord = join.JoinedRecord;
 
    function buildJoinedRecord(args, factory) {
+      if( args.length === 1 && util.isArray(args[0]) ) { args = args[0]; }
       var paths = util.map(args, function(pathProps, i) {
          if( !util.isObject(pathProps) ) {
             throw new Error('Invalid argument at pos %s, must be a Firebase, JoinedRecord, or hash of properties', i);
