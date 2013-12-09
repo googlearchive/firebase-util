@@ -4,24 +4,24 @@
 
    var SAMPLE_SETS = [
       {
-         name: 'Intersections and Unions',
-         paths: [
-            { url: 'unions/fruit', intersects: true },
-            { url: 'unions/legume', intersects: true },
-            { url: 'unions/veggie', intersects: true } ],
-         sort: 1
-      },
-      {
-         name: 'Sorting and Priorities',
-         paths: [ { url: 'ordered/set1' }, { url: 'ordered/set2' } ],
-         sort: 2
-      },
-      {
          name:  'Dynamic Keys',
          paths: [
             { url: 'users/account' },
             { url: 'users/profile', keyMap: {name: true, nick: true, style: 'users/styles'} }
          ],
+         sort: 1
+      },
+      {
+         name: 'Intersections and Unions',
+         paths: [
+            { url: 'unions/fruit', intersects: true },
+            { url: 'unions/legume', intersects: true },
+            { url: 'unions/veggie', intersects: true } ],
+         sort: 2
+      },
+      {
+         name: 'Sorting and Priorities',
+         paths: [ { url: 'ordered/set1' }, { url: 'ordered/set2' } ],
          sort: 3
       },
       {
@@ -93,12 +93,16 @@
 
          function pathsUpdated() {
             cleanup();
+            var rawPaths = $parse(pathsVar)($scope);
             var paths = [];
-            angular.forEach($scope[pathsVar], function(p) {
-               paths.push(pathBuilder(p));
-            });
-            ref = Firebase.util.join(paths);
-            ref.on('value', rawDataEvent);
+            $parse(outputVar).assign($scope, null);
+            if( rawPaths.length ) {
+               angular.forEach(rawPaths, function(p) {
+                  paths.push(pathBuilder(p));
+               });
+               ref = Firebase.util.join(paths);
+               ref.on('value', rawDataEvent);
+            }
          }
 
          function rawDataEvent(snap) {
