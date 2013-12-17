@@ -45,13 +45,12 @@ This can be set or changed at any time to any of the following:
 ```javascript
 Firebase.util.logLevel(true);  // default logging (also accepts 'all' or 'on')
 Firebase.util.logLevel(false); // all logging off (also accepts 0, 'off' or 'none')
-Firebase.util.logLevel('error');
-Firebase.util.logLevel('warn');
-Firebase.util.logLevel('info');
-Firebase.util.logLevel('log');
-Firebase.util.logLevel('debug');
+Firebase.util.logLevel('error'); // error, warn, info, log, or debug
 ```
-Additionally, the logLevel() method returns a `revert` function that can be used to restore the logging level to it's previous value:
+
+Debugging can also be enabled in the browser by adding `debugLevel=x` into the url's query parameters. This allows one to turn on debugging for quick troubleshooting without having to modify any code.
+
+The logLevel() method returns a `revert` function that can be used to restore the logging level to it's previous value:
 
 ```javascript
 // log a whole lotta junk
@@ -63,7 +62,12 @@ var revert = Firebase.util.logLevel('debug');
 revert();
 ```
 
-Debugging can also be enabled in the browser by adding `debugLevel=x` into the url's query parameters. This allows one to turn on debugging for quick troubleshooting without having to modify any code.
+You can also filter log output with a RegExp:
+
+```javascript
+// only print logs that begin with "Path"
+Firebase.util.logLevel('debug', /^Path/);
+```
 
 # Contributing
 

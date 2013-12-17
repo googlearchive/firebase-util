@@ -22,14 +22,14 @@ module.exports = function(grunt) {
                'src/join/libs/*.js',
                'src/join/exports.js'
             ],
-            dest: 'firebase-utils.js'
+            dest: 'firebase-util.js'
          }
       },
 
       uglify: {
          app: {
             files: {
-               'firebase-utils.min.js': ['firebase-utils.js']
+               'firebase-util.min.js': ['firebase-util.js']
             }
          }
       },
