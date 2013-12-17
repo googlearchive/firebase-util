@@ -5,7 +5,7 @@
 
 <pre class="prettyprint lang-html linenums">
 &lt;script src="http://static.firebase.com/v0/firebase.js"&gt;&lt;/script&gt;
-&lt;script src="firebase-utils.min.js"&gt;&lt;/script&gt;
+&lt;script src="firebase-util.min.js"&gt;&lt;/script&gt;
 &lt;script&gt;
     var ref = Firebase.util.join( new Firebase(PATH1), new Firebase(PATH2), ... );
 &lt;/script&gt;
@@ -13,9 +13,11 @@
 
 <h3>Node.js</h3>
 
+Just manually include the js file in your node scripts.
+
 <pre class="prettyprint lang-js linenums">
 var Firebase = require('firebase');
-var FirebaseUtil = require('./firebase-utils.js');
+var FirebaseUtil = require('./firebase-util.js');
 var ref = FirebaseUtil.join( new Firebase(PATH1), new Firebase(PATH2), ... );
 </pre>
 
