@@ -70,6 +70,10 @@ We could do any of these ops:
    // path1: { "-0xBAF...": {a: 1000, b: 2000}, ...}, path2: {"-0xBAF...": {c: 3000}, ...}
 ```
 
+Keep in mind that Firebase-util needs to know how to split the keys between the various paths. It attempts to sample
+the data at each path in order to determine the keys stored there. However, if the paths are empty, or the data is
+not consistent, you'll need to [specify a keyMap](#keymaps) before you can write data.
+
 <a name="working_with_primitives"></a>
 ## Works with Primitives
 
@@ -313,10 +317,11 @@ ref.child('kato/style').set({description: 'Mixed Martial Arts'});
 # BEST PRACTICES
 
 - If you will be writing data (set/push/update/etc) then always specify a keyMap, otherwise if a data set is empty,
-  the write op will fail unexpectedly
-- Use update rather than set on data sets with dynamic values; data not in the keyMap will be removed by a set() op
-- Expect some shifting of ordered data. Use prevChild and expect records to move. Paths may load data out of
-  order and then move it when the sortPath decides where it belongs.
+  or the records are inconsistent, the write ops will fail in unexpected ways.
+- Prefer update to set as data not in the keyMap will be removed by a set() op, including fields which don't appear
+  in the keyMap but may exist in the data.
+- Expect some shifting of ordered data. Paths may load data out of order and then move it when the
+   sortPath decides where it belongs. Use prevChild and expect records to get re-oriented.
 
 <a name="limitations"></a>
 # LIMITATIONS
@@ -338,7 +343,7 @@ ref.child('kato/style').set({description: 'Mixed Martial Arts'});
 
 ## Questions and bug reports
 
- - Submit bugs and problems via the GitHub issue tracker: https://www.github.com/firebase/firebase-utils
+ - Submit bugs and problems via the GitHub issue tracker: https://www.github.com/firebase/firebase-util
  - Be sure to call `Firebase.util.logLevel('log') and attach it to your report
 
 <a name="api"></a>

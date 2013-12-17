@@ -1,6 +1,6 @@
-/*! FirebaseJoin - v0.0.0 - 2013-12-08
-* https://github.com/katowulf/FirebaseJoin
-* Copyright (c) 2013 Michael "Kato" Wulf
+/*! Firebase-util - v0.1.0 - 2013-12-16
+* https://github.com/firebase/firebase-util
+* Copyright (c) 2013 Firebase
 * MIT LICENSE */
 
 (function(exports) {
@@ -20,7 +20,7 @@ var fb = {};
    }
    else {
       Firebase = window.Firebase;
-      if( !Firebase ) { throw new Error('Must include Firebase (http://cdn.firebase.com/v0/firebase.js) before firebase-utils.js'); }
+      if( !Firebase ) { throw new Error('Must include Firebase (http://cdn.firebase.com/v0/firebase.js) before firebase-util.js'); }
    }
 
    /**

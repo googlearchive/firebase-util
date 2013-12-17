@@ -10,7 +10,7 @@ module.exports = function(grunt) {
       banner: '/*! <%= pkg.title || pkg.name %> - v<%= pkg.version %> - ' +
          '<%= grunt.template.today("yyyy-mm-dd") %>\n' +
          '<%= pkg.homepage ? "* " + pkg.homepage + "\\n" : "" %>' +
-         '* Copyright (c) <%= grunt.template.today("yyyy") %> <%= pkg.author.name %>\n' +
+         '* Copyright (c) <%= grunt.template.today("yyyy") %> Firebase\n' +
          '* MIT LICENSE */\n\n(function(exports) {\n\n',
       footer: '\n\n})( typeof window !== "undefined"? [window.Firebase.util = {}][0] : module.exports );\n',
 
@@ -27,6 +27,9 @@ module.exports = function(grunt) {
       },
 
       uglify: {
+         options: {
+            preserveComments: 'some'
+         },
          app: {
             files: {
                'firebase-util.min.js': ['firebase-util.js']

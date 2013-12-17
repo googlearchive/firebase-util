@@ -6,7 +6,7 @@ This is a collection of power toys (mostly experimental) for use in Firebase. Ri
 ## Libraries
 
  - [Firebase.util.join](src/join/README.md)
-   Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use all your favorite
+   Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use most of your favorite
    Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
    during set/update/remove ops.
 
@@ -18,7 +18,7 @@ This is a collection of power toys (mostly experimental) for use in Firebase. Ri
 
 ```html
 <script src="http://static.firebase.com/v0/firebase.js"></script>
-<script src="firebase-utils.min.js"></script>
+<script src="firebase-util.min.js"></script>
 
 <script>
    var ref = Firebase.util.join( new Firebase(PATH1), new Firebase(PATH2), ... );
@@ -30,7 +30,7 @@ This is a collection of power toys (mostly experimental) for use in Firebase. Ri
 
 ```javascript
 var Firebase = require('firebase');
-var FirebaseUtil = require('./firebase-utils.js');
+var FirebaseUtil = require('./firebase-util.js');
 var ref = FirebaseUtil.join( new Firebase(PATH1), new Firebase(PATH2), ... );
 ref.on('child_added', function(snap) { console.log(snap.val()); });
 ```

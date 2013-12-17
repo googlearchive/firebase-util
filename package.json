@@ -1,13 +1,13 @@
 {
   "name": "Firebase-util",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A set of experimental power tools for Firebase.",
   "homepage": "https://github.com/firebase/firebase-util",
   "author": {
     "name": "Michael \"Kato\" Wulf",
     "email": "katowulf@gmail.com"
   },
-  "main": "firebase-utils.js",
+  "main": "firebase-util.js",
   "scripts": {
     "test": "grunt test",
     "make": "grunt make",

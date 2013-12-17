@@ -13,7 +13,7 @@ var fb = {};
    }
    else {
       Firebase = window.Firebase;
-      if( !Firebase ) { throw new Error('Must include Firebase (http://cdn.firebase.com/v0/firebase.js) before firebase-utils.js'); }
+      if( !Firebase ) { throw new Error('Must include Firebase (http://cdn.firebase.com/v0/firebase.js) before firebase-util.js'); }
    }
 
    /**
