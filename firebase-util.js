@@ -1,6 +1,6 @@
-/*! Firebase-util - v0.1.0 - 2013-12-16
+/*! Firebase-util - v0.1.0 - 2014-01-10
 * https://github.com/firebase/firebase-util
-* Copyright (c) 2013 Firebase
+* Copyright (c) 2014 Firebase
 * MIT LICENSE */
 
 (function(exports) {
@@ -3001,7 +3001,11 @@ var fb = {};
    }
 
    function isValidRef(ref) {
-      return ref instanceof util.Firebase || ref instanceof join.JoinedRecord || ref instanceof join.Path;
+      return isFirebaseRef(ref) || ref instanceof join.JoinedRecord || ref instanceof join.Path;
+   }
+
+   function isFirebaseRef(ref) {
+      return ref instanceof util.Firebase || (util.isObject(ref) && typeof(ref.ref) === 'function' && ref.ref() instanceof util.Firebase);
    }
 
    function isChildPathArgs(args) {

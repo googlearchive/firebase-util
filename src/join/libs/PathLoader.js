@@ -200,7 +200,11 @@
    }
 
    function isValidRef(ref) {
-      return ref instanceof util.Firebase || ref instanceof join.JoinedRecord || ref instanceof join.Path;
+      return isFirebaseRef(ref) || ref instanceof join.JoinedRecord || ref instanceof join.Path;
+   }
+
+   function isFirebaseRef(ref) {
+      return ref instanceof util.Firebase || (util.isObject(ref) && typeof(ref.ref) === 'function' && ref.ref() instanceof util.Firebase);
    }
 
    function isChildPathArgs(args) {
