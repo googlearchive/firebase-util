@@ -37,6 +37,20 @@ var fb = {};
       return (Array.isArray || isArray).call(null, v);
    };
 
+   /**
+    * @param v value to test or if `key` is provided, the object containing method
+    * @param {string} [key] if provided, v is an object and this is the method we want to find
+    * @returns {*}
+    */
+   util.isFunction = function(v, key) {
+      if( typeof(key) === 'string' ) {
+         return util.isObject(v) && util.has(v, key) && typeof(v[key]) === 'function';
+      }
+      else {
+         return typeof(v) === 'function';
+      }
+   };
+
    util.toArray = function(vals, startFrom) {
       var newVals = util.map(vals, function(v, k) { return v; });
       return startFrom > 0? newVals.slice(startFrom) : newVals;
@@ -161,7 +175,7 @@ var fb = {};
 
    util.has = function(vals, key) {
       return (util.isArray(vals) && vals[key] !== undefined)
-         || (util.isObject(vals) && vals.hasOwnProperty(key))
+         || (util.isObject(vals) && vals[key] !== undefined)
          || false;
    };
 
@@ -353,6 +367,11 @@ var fb = {};
    };
 
    util.noop = function() {};
+
+   /** necessary because instanceof won't work Firebase Query objects */
+   util.isFirebaseRef = function(ref) {
+      return ref instanceof util.Firebase || (util.isFunction(ref, 'ref') && ref.ref() instanceof util.Firebase);
+   };
 
    function format(v, type) {
       switch(type) {

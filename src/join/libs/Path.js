@@ -54,7 +54,7 @@
        */
       dynamicChild: function(sourceRef, aliasedKey) {
          return new Path({
-            ref: this.ref(),
+            ref: this.ref(true),
             dynamicSource: sourceRef,
             keyMap: {'.value': aliasedKey},
             sync: this.props.sync
@@ -71,7 +71,7 @@
                this._waitForReady(doneCallback, context);
             }
             else {
-               this.ref().once('value', function(snap) {
+               this.ref(true).once('value', function(snap) {
                   if( this.isJoinedChild() ) {
                      this._parseRecord(snap, doneCallback, context);
                   }
@@ -137,18 +137,20 @@
       isSortBy: function() { return this.props.sortBy; },
       setSortBy: function(b) { this.props.sortBy = b; },
 
-      ref: function() {
+      /**
+       * @param {bool} [queryRef]
+       */
+      ref: function(queryRef) {
+         var ref = null;
          if( this.isDynamic() ) {
-            if( !this.isReadyForOps() ) {
-               return null;
-            }
-            else {
-               return this.props.ref.child(this.props.dynamicKey);
+            if( this.isReadyForOps() ) {
+               ref = this.props.ref.child(this.props.dynamicKey);
             }
          }
          else {
-            return this.props.ref;
+            ref = this.props.ref;
          }
+         return ref && !queryRef? ref.ref() : ref;
       },
 
       hasKey: function(aliasedKey) {
@@ -528,12 +530,12 @@
       },
 
       _stopObserving: function(event) {
-         this.ref().off(event, this.subs[event], this);
+         this.ref(true).off(event, this.subs[event], this);
       },
 
       _startObserving: function(event) {
          this.subs[event] = util.bind(this._sendEvent, this, event);
-         this.ref().on(event, this.subs[event], this.abortObservers, this);
+         this.ref(true).on(event, this.subs[event], this.abortObservers, this);
       }
    };
 
@@ -543,14 +545,14 @@
     ***************************************************/
 
    function buildPathProps(props, parent) {
-      if( props instanceof util.Firebase || props instanceof join.JoinedRecord ) {
-         props = propsFromRef(props);
+      if( util.isFirebaseRef(props) || props instanceof join.JoinedRecord ) {
+         props = { ref: props };
       }
       else {
          if( !props.ref ) {
             throw new Error('Must declare ref in properties hash for all Util.Join functions');
          }
-         props = propsFromHash(props);
+         props = util.extend({}, props);
       }
 
       var out = util.extend({
@@ -570,9 +572,12 @@
          out.keyMap = arrayToMap(out.keyMap);
       }
 
-      out.pathName = (parent && !out.dynamicSource? (parent.name()||'').replace(/\/$/, '')+'/' : '') + out.ref.name();
-
+      out.pathName = (parent && !out.dynamicSource? refName(parent).replace(/\/$/, '')+'/' : '') + refName(out.ref);
       return out;
+   }
+
+   function refName(ref) {
+      return (util.isFunction(ref, 'name') && ref.name()) || (util.isFunction(ref, 'ref') && ref.ref().name()) || '';
    }
 
    function arrayToMap(map) {
@@ -581,17 +586,6 @@
          out[m] = m;
       });
       return out;
-   }
-
-   function propsFromHash(props) {
-      var addOpts = propsFromRef(props.ref);
-      return util.extend({}, props, addOpts);
-   }
-
-   function propsFromRef(ref) {
-      return {
-         ref: ref
-      }
    }
 
    function parseValue(data) {

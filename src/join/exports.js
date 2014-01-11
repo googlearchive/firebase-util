@@ -40,7 +40,7 @@
          if( !util.isObject(pathProps) ) {
             throw new Error('Invalid argument at pos %s, must be a Firebase, JoinedRecord, or hash of properties', i);
          }
-         else if( pathProps instanceof util.Firebase || pathProps instanceof join.JoinedRecord ) {
+         else if( util.isFirebaseRef(pathProps) || pathProps instanceof join.JoinedRecord ) {
             pathProps = { ref: pathProps };
          }
          return factory(pathProps);

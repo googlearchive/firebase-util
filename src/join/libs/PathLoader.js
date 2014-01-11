@@ -87,7 +87,7 @@
                   var parentPath = searchForParent(this.joinedParent.paths, childKey);
                   if( parentPath.isDynamic() ) {
                      this.finalPaths.push(new join.Path({
-                        ref: parentPath.ref()||parentPath.props.ref.push(),
+                        ref: parentPath.ref(true)||parentPath.props.ref.push(),
                         keyMap: {'.value': '.value'}
                      }, parentPath));
                   }
@@ -200,11 +200,7 @@
    }
 
    function isValidRef(ref) {
-      return isFirebaseRef(ref) || ref instanceof join.JoinedRecord || ref instanceof join.Path;
-   }
-
-   function isFirebaseRef(ref) {
-      return ref instanceof util.Firebase || (util.isObject(ref) && typeof(ref.ref) === 'function' && ref.ref() instanceof util.Firebase);
+      return util.isFirebaseRef(ref) || ref instanceof join.JoinedRecord || ref instanceof join.Path;
    }
 
    function isChildPathArgs(args) {

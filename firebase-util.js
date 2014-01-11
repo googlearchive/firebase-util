@@ -1,4 +1,4 @@
-/*! Firebase-util - v0.1.0 - 2014-01-10
+/*! Firebase-util - v0.1.2 - 2014-01-11
 * https://github.com/firebase/firebase-util
 * Copyright (c) 2014 Firebase
 * MIT LICENSE */
@@ -42,6 +42,20 @@ var fb = {};
 
    util.isArray = function(v) {
       return (Array.isArray || isArray).call(null, v);
+   };
+
+   /**
+    * @param v value to test or if `key` is provided, the object containing method
+    * @param {string} [key] if provided, v is an object and this is the method we want to find
+    * @returns {*}
+    */
+   util.isFunction = function(v, key) {
+      if( typeof(key) === 'string' ) {
+         return util.isObject(v) && util.has(v, key) && typeof(v[key]) === 'function';
+      }
+      else {
+         return typeof(v) === 'function';
+      }
    };
 
    util.toArray = function(vals, startFrom) {
@@ -168,7 +182,7 @@ var fb = {};
 
    util.has = function(vals, key) {
       return (util.isArray(vals) && vals[key] !== undefined)
-         || (util.isObject(vals) && vals.hasOwnProperty(key))
+         || (util.isObject(vals) && vals[key] !== undefined)
          || false;
    };
 
@@ -360,6 +374,11 @@ var fb = {};
    };
 
    util.noop = function() {};
+
+   /** necessary because instanceof won't work Firebase Query objects */
+   util.isFirebaseRef = function(ref) {
+      return ref instanceof util.Firebase || (util.isFunction(ref, 'ref') && ref.ref() instanceof util.Firebase);
+   };
 
    function format(v, type) {
       switch(type) {
@@ -2225,7 +2244,7 @@ var fb = {};
        */
       dynamicChild: function(sourceRef, aliasedKey) {
          return new Path({
-            ref: this.ref(),
+            ref: this.ref(true),
             dynamicSource: sourceRef,
             keyMap: {'.value': aliasedKey},
             sync: this.props.sync
@@ -2242,7 +2261,7 @@ var fb = {};
                this._waitForReady(doneCallback, context);
             }
             else {
-               this.ref().once('value', function(snap) {
+               this.ref(true).once('value', function(snap) {
                   if( this.isJoinedChild() ) {
                      this._parseRecord(snap, doneCallback, context);
                   }
@@ -2308,18 +2327,20 @@ var fb = {};
       isSortBy: function() { return this.props.sortBy; },
       setSortBy: function(b) { this.props.sortBy = b; },
 
-      ref: function() {
+      /**
+       * @param {bool} [queryRef]
+       */
+      ref: function(queryRef) {
+         var ref = null;
          if( this.isDynamic() ) {
-            if( !this.isReadyForOps() ) {
-               return null;
-            }
-            else {
-               return this.props.ref.child(this.props.dynamicKey);
+            if( this.isReadyForOps() ) {
+               ref = this.props.ref.child(this.props.dynamicKey);
             }
          }
          else {
-            return this.props.ref;
+            ref = this.props.ref;
          }
+         return ref && !queryRef? ref.ref() : ref;
       },
 
       hasKey: function(aliasedKey) {
@@ -2699,12 +2720,12 @@ var fb = {};
       },
 
       _stopObserving: function(event) {
-         this.ref().off(event, this.subs[event], this);
+         this.ref(true).off(event, this.subs[event], this);
       },
 
       _startObserving: function(event) {
          this.subs[event] = util.bind(this._sendEvent, this, event);
-         this.ref().on(event, this.subs[event], this.abortObservers, this);
+         this.ref(true).on(event, this.subs[event], this.abortObservers, this);
       }
    };
 
@@ -2714,14 +2735,14 @@ var fb = {};
     ***************************************************/
 
    function buildPathProps(props, parent) {
-      if( props instanceof util.Firebase || props instanceof join.JoinedRecord ) {
-         props = propsFromRef(props);
+      if( util.isFirebaseRef(props) || props instanceof join.JoinedRecord ) {
+         props = { ref: props };
       }
       else {
          if( !props.ref ) {
             throw new Error('Must declare ref in properties hash for all Util.Join functions');
          }
-         props = propsFromHash(props);
+         props = util.extend({}, props);
       }
 
       var out = util.extend({
@@ -2741,9 +2762,12 @@ var fb = {};
          out.keyMap = arrayToMap(out.keyMap);
       }
 
-      out.pathName = (parent && !out.dynamicSource? (parent.name()||'').replace(/\/$/, '')+'/' : '') + out.ref.name();
-
+      out.pathName = (parent && !out.dynamicSource? refName(parent).replace(/\/$/, '')+'/' : '') + refName(out.ref);
       return out;
+   }
+
+   function refName(ref) {
+      return (util.isFunction(ref, 'name') && ref.name()) || (util.isFunction(ref, 'ref') && ref.ref().name()) || '';
    }
 
    function arrayToMap(map) {
@@ -2752,17 +2776,6 @@ var fb = {};
          out[m] = m;
       });
       return out;
-   }
-
-   function propsFromHash(props) {
-      var addOpts = propsFromRef(props.ref);
-      return util.extend({}, props, addOpts);
-   }
-
-   function propsFromRef(ref) {
-      return {
-         ref: ref
-      }
    }
 
    function parseValue(data) {
@@ -2888,7 +2901,7 @@ var fb = {};
                   var parentPath = searchForParent(this.joinedParent.paths, childKey);
                   if( parentPath.isDynamic() ) {
                      this.finalPaths.push(new join.Path({
-                        ref: parentPath.ref()||parentPath.props.ref.push(),
+                        ref: parentPath.ref(true)||parentPath.props.ref.push(),
                         keyMap: {'.value': '.value'}
                      }, parentPath));
                   }
@@ -3001,11 +3014,7 @@ var fb = {};
    }
 
    function isValidRef(ref) {
-      return isFirebaseRef(ref) || ref instanceof join.JoinedRecord || ref instanceof join.Path;
-   }
-
-   function isFirebaseRef(ref) {
-      return ref instanceof util.Firebase || (util.isObject(ref) && typeof(ref.ref) === 'function' && ref.ref() instanceof util.Firebase);
+      return util.isFirebaseRef(ref) || ref instanceof join.JoinedRecord || ref instanceof join.Path;
    }
 
    function isChildPathArgs(args) {
@@ -3302,7 +3311,7 @@ var fb = {};
          if( !util.isObject(pathProps) ) {
             throw new Error('Invalid argument at pos %s, must be a Firebase, JoinedRecord, or hash of properties', i);
          }
-         else if( pathProps instanceof util.Firebase || pathProps instanceof join.JoinedRecord ) {
+         else if( util.isFirebaseRef(pathProps) || pathProps instanceof join.JoinedRecord ) {
             pathProps = { ref: pathProps };
          }
          return factory(pathProps);

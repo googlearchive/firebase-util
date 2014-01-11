@@ -293,6 +293,7 @@ describe('join.JoinedRecord', function() {
                .get('users') // wait for data
                .pause()
                .set('users/profile/kato/nick', 'Kato!')
+               .until(spyCalled(spy))
                .pause(function() {
                   expect(spy).calledOnce;
                   expect(spy.args[0][0].name()).to.equal('kato');
@@ -309,6 +310,7 @@ describe('join.JoinedRecord', function() {
                .pause()
                .remove('users/profile/kato')
                .remove('users/account/kato')
+               .until(function() { return spy.called })
                .pause(function() {
                   expect(spy).calledOnce;
                   expect(spy.args[0][0].name()).to.equal('kato');
@@ -317,13 +319,16 @@ describe('join.JoinedRecord', function() {
          });
 
          it('should work with only child_moved callback', function(done) {
-            var spy = sinon.spy();
-            createJoinedRecord('ordered/set1', 'ordered/set2').on('child_moved', spy);
+            var spy = sinon.spy(), loadedSpy = sinon.spy();
+            var ref = createJoinedRecord('ordered/set1', 'ordered/set2');
+            ref.on('child_moved', spy);
+            ref.once('value', loadedSpy);
             helpers
                .chain()
                .get('users') // wait for data
-               .pause()
+               .until(spyCalled(loadedSpy))
                .setPriority('ordered/set1/two', 99)
+               .until(spyCalled(spy))
                .pause(function() {
                   expect(spy).calledOnce;
                   expect(spy.args[0][0].name()).to.equal('two');
@@ -1837,7 +1842,9 @@ describe('join.JoinedRecord', function() {
 
       it('should fail in any path is read only (empty and has no keymap)', function(done) {
          helpers.debugThisTest('error'); // suppress the warning this generates
+         console.log("\n\n<<< INTENTIONAL WARNINGS >>>\n");
          createJoinedRecord('users/account', 'users/badpathname').set({foo: 'bar'}, function(err) {
+            console.log("\n<<< ///INTENTIONAL WARNINGS >>>\n\n");
             expect(err).instanceOf(fb.util.NotSupportedError);
             expect(err).to.match(/read-only/);
             done();
@@ -2922,8 +2929,7 @@ describe('join.JoinedRecord', function() {
     * @returns {Function}
     */
    function spyCalled(spy, times) {
-      if( times === undefined ) { times = 1 }
-      return function() { return spy.callCount >= times };
+      return function() { return times? spy.callCount >= times : spy.called };
    }
 
 });

@@ -73,6 +73,30 @@ describe('global.js', function() {
       });
    });
 
+   describe('#isFunction', function() {
+      it('should be true if passed a function', function() {
+         expect(util.isFunction(function() {}) ).to.be.true;
+      });
+
+      it('should be false if passed a non-function', function() {
+         expect(util.isFunction(5)).to.be.false;
+      });
+
+      it('should be true if passed a key that points to a function', function() {
+         var foo = { bar: function() {} };
+         expect(util.isFunction(foo, 'bar')).to.be.true;
+      });
+
+      it('should be false if passed a key but object is null', function() {
+         expect(util.isFunction(null, 'bar')).to.be.false;
+      });
+
+      it('should be false if passed a key that does not exist', function() {
+         var foo = { bar: function() {} };
+         expect(util.isFunction(foo, 'foobar')).to.be.false;
+      });
+   });
+
    describe('#extend', function() {
       it('should work for merging objects', function() {
          expect(util.extend({happy: 'happy'}, {'joy': 'joy'})).to.eql({happy: 'happy', joy: 'joy'});
