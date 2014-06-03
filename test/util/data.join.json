@@ -49,12 +49,14 @@
       "legume": {
          "b": "baked beans",
          "c": "chickpeas",
-         "d": "dry-roasted peanuts"
+         "d": "dry-roasted peanuts",
+         "e": "egyptian lentil"
       },
       "veggie": {
          "b": "broccoli",
          "d": "daikon raddish",
-         "e": "elephant garlic"
+         "e": "elephant garlic",
+         "f": "fluted pumpkin"
       }
    },
 

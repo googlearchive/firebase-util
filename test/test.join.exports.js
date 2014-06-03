@@ -188,6 +188,18 @@ describe('Firebase.util.join public methods', function() {
                done();
             });
       });
+
+      it('should not return more records than limit', function(done) {
+        var fb = new Firebase('https://fbutil.firebaseio.com/unions');
+        fbUtils.intersection(
+          fb.child('legume').limit(2), fb.child('veggie')
+        ).once('value', function(snap) {
+           expect(snap.val()).to.eql({
+             b: { legume: 'baked beans', veggie: 'broccoli' },
+             d: { legume: 'dry-roasted peanuts', veggie: 'daikon raddish' }
+           })
+        });
+      });
    });
 
 });

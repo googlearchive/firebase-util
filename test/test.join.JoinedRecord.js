@@ -798,7 +798,8 @@ describe('join.JoinedRecord', function() {
                   a: { fruit: "apple" },
                   b: { fruit: "banana", legume: "baked beans" },
                   c: { legume: "chickpeas" },
-                  d: { legume: "dry-roasted peanuts" }
+                  d: { legume: "dry-roasted peanuts" },
+                  e: { legume: "egyptian lentil" }
                });
                done();
             });
@@ -814,7 +815,8 @@ describe('join.JoinedRecord', function() {
                      a: { 'フルーツ': "apple" },
                      b: { 'フルーツ': "banana", legume: "baked beans" },
                      c: { legume: "chickpeas" },
-                     d: { legume: "dry-roasted peanuts" }
+                     d: { legume: "dry-roasted peanuts" },
+                     e: { legume: "egyptian lentil" }
                   });
                   done();
                });
@@ -830,7 +832,7 @@ describe('join.JoinedRecord', function() {
             var ref = createJoinedRecord('unions/fruit', 'unions/legume', 'unions/veggie');
             ref.on('value', function(snap) {
                snap.ref().off();
-               expect(snap.val()).keys(['a', 'b', 'c', 'd', 'e']);
+               expect(snap.val()).keys(['a', 'b', 'c', 'd', 'e', 'f']);
                done();
             });
          });
