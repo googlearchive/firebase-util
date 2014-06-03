@@ -189,7 +189,7 @@ describe('Firebase.util.join public methods', function() {
             });
       });
 
-      it('should not return more records than limit', function(done) {
+      it.only('should not return more records than limit', function(done) {
         var fb = new Firebase('https://fbutil.firebaseio.com/unions');
         fbUtils.intersection(
           fb.child('legume').limit(2), fb.child('veggie')
