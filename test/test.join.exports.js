@@ -189,7 +189,7 @@ describe('Firebase.util.join public methods', function() {
             });
       });
 
-      it.only('should not return more records than limit', function(done) {
+      it('should not return more records than limit', function(done) {
         var fb = new Firebase('https://fbutil.firebaseio.com/unions');
         fbUtils.intersection(
           fb.child('legume').limit(2), fb.child('veggie')
@@ -197,7 +197,8 @@ describe('Firebase.util.join public methods', function() {
            expect(snap.val()).to.eql({
              b: { legume: 'baked beans', veggie: 'broccoli' },
              d: { legume: 'dry-roasted peanuts', veggie: 'daikon raddish' }
-           })
+           });
+           done();
         });
       });
    });
