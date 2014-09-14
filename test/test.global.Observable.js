@@ -1,4 +1,4 @@
-var fb = require('../firebase-util.js')._ForTestingOnly;
+var fb = require('../dist/firebase-util.js')._ForTestingOnly;
 var helpers = require('./util/test-helpers.js');
 var sinonChai = require('sinon-chai');
 var expect = require('chai').use(sinonChai).expect;

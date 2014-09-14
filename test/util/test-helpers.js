@@ -11,7 +11,7 @@ var Firebase = require('firebase');
 var FB = new Firebase(URL);
 var TokGen = new (require('firebase-token-generator'))(SECRET);
 
-var fb = require('../../firebase-util.js')._ForTestingOnly;
+var fb = require('../../dist/firebase-util.js')._ForTestingOnly;
 var helpers = exports;
 
 /**

@@ -1,18 +1,9 @@
 {
-  "name": "Firebase-util",
-  "version": "0.1.2",
+  "name": "firebase-util",
   "description": "A set of experimental power tools for Firebase.",
+  "version": "0.0.0",
+  "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
   "homepage": "https://github.com/firebase/firebase-util",
-  "author": {
-    "name": "Michael \"Kato\" Wulf",
-    "email": "katowulf@gmail.com"
-  },
-  "main": "firebase-util.js",
-  "scripts": {
-    "test": "grunt test",
-    "make": "grunt make",
-    "watch": "grunt watch"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/firebase/firebase-util.git"
@@ -20,8 +11,26 @@
   "bugs": {
     "url": "https://github.com/firebase/firebase-util/issues"
   },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://firebase.mit-license.org/"
+    }
+  ],
+  "keywords": [
+    "firebase",
+    "realtime",
+    "utilities"
+  ],
+  "main": "dist/firebase-util.min.js",
+  "files": [
+    "dist/**",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
   "dependencies": {
-    "firebase": "*"
+    "firebase": "1.0.x"
   },
   "devDependencies": {
     "grunt": "~0.4.1",
@@ -38,5 +47,11 @@
     "sinon-chai": "~2.4.0",
     "sinon": "~1.7.3",
     "request": "~2.27.0"
+  },
+  "scripts": {
+    "test": "grunt test",
+    "make": "grunt make",
+    "watch": "grunt watch",
+    "travis": "grunt"
   }
 }
