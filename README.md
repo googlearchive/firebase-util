@@ -1,5 +1,9 @@
-
 # Firebase-util
+
+[![Build Status](https://travis-ci.org/firebase/firebase-util.svg?branch=master)](https://travis-ci.org/firebase/firebase-util)
+[![Coverage Status](https://img.shields.io/coveralls/firebase/firebase-util.svg)](https://coveralls.io/r/firebase/firebase-util)
+[![Version](https://badge.fury.io/gh/firebase%2Ffirebase-util.svg)](http://badge.fury.io/gh/firebase%2Ffirebase-util)
+
 
 This is a collection of power toys (mostly experimental) for use in Firebase. Right now it consists of one library.
 
