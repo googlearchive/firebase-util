@@ -7,12 +7,16 @@ module.exports = function(grunt) {
 
    grunt.initConfig({
       pkg: grunt.file.readJSON('package.json'),
-      banner: '/*! <%= pkg.title || pkg.name %> - v<%= pkg.version %> - ' +
-         '<%= grunt.template.today("yyyy-mm-dd") %>\n' +
-         '<%= pkg.homepage ? "* " + pkg.homepage + "\\n" : "" %>' +
-         '* Copyright (c) <%= grunt.template.today("yyyy") %> Firebase\n' +
-         '* MIT LICENSE */\n\n(function(exports) {\n\n',
-      footer: '\n\n})( typeof window !== "undefined"? [window.Firebase.util = {}][0] : module.exports );\n',
+      banner: '/*!\n' +
+              ' * Firebase-util is a set of experimental power tools for Firebase.\n' +
+              ' *\n' +
+              ' * Firebase-util 0.0.0\n' +
+              ' * https://github.com/firebase/firebase-util/\n' +
+              ' * Date: <%= grunt.template.today("mm/dd/yyyy") %>\n' +
+              ' * License: MIT\n' +
+              ' */\n\n' +
+              '(function(exports) {\n',
+      footer: '\n})( typeof window !== "undefined"? [window.Firebase.util = {}][0] : module.exports );\n',
 
       concat: {
          app: {
@@ -22,7 +26,7 @@ module.exports = function(grunt) {
                'src/join/libs/*.js',
                'src/join/exports.js'
             ],
-            dest: 'firebase-util.js'
+            dest: 'dist/firebase-util.js'
          }
       },
 
@@ -32,7 +36,7 @@ module.exports = function(grunt) {
          },
          app: {
             files: {
-               'firebase-util.min.js': ['firebase-util.js']
+               'dist/firebase-util.min.js': ['dist/firebase-util.js']
             }
          }
       },

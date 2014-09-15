@@ -2,8 +2,8 @@ var expect = require('chai').expect;
 
 describe('global.js', function() {
    var undefined;
-   var util = require('../firebase-util.js')._ForTestingOnly.util;
-   var fbExports = require('../firebase-util.js');
+   var util = require('../dist/firebase-util.js')._ForTestingOnly.util;
+   var fbExports = require('../dist/firebase-util.js');
 
    describe('#isObject', function() {
       it('should be true for {}', function() {

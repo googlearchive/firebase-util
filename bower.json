@@ -1,0 +1,36 @@
+{
+  "name": "firebase-util",
+  "description": "A set of experimental power tools for Firebase.",
+  "version": "0.0.0",
+  "authors": [
+    "Firebase <support@firebase.com> (https://www.firebase.com/)"
+  ],
+  "homepage": "https://github.com/firebase/firebase-util",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/firebase/firebase-util.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "firebase",
+    "realtime",
+    "utilities"
+  ],
+  "main": "dist/firebase-util.min.js",
+  "ignore": [
+    "**/.*",
+    "src",
+    "test",
+    "node_modules",
+    "bower_components",
+    "firebase.json",
+    "package.json",
+    "Gruntfile.js",
+    "changelog.txt"
+  ],
+  "dependencies": {
+    "firebase": "1.0.x"
+  },
+  "devDependencies": {
+  }
+}

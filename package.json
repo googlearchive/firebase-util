@@ -1,18 +1,9 @@
 {
-  "name": "Firebase-util",
-  "version": "0.1.2",
+  "name": "firebase-util",
   "description": "A set of experimental power tools for Firebase.",
+  "version": "0.0.0",
+  "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
   "homepage": "https://github.com/firebase/firebase-util",
-  "author": {
-    "name": "Michael \"Kato\" Wulf",
-    "email": "katowulf@gmail.com"
-  },
-  "main": "firebase-util.js",
-  "scripts": {
-    "test": "grunt test",
-    "make": "grunt make",
-    "watch": "grunt watch"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/firebase/firebase-util.git"
@@ -20,23 +11,48 @@
   "bugs": {
     "url": "https://github.com/firebase/firebase-util/issues"
   },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://firebase.mit-license.org/"
+    }
+  ],
+  "keywords": [
+    "firebase",
+    "realtime",
+    "utilities"
+  ],
+  "main": "dist/firebase-util.min.js",
+  "files": [
+    "dist/**",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
   "dependencies": {
-    "firebase": "*"
+    "firebase": "1.0.x"
   },
   "devDependencies": {
-    "grunt": "~0.4.1",
-    "grunt-contrib-uglify": "~0.2.2",
-    "grunt-notify": "~0.2.7",
-    "grunt-contrib-watch": "~0.5.1",
-    "grunt-contrib-jshint": "~0.6.2",
-    "grunt-exec": "~0.4.2",
-    "grunt-contrib-concat": "~0.3.0",
-    "grunt-mocha-test": "~0.8.1",
-    "chai": "~1.8.0",
     "JQDeferred": "~1.9.1",
+    "chai": "~1.8.0",
     "firebase-token-generator": "~0.1.4",
-    "sinon-chai": "~2.4.0",
+    "grunt": "~0.4.1",
+    "grunt-cli": "^0.1.13",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-jshint": "~0.6.2",
+    "grunt-contrib-uglify": "~0.2.2",
+    "grunt-contrib-watch": "~0.5.1",
+    "grunt-exec": "~0.4.2",
+    "grunt-mocha-test": "~0.8.1",
+    "grunt-notify": "~0.2.7",
+    "request": "~2.27.0",
     "sinon": "~1.7.3",
-    "request": "~2.27.0"
+    "sinon-chai": "~2.4.0"
+  },
+  "scripts": {
+    "test": "grunt test",
+    "make": "grunt make",
+    "watch": "grunt watch",
+    "travis": "grunt"
   }
 }

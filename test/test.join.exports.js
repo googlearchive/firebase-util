@@ -1,7 +1,7 @@
 
 var sinonChai = require('sinon-chai');
 var expect = require('chai').use(sinonChai).expect;
-var fbUtils = require('../firebase-util.js');
+var fbUtils = require('../dist/firebase-util.js');
 var Firebase = require('firebase');
 var helpers = require('./util/test-helpers.js');
 var data = require('./util/data.join.json');
