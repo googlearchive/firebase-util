@@ -8,7 +8,7 @@ install:
 script:
 - npm run travis
 after_script:
-- cat ./tests/coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
+- cat ./test/coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
 env:
   global:
   - secure: EzANlzV6ODIGivZvsQZUFj0bdjCr/YuEdAq1kmHKO5RLUuhfHJOpDRhQqybY/Sub5tUjRYz57wYlilM8Zqa+9LoltYz/e0NedjsEpH9AMXut9ibtFFtW2kEsWb2f1+fuuTSjyh9Xc6sYZ4FuNp1YlDXnq3msbbd1ZzyqKcvn5Gs=
