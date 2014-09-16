@@ -632,18 +632,4 @@ describe('global.js', function() {
       })
    });
 
-   describe('NotSupportedError', function() {
-      it('should be instanceof Error', function() {
-         expect(new fbExports.NotSupportedError('hello world')).instanceOf(Error);
-      });
-
-      it('should have a stack trace', function() {
-         expect(new fbExports.NotSupportedError('hello world').stack).not.to.be.empty;
-      });
-
-      it('should preserve the message I give it', function() {
-         expect(new fbExports.NotSupportedError('hello world').toString()).to.contain('hello world');
-      });
-   })
-
 });

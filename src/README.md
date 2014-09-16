@@ -39,9 +39,9 @@ like binding, iterating arrays and objects, finding values in arrays, binding fu
 
 ## Debug Logging
 
-The `fb.log` function wraps console.log in a safe manner, allowing for filtering of log output.
+The `util.log` function wraps console.log in a safe manner, allowing for filtering of log output.
 
-Unlike console.log, if the first argument to any fb.log function is a string, and it contains `%s`, `%d`, or `%j`, then it will
+Unlike console.log, if the first argument to any util.log function is a string, and it contains `%s`, `%d`, or `%j`, then it will
 be called with a printf-like logic and all other arguments are substituted into the string.
 
    -  %s - String.
@@ -63,12 +63,12 @@ Use the escalation approach:
    - The first time it helps you solve a problem, promote it to log()
    - If you use it frequently, promote it to info()
    - If it helps customers with the big picture, use info()
-   - If it indicates config errors, common mistakes, or potential gotchas use warn() or error()
+   - If it indicates config errors, common mistakes, or potential bugs use warn() or error()
 
 All of the following are valid log function calls:
 
 ```javascript
-var log = fb.pkg('log');
+var log = util.pkg('log');
 log('Class: hello %s', "world");
 log('Class: json value: %j', {foo: bar}, 'more', 'args', 'not in sprintf');  // additional args are sent directly to console
 
