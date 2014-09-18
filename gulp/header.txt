@@ -3,7 +3,7 @@
  *
  * Version: <%= pkg.version %>
  * URL: <%= pkg.homepage %>
- * Date: <%= grunt.template.today("mm/dd/yyyy") %>
+ * Date: <%= (new Date()).toISOString() %>
  * License: <%= pkg.licenses[0].type %> <%= pkg.licenses[0].url %>
  */
 
