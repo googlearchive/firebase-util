@@ -1,9 +1,13 @@
+/**
+ * This file loads the entire common/ package for INTERNAL USE.
+ * The public methods are specified by exports.js
+ */
 
-var util = require('./libs/util.js');
-
-util.extend(exports, require('./libs/args.js'));
-util.extend(exports, require('./libs/logger.js'));
-util.extend(exports, require('./libs/Observable.js'));
-util.extend(exports, require('./libs/Observer.js'));
-util.extend(exports, require('./libs/queue.js'));
-util.extend(exports, util);
+var util = require('./libs/util');
+util.extend(exports,
+  require('./libs/args'),
+  require('./libs/logger'),
+  require('./libs/Observable'),
+  require('./libs/Observer'),
+  require('./libs/queue'),
+  util);

@@ -1,20 +1,18 @@
 "use strict";
-var _ = require('lodash');
-var util = require('./util.js');
-var undefined;
+var util = require('./util');
 
 function Args(fnName, args, minArgs, maxArgs) {
-  if( typeof(fnName) !== 'string' || !_.isObject(args) ) { throw new Error('Args requires at least 2 args: fnName, arguments[, minArgs, maxArgs]')}
+  if( typeof(fnName) !== 'string' || !util.isObject(args) ) { throw new Error('Args requires at least 2 args: fnName, arguments[, minArgs, maxArgs]')}
   if( !(this instanceof Args) ) { // allow it to be called without `new` prefix
     return new Args(fnName, args, minArgs, maxArgs);
   }
   this.fnName = fnName;
-  this.argList = _.toArray(args);
-  this.origArgs = _.toArray(args);
+  this.argList = util.toArray(args);
+  this.origArgs = util.toArray(args);
   var len = this.length = this.argList.length;
   this.pos = -1;
-  if(_.isUndefined(minArgs)) { minArgs = 0; }
-  if(_.isUndefined(maxArgs)) { maxArgs = this.argList.length; }
+  if(util.isUndefined(minArgs)) { minArgs = 0; }
+  if(util.isUndefined(maxArgs)) { maxArgs = this.argList.length; }
   if( len < minArgs || len > maxArgs ) {
     var rangeText = maxArgs > minArgs? util.printf('%d to %d', minArgs, maxArgs) : minArgs;
     throw Error(util.printf('%s must be called with %s arguments, but received %d', fnName, rangeText, len));
@@ -140,7 +138,7 @@ Args.prototype = {
 
   _arg: function(types, defaultValue, required) {
     this.pos++;
-    if( _.isUndefined(types) || types === null ) { types = true; }
+    if( util.isUndefined(types) || types === null ) { types = true; }
     if( this.argList.length && isOfType(this.argList[0], types) ) {
       return format(this.argList.shift(), types);
     }
@@ -154,7 +152,7 @@ Args.prototype = {
 
   _from: function(choices, defaultValue, required) {
     this.pos++;
-    if( this.argList.length && _.contains(choices, this.argList[0]) ) {
+    if( this.argList.length && util.contains(choices, this.argList[0]) ) {
       return this.argList.shift();
     }
     else {
@@ -167,11 +165,11 @@ Args.prototype = {
     this.pos++;
     var out = [];
     var list = this.argList[0];
-    if( this.argList.length && !_.isEmpty(list) && (_.isArray(list) || !_.isObject(list)) ) {
+    if( this.argList.length && !util.isEmpty(list) && (util.isArray(list) || !util.isObject(list)) ) {
       this.argList.shift();
-      if( _.isArray(list) ) {
-        out = _.map(list, function(v) {
-          if( _.contains(choices, v) ) {
+      if( util.isArray(list) ) {
+        out = util.map(list, function(v) {
+          if( util.contains(choices, v) ) {
             return v;
           }
           else {
@@ -181,7 +179,7 @@ Args.prototype = {
         }, this);
       }
       else {
-        if( _.contains(choices, list) ) {
+        if( util.contains(choices, list) ) {
           out = [list];
         }
         else {
@@ -189,7 +187,7 @@ Args.prototype = {
         }
       }
     }
-    if( _.isEmpty(out) ) {
+    if( util.isEmpty(out) ) {
       required && assertRequired(required, this.fnName, this.pos, util.printf('choices must be in [%s]', choices));
       return defaultValue === true? choices : defaultValue;
     }
@@ -200,11 +198,11 @@ Args.prototype = {
 
 function isOfType(val, types) {
   if( types === true ) { return true; }
-  if( !_.isArray(types) ) { types = [types]; }
-  return _.contains(types, function(type) {
+  if( !util.isArray(types) ) { types = [types]; }
+  return util.contains(types, function(type) {
     switch(type) {
       case 'array':
-        return _.isArray(val);
+        return util.isArray(val);
       case 'string':
         return typeof(val) === 'string';
       case 'number':
@@ -213,14 +211,14 @@ function isOfType(val, types) {
       case 'integer':
         return isFinite(parseFloat(val));
       case 'object':
-        return _.isObject(val);
+        return util.isObject(val);
       case 'function':
         return typeof(val) === 'function';
       case 'bool':
       case 'boolean':
         return typeof(val) === 'boolean';
       case 'boolean-like':
-        return !_.isObject(val); // be lenient here
+        return !util.isObject(val); // be lenient here
       default:
         throw new Error('Args received an invalid data type: '+type);
     }
@@ -232,7 +230,7 @@ function assertRequired(required, fnName, pos, msg) {
   if( required === true ) {
     throw new Error(msg);
   }
-  else if( _.has(log, required) ) {
+  else if( util.has(log, required) ) {
     log[required](msg);
   }
   else {
@@ -246,9 +244,9 @@ function badChoiceWarning(fnName, val, choices) {
 
 function format(val, types) {
   if( types === true ) { return val; }
-  switch(_.isArray(types)? types[0] : types) {
+  switch(util.isArray(types)? types[0] : types) {
     case 'array':
-      return _.isArray(val)? val : [val];
+      return util.isArray(val)? val : [val];
     case 'string':
       return val + '';
     case 'number':

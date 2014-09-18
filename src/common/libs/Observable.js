@@ -1,6 +1,6 @@
 "use strict";
-var _ = require('lodash');
-var args = require('./args.js');
+var util = require('./util');
+var args = require('./args');
 
 /**
  * A simple observer model for watching events.
@@ -10,8 +10,8 @@ var args = require('./args.js');
  */
 function Observable(eventsMonitored, opts) {
   opts || (opts = {});
-  this._observableProps = _.extend(
-    { onAdd: _.noop, onRemove: _.noop, onEvent: _.noop, oneTimeEvents: [] },
+  this._observableProps = util.extend(
+    { onAdd: util.noop, onRemove: util.noop, onEvent: util.noop, oneTimeEvents: [] },
     opts,
     { eventsMonitored: eventsMonitored, observers: {}, oneTimeResults: {} }
   );
@@ -57,10 +57,10 @@ Observable.prototype = {
     events = args.next(['array', 'string'], this._observableProps.eventsMonitored);
     callback = args.next(['function']);
     scope = args.next(['object']);
-    _.each(events, function(event) {
+    util.each(events, function(event) {
       var removes = [];
       var observers = this.getObservers(event);
-      _.each(observers, function(obs) {
+      util.each(observers, function(obs) {
         if( obs.matches(event, callback, scope) ) {
           obs.notifyCancelled(null);
           removes.push(obs);
@@ -80,7 +80,7 @@ Observable.prototype = {
     var removes = [];
     if( this.hasObservers() ) {
       var observers = this.getObservers().slice();
-      _.each(observers, function(obs) {
+      util.each(observers, function(obs) {
         obs.notifyCancelled(error);
         removes.push(obs);
       }, this);
@@ -103,9 +103,9 @@ Observable.prototype = {
     var events = args.listFromWarn(this._observableProps.eventsMonitored, true);
     var passThruArgs = args.restAsList();
     if( events ) {
-      _.each(events, function(e) {
+      util.each(events, function(e) {
         if( this.isOneTimeEvent(event) ) {
-          if( _.isArray(this._observableProps.oneTimeResults, event) ) {
+          if( util.isArray(this._observableProps.oneTimeResults, event) ) {
             log.warn('One time event was triggered twice, should by definition be triggered once', event);
             return;
           }
@@ -113,7 +113,7 @@ Observable.prototype = {
         }
         var observers = this.getObservers(e), ct = 0;
         //            log('triggering %s for %d observers with args', event, observers.length, args, onEvent);
-        _.each(observers, function(obs) {
+        util.each(observers, function(obs) {
           obs.notify.apply(obs, passThruArgs.slice(0));
           ct++;
         });
@@ -123,13 +123,13 @@ Observable.prototype = {
   },
 
   resetObservers: function() {
-    _.each(this._observableProps.eventsMonitored, function(key) {
+    util.each(this._observableProps.eventsMonitored, function(key) {
       this._observableProps.observers[key] = [];
     }, this);
   },
 
   isOneTimeEvent: function(event) {
-    return _.contains(this._observableProps.oneTimeEvents, event);
+    return util.contains(this._observableProps.oneTimeEvents, event);
   },
 
   observeOnce: function(event, callback, cancelFn, scope) {
@@ -139,7 +139,7 @@ Observable.prototype = {
       callback = args.nextReq('function');
       cancelFn = args.next('function');
       scope = args.next('object');
-      var obs = new _.Observer(this, event, callback, scope, cancelFn, true);
+      var obs = new util.Observer(this, event, callback, scope, cancelFn, true);
       this._observableProps.observers[event].push(obs);
       this._observableProps.onAdd(event, obs);
       this.isOneTimeEvent(event) && checkOneTimeEvents(event, this._observableProps, obs);
@@ -149,8 +149,8 @@ Observable.prototype = {
 };
 
 function removeAll(list, items) {
-  _.each(items, function(x) {
-    var i = _.indexOf(list, x);
+  util.each(items, function(x) {
+    var i = util.indexOf(list, x);
     if( i >= 0 ) {
       list.splice(i, 1);
     }
@@ -159,8 +159,8 @@ function removeAll(list, items) {
 
 function getObserversFor(props, events) {
   var out = [];
-  _.each(events, function(event) {
-    if( !_.has(props.observers, event) ) {
+  util.each(events, function(event) {
+    if( !util.has(props.observers, event) ) {
       log.warn('Observable.hasObservers: invalid event type %s', event);
     }
     else {
@@ -173,7 +173,7 @@ function getObserversFor(props, events) {
 }
 
 function checkOneTimeEvents(event, props, obs) {
-  if( _.has(props.oneTimeResults, event) ) {
+  if( util.has(props.oneTimeResults, event) ) {
     obs.notify.apply(obs, props.oneTimeResults[event]);
   }
 }

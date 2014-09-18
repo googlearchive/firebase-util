@@ -1,5 +1,5 @@
 "use strict";
-var _ = require('lodash');
+var util = require('./util');
 
 function Queue(criteriaFunctions) {
   this.needs = 0;
@@ -8,7 +8,7 @@ function Queue(criteriaFunctions) {
   this.errors = [];
   this.criteria = [];
   this.processing = false;
-  _.each(criteriaFunctions, this.addCriteria, this);
+  util.each(criteriaFunctions, this.addCriteria, this);
 }
 
 Queue.prototype = {
@@ -83,17 +83,17 @@ Queue.prototype = {
   _process: function() {
     this.processing = true;
     this.needs = this.criteria.length;
-    _.each(this.criteria, this._evaluateCriteria, this);
+    util.each(this.criteria, this._evaluateCriteria, this);
   },
 
   _evaluateCriteria: function(criteriaFn) {
     var scope = null;
-    if( _.isArray(criteriaFn) ) {
+    if( util.isArray(criteriaFn) ) {
       scope = criteriaFn[1];
       criteriaFn = criteriaFn[0];
     }
     try {
-      criteriaFn.call(scope, _.bind(this._criteriaMet, this));
+      criteriaFn.call(scope, util.bind(this._criteriaMet, this));
     }
     catch(e) {
       this.addError(e);
@@ -104,7 +104,7 @@ Queue.prototype = {
     error && this.addError(error);
     this.met++;
     if( this.ready() ) {
-      _.each(this.queued, this._run, this);
+      util.each(this.queued, this._run, this);
     }
   },
 

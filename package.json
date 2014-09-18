@@ -30,28 +30,35 @@
     "package.json"
   ],
   "dependencies": {
-    "firebase": "1.0.x"
+    "firebase": "^1.0.21",
+    "xtend": "4"
   },
   "devDependencies": {
     "browserify": "^5.11.2",
-    "browserify-shim": "^3.7.0",
-    "glob": "^4.0.5",
+    "browserify-istanbul": "~0.1.2",
     "gulp": "^3.8.8",
-    "gulp-istanbul": "^0.3.0",
-    "gulp-jasmine": "^1.0.0",
+    "gulp-header": "^1.1.1",
     "gulp-jshint": "^1.8.4",
     "gulp-load-plugins": "^0.6.0",
+    "gulp-size": "^1.1.0",
+    "gulp-uglify": "^1.0.1",
+    "jasmine-spec-reporter": "^0.4.0",
     "jshint-stylish": "^0.4.0",
-    "karma": "^0.12.23",
+    "karma": "~0.12.23",
+    "karma-as-promised": "~1.0.0",
+    "karma-chrome-launcher": "^0.1.4",
+    "karma-coverage": "^0.2.4",
+    "karma-failed-reporter": "0.0.2",
+    "karma-jasmine": "~0.2.0",
     "karma-phantomjs-launcher": "^0.1.4",
-    "lodash": "^2.4.1",
+    "karma-spec-reporter": "0.0.13",
     "vinyl-buffer": "^1.0.0",
-    "vinyl-source-stream": "^1.0.0"
+    "vinyl-source-stream": "^1.0.0",
+    "watchify": "^1.0.2"
   },
   "scripts": {
     "test": "gulp test",
-    "make": "gulp make",
-    "watch": "gulp watch",
-    "travis": "gulp"
+    "build": "gulp build",
+    "watch": "gulp watch"
   }
 }

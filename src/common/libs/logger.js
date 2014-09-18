@@ -1,13 +1,14 @@
 "use strict";
 var undefined;
 var DEFAULT_LEVEL = 2; //  errors and warnings
-var _ = require('lodash');
 var oldDebuggingLevel = false;
 var fakeConsole = {
   error: noop, warn: noop, info: noop, log: noop, debug: noop, time: noop, timeEnd: noop, group: noop, groupEnd: noop
 };
+var util = require('./util');
+
 var logger = function() {
-  logger.log.apply(null, _.toArray(arguments));
+  logger.log.apply(null, util.toArray(arguments));
 };
 
 /**
@@ -19,13 +20,13 @@ exports.logLevel = logger.logLevel = function(level, grep) {
 
   if( oldDebuggingLevel === level ) { return function() {}; }
 
-  _.each(['error', 'warn', 'info', 'log', 'debug'], function(k, i) {
+  util.each(['error', 'warn', 'info', 'log', 'debug'], function(k, i) {
     if( typeof(console) !== 'undefined' && level >= i+1 ) {
       // binding is necessary to prevent IE 8/9 from having a spaz when
       // .apply and .call are used on console methods
-      var fn = _.bind(console[k==='debug'? 'log' : k], console);
+      var fn = util.bind(console[k==='debug'? 'log' : k], console);
       logger[k] = function() {
-        var args = _.toArray(arguments);
+        var args = util.toArray(arguments);
         if( typeof(args[0]) === 'string' && args[0].match(/(%s|%d|%j)/) ) {
           args = printf(args);
         }
@@ -62,7 +63,7 @@ function printf(args) {
   var localArgs = args.slice(0); // make a copy
   var template = localArgs.shift();
   var matches = template.match(/(%s|%d|%j)/g);
-  matches && _.each(matches, function(m) {
+  matches && util.each(matches, function(m) {
     template = template.replace(m, format(localArgs.shift(), m));
   });
   return [template].concat(localArgs);
@@ -73,7 +74,7 @@ function format(v, type) {
     case '%d':
       return parseInt(v, 10);
     case '%j':
-      v =  _.isObject(v)? JSON.stringify(v) : v+'';
+      v =  util.isObject(v)? JSON.stringify(v) : v+'';
       if(v.length > 500) {
         v = v.substr(0, 500)+'.../*truncated*/...}';
       }

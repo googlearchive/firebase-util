@@ -8,6 +8,10 @@ util.isDefined = function(v) {
   return v !== undefined;
 };
 
+util.isUndefined = function(v) {
+  return v === undefined;
+};
+
 util.isObject = function(v) {
   return v !== null && typeof(v) === 'object';
 };

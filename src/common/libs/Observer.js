@@ -1,5 +1,5 @@
 "use strict";
-var _ = require('lodash');
+var util = require('./util');
 
 /** Observer
  ***************************************************
@@ -20,7 +20,7 @@ function Observer(observable, event, notifyFn, context, cancelFn, oneTimeEvent) 
 
 Observer.prototype = {
   notify: function() {
-    var args = _.toArray(arguments);
+    var args = util.toArray(arguments);
     this.fn.apply(this.context, args);
     if( this.oneTimeEvent ) {
       this.observable.stopObserving(this.event, this.fn, this.context);
@@ -28,8 +28,8 @@ Observer.prototype = {
   },
 
   matches: function(event, fn, context) {
-    if( _.isArray(event) ) {
-      return _.contains(event, function(e) {
+    if( util.isArray(event) ) {
+      return util.contains(event, function(e) {
         return this.matches(e, fn, context);
       }, this);
     }
