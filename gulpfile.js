@@ -47,6 +47,7 @@ gulp.task('test', function () {
       debug: true,
       transform: ['browserify-istanbul']
     },
+//    plugins: ['karma-*'],
     singleRun: true
   });
 });
@@ -57,6 +58,7 @@ gulp.task('minify', function() {
     .pipe(source('./firebase-util.min.js'))
     .pipe(buffer())
     .pipe(plugins.uglify())
+    .pipe(plugins.size())
     .pipe(gulp.dest('dist'));
 });
 

@@ -5,7 +5,7 @@ var oldDebuggingLevel = false;
 var fakeConsole = {
   error: noop, warn: noop, info: noop, log: noop, debug: noop, time: noop, timeEnd: noop, group: noop, groupEnd: noop
 };
-var util = require('./util');
+var util = require('./util.js');
 
 var logger = function() {
   logger.log.apply(null, util.toArray(arguments));

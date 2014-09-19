@@ -1,8 +1,9 @@
 "use strict";
 
 var undefined;
-var Firebase = require('firebase');
 var util = exports;
+
+util.Firebase = global.Firebase || require('firebase');
 
 util.isDefined = function(v) {
   return v !== undefined;
@@ -123,7 +124,6 @@ util.mapObject = function(list, iterator, scope) {
  * @param {Object} [scope] set `this` in the callback
  */
 util.find = function(vals, iterator, scope) {
-  if( isArguments(vals) ) { vals = Array.prototype.slice.call(vals, 0); }
   if( util.isArray(vals) ) {
     for(var i = 0, len = vals.length; i < len; i++) {
       if( iterator.call(scope, vals[i], i, vals) === true ) { return vals[i]; }
@@ -179,7 +179,6 @@ util.contains = function(vals, iterator, scope) {
 };
 
 util.each = function(vals, cb, scope) {
-  if( isArguments(vals) ) { vals = Array.prototype.slice.call(vals, 0); }
   if( util.isArray(vals) ) {
     (vals.forEach || forEach).call(vals, cb, scope);
   }
@@ -353,7 +352,7 @@ util.noop = function() {};
 
 /** necessary because instanceof won't work Firebase Query objects */
 util.isFirebaseRef = function(ref) {
-  return _.isObject(x) && x.__proto__ && x.__proto__.constructor === exports.Firebase.prototype.constructor
+  return _.isObject(x) && x.__proto__ && x.__proto__.constructor === util.Firebase.prototype.constructor
 };
 
 function format(v, type) {
@@ -448,28 +447,9 @@ function indexOf(searchElement /*, fromIndex */ ) {
   return -1;
 }
 
-// determine if an object is actually an arguments object passed into a function
-function isArguments(args) {
-  // typeof null is also 'object', but null throws
-  // a TypeError if you access a property.
-  // We check for it as a special case so we can
-  // safely use properties below.
-  if ( args === null ) return false;
-
-  if ( typeof args !== 'object' ) return false;
-
-  // make sure it has the required properties
-  if ( typeof args.callee !== 'function' ) return false;
-  if ( typeof args.length !== 'number' ) return false;
-  if ( args.constructor !== Object ) return false;
-
-  // it passes all the tests
-  return true;
-}
-
 // for test units
 util._mockFirebaseRef = function(mock) {
-  Firebase = mock;
+  util.Firebase = mock;
 };
 
 util.escapeEmail = function(email) {

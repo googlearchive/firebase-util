@@ -1,6 +1,6 @@
 "use strict";
-var util = require('./util');
-var args = require('./args');
+var util = require('./util.js');
+var args = require('./args.js');
 
 /**
  * A simple observer model for watching events.

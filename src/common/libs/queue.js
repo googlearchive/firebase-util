@@ -1,5 +1,5 @@
 "use strict";
-var util = require('./util');
+var util = require('./util.js');
 
 function Queue(criteriaFunctions) {
   this.needs = 0;

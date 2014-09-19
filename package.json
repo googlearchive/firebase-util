@@ -30,8 +30,7 @@
     "package.json"
   ],
   "dependencies": {
-    "firebase": "^1.0.21",
-    "xtend": "4"
+    "firebase": "^1.0.21"
   },
   "devDependencies": {
     "browserify": "^5.11.2",
@@ -46,6 +45,7 @@
     "jshint-stylish": "^0.4.0",
     "karma": "~0.12.23",
     "karma-as-promised": "~1.0.0",
+    "karma-bro": "^0.7.0",
     "karma-chrome-launcher": "^0.1.4",
     "karma-coverage": "^0.2.4",
     "karma-failed-reporter": "0.0.2",

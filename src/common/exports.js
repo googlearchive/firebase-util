@@ -5,7 +5,7 @@
  * which loads index.js and includes the private methods.
  */
 
-var util = require('./index');
+var util = require('./index.js');
 exports.log = util.log;
 exports.logLevel = util.logLevel;
 exports.escapeEmail = util.escapeEmail;

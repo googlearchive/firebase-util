@@ -1,2 +1,4 @@
 
-exports.NormalizedCollection = function() {};
+exports.NormalizedCollection = function() {
+
+};
