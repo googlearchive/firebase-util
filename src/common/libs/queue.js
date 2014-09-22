@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 var util = require('./util.js');
 
 function Queue(criteriaFunctions) {
@@ -29,15 +29,17 @@ Queue.prototype = {
   },
 
   done: function(fn, context) {
-    fn && this._runOrStore(function() {
-      this.hasErrors() || fn.call(context);
-    });
+    if( fn ) {
+      this._runOrStore(function() {
+        if( !this.hasErrors() ) { fn.call(context); }
+      });
+    }
     return this;
   },
 
   fail: function(fn, context) {
     this._runOrStore(function() {
-      this.hasErrors() && fn.apply(context, this.getErrors());
+      if( this.hasErrors() ) { fn.apply(context, this.getErrors()); }
     });
     return this;
   },
@@ -101,7 +103,7 @@ Queue.prototype = {
   },
 
   _criteriaMet: function(error) {
-    error && this.addError(error);
+    if( error ) { this.addError(error); }
     this.met++;
     if( this.ready() ) {
       util.each(this.queued, this._run, this);
@@ -109,7 +111,7 @@ Queue.prototype = {
   },
 
   _runOrStore: function(fn) {
-    this.processing || this._process();
+    if( !this.processing ) { this._process(); }
     if( this.ready() ) {
       this._run(fn);
     }

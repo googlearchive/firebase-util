@@ -1,5 +1,5 @@
-"use strict";
-var undefined;
+'use strict';
+/*global window*/
 var DEFAULT_LEVEL = 2; //  errors and warnings
 var oldDebuggingLevel = false;
 var fakeConsole = {
@@ -42,7 +42,7 @@ exports.logLevel = logger.logLevel = function(level, grep) {
 
   // provide a way to revert the debugging level if I want to change it temporarily
   var off = (function(x) {
-    return function() { exports.logLevel(x) };
+    return function() { exports.logLevel(x); };
   })(oldDebuggingLevel);
   oldDebuggingLevel = level;
 
@@ -63,7 +63,7 @@ function printf(args) {
   var localArgs = args.slice(0); // make a copy
   var template = localArgs.shift();
   var matches = template.match(/(%s|%d|%j)/g);
-  matches && util.each(matches, function(m) {
+  util.each(matches, function (m) {
     template = template.replace(m, format(localArgs.shift(), m));
   });
   return [template].concat(localArgs);

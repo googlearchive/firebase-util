@@ -1,16 +1,19 @@
-"use strict";
+/*jshint unused:vars */
+/*jshint bitwise:false */
 
-var undefined;
+'use strict';
+
+var undef;
 var util = exports;
 
 util.Firebase = global.Firebase || require('firebase');
 
 util.isDefined = function(v) {
-  return v !== undefined;
+  return v !== undef;
 };
 
 util.isUndefined = function(v) {
-  return v === undefined;
+  return v === undef;
 };
 
 util.isObject = function(v) {
@@ -45,14 +48,16 @@ util.toArray = function(vals, startFrom) {
  * @param {...object} base
  * @returns {Object}
  */
-util.extend = function(recursive, base){
+util.extend = function(recursive, base) {
   var args = util.toArray(arguments);
   var recurse = args[0] === true && args.shift();
   var out = args.shift();
   util.each(args, function(o) {
-    util.isObject(o) && util.each(o, function(v,k) {
-      out[k] = recurse && util.isObject(out[k])? util.extend(true, out[k], v) : v;
-    });
+    if( util.isObject(o) ) {
+      util.each(o, function(v,k) {
+        out[k] = recurse && util.isObject(out[k])? util.extend(true, out[k], v) : v;
+      });
+    }
   });
   return out;
 };
@@ -67,7 +72,7 @@ util.bind = function(fn, scope) {
  * @returns {boolean}
  */
 util.isEmpty = function(vals) {
-  return vals === undefined || vals === null ||
+  return vals === undef || vals === null ||
     (util.isArray(vals) && vals.length === 0) ||
     (util.isObject(vals) && !util.contains(vals, function(v) { return true; }));
 };
@@ -95,7 +100,7 @@ util.map = function(vals, iterator, scope) {
   var out = [];
   util.each(vals, function(v, k) {
     var res = iterator.call(scope, v, k, vals);
-    if( res !== undefined ) { out.push(res); }
+    if( res !== undef ) { out.push(res); }
   });
   return out;
 };
@@ -110,7 +115,7 @@ util.mapObject = function(list, iterator, scope) {
   var out = {};
   util.each(list, function(v,k) {
     var res = iterator.call(scope, v, k, list);
-    if( res !== undefined ) {
+    if( res !== undef ) {
       out[k] = res;
     }
   });
@@ -137,7 +142,7 @@ util.find = function(vals, iterator, scope) {
       }
     }
   }
-  return undefined;
+  return undef;
 };
 
 util.filter = function(list, iterator, scope) {
@@ -157,13 +162,13 @@ util.filter = function(list, iterator, scope) {
 };
 
 util.has = function(vals, key) {
-  return (util.isArray(vals) && vals[key] !== undefined)
-    || (util.isObject(vals) && vals[key] !== undefined)
-    || false;
+  return (util.isArray(vals) && vals[key] !== undef) ||
+    (util.isObject(vals) && vals[key] !== undef) ||
+    false;
 };
 
 util.val = function(list, key) {
-  return util.has(list, key)? list[key] : undefined;
+  return util.has(list, key)? list[key] : undef;
 };
 
 util.contains = function(vals, iterator, scope) {
@@ -172,14 +177,14 @@ util.contains = function(vals, iterator, scope) {
       return util.indexOf(vals, iterator) > -1;
     }
     iterator = (function(testVal) {
-      return function(v) { return v === testVal; }
+      return function(v) { return v === testVal; };
     })(iterator);
   }
-  return util.find(vals, iterator, scope) !== undefined;
+  return util.find(vals, iterator, scope) !== undef;
 };
 
 util.each = function(vals, cb, scope) {
-  if( util.isArray(vals) ) {
+  if( util.isArray(vals) || isArguments(vals) ) {
     (vals.forEach || forEach).call(vals, cb, scope);
   }
   else if( util.isObject(vals) ) {
@@ -250,7 +255,7 @@ util.inherit = function(InheritingClass, InheritedClass) {
   // and also accept additional arguments to inherit() and extend the prototype accordingly
   var moreFns = [InheritingClass.prototype || {}].concat(util.toArray(arguments, 2));
 
-  InheritingClass.prototype = new InheritedClass;
+  InheritingClass.prototype = new InheritedClass();
   util.each(moreFns, function(fns) {
     util.extend(InheritingClass.prototype, fns);
   });
@@ -276,7 +281,9 @@ util.call = function(list, methodName) {
     if( typeof(o) === 'function' && !methodName ) {
       return res.push(o.apply(null, args));
     }
-    util.isObject(o) && typeof(o[methodName]) === 'function' && res.push(o[methodName].apply(o, args));
+    if( util.isObject(o) && typeof(o[methodName]) === 'function' ) {
+      res.push(o[methodName].apply(o, args));
+    }
   });
   return res;
 };
@@ -311,8 +318,8 @@ util.isEqual = function(a, b, objectsSameOrder) {
     else {
       var aKeys = objectsSameOrder? util.keys(a) : util.keys(a).sort();
       var bKeys = objectsSameOrder? util.keys(b) : util.keys(b).sort();
-      return util.isEqual(aKeys, bKeys)
-        && !util.contains(a, function(v, k) { return !util.isEqual(v, b[k]) });
+      return util.isEqual(aKeys, bKeys) &&
+        !util.contains(a, function(v, k) { return !util.isEqual(v, b[k]); });
     }
   }
   else {
@@ -333,9 +340,11 @@ util.printf = function() {
   var localArgs = util.toArray(arguments);
   var template = localArgs.shift();
   var matches = template.match(/(%s|%d|%j)/g);
-  matches && fb.util.each(matches, function(m) {
-    template = template.replace(m, format(localArgs.shift(), m));
-  });
+  if( matches ) {
+    util.each(matches, function (m) {
+      template = template.replace(m, format(localArgs.shift(), m));
+    });
+  }
   return template;
 };
 
@@ -351,8 +360,18 @@ util.construct = function(constructor, args) {
 util.noop = function() {};
 
 /** necessary because instanceof won't work Firebase Query objects */
-util.isFirebaseRef = function(ref) {
-  return _.isObject(x) && x.__proto__ && x.__proto__.constructor === util.Firebase.prototype.constructor
+util.isFirebaseRef = function(x) {
+  var proto = util.isObject(x)? Object.getPrototypeOf(x) : false;
+  return proto && proto.constructor === util.Firebase.prototype.constructor;
+};
+
+// for test units
+util._mockFirebaseRef = function(mock) {
+  util.Firebase = mock;
+};
+
+util.escapeEmail = function(email) {
+  return (email||'').replace('.', ',');
 };
 
 function format(v, type) {
@@ -360,7 +379,7 @@ function format(v, type) {
     case '%d':
       return parseInt(v, 10);
     case '%j':
-      v =  fb.util.isObject(v)? JSON.stringify(v) : v+'';
+      v =  util.isObject(v)? JSON.stringify(v) : v+'';
       if(v.length > 500) {
         v = v.substr(0, 500)+'.../*truncated*/...}';
       }
@@ -372,26 +391,35 @@ function format(v, type) {
   }
 }
 
+function isArguments(o) {
+  return util.isObject(o) && o+'' === '[object Arguments]';
+}
+
+/****************************************
+ * POLYFILLS
+ ****************************************/
+
 // a polyfill for Function.prototype.bind (invoke using call or apply!)
 // credits: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind
 function bind(oThis) {
-  if (typeof this !== "function") {
+  /*jshint validthis:true */
+  if (typeof this !== 'function') {
     // closest thing possible to the ECMAScript 5 internal IsCallable function
-    throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+    throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
   }
 
   var aArgs = Array.prototype.slice.call(arguments, 1),
     fToBind = this,
-    fNOP = function () {},
+    FNOP = function () {},
     fBound = function () {
-      return fToBind.apply(this instanceof fNOP && oThis
-          ? this
-          : oThis,
-        aArgs.concat(Array.prototype.slice.call(arguments)));
+      return fToBind.apply(
+          this instanceof FNOP && oThis? this : oThis,
+          aArgs.concat(Array.prototype.slice.call(arguments))
+      );
     };
 
-  fNOP.prototype = this.prototype;
-  fBound.prototype = new fNOP();
+  FNOP.prototype = this.prototype;
+  fBound.prototype = new FNOP();
 
   return fBound;
 }
@@ -399,7 +427,7 @@ function bind(oThis) {
 // a polyfill for Array.prototype.forEach (invoke using call or apply!)
 // credits: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach
 function forEach(fn, scope) {
-  'use strict';
+  /*jshint validthis:true */
   var i, len;
   for (i = 0, len = this.length; i < len; ++i) {
     if (i in this) {
@@ -411,14 +439,14 @@ function forEach(fn, scope) {
 // a polyfill for Array.isArray
 // credits: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray
 function isArray(vArg) {
-  return Object.prototype.toString.call(vArg) === "[object Array]";
+  return Object.prototype.toString.call(vArg) === '[object Array]';
 }
 
 // a polyfill for Array.indexOf
 // credits: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf
-function indexOf(searchElement /*, fromIndex */ ) {
-  'use strict';
-  if (this == null) {
+function indexOf(searchElement, fromIndex) {
+  /*jshint validthis:true */
+  if (this === null) {
     throw new TypeError();
   }
   var n, k, t = Object(this),
@@ -430,9 +458,9 @@ function indexOf(searchElement /*, fromIndex */ ) {
   n = 0;
   if (arguments.length > 1) {
     n = Number(arguments[1]);
-    if (n != n) { // shortcut for verifying if it's NaN
+    if (n !== n) { // shortcut for verifying if it's NaN
       n = 0;
-    } else if (n != 0 && n != Infinity && n != -Infinity) {
+    } else if (n !== 0 && n !== Infinity && n !== -Infinity) {
       n = (n > 0 || -1) * Math.floor(Math.abs(n));
     }
   }
@@ -446,12 +474,3 @@ function indexOf(searchElement /*, fromIndex */ ) {
   }
   return -1;
 }
-
-// for test units
-util._mockFirebaseRef = function(mock) {
-  util.Firebase = mock;
-};
-
-util.escapeEmail = function(email) {
-  return (email||'').replace('.', ',');
-};

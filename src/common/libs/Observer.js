@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 var util = require('./util.js');
 
 /** Observer
@@ -33,9 +33,9 @@ Observer.prototype = {
         return this.matches(e, fn, context);
       }, this);
     }
-    return (!event || event === this.event)
-      && (!fn || fn === this || fn === this.fn)
-      && (!context || context === this.context);
+    return (!event || event === this.event) &&
+      (!fn || fn === this || fn === this.fn) &&
+      (!context || context === this.context);
   },
 
   notifyCancelled: function(err) {

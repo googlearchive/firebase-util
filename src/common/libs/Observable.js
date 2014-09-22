@@ -1,6 +1,8 @@
-"use strict";
+'use strict';
 var util = require('./util.js');
 var args = require('./args.js');
+var log = require('./logger.js');
+var Observer = require('./Observer.js');
 
 /**
  * A simple observer model for watching events.
@@ -9,7 +11,7 @@ var args = require('./args.js');
  * @constructor
  */
 function Observable(eventsMonitored, opts) {
-  opts || (opts = {});
+  if( !opts ) { opts = {}; }
   this._observableProps = util.extend(
     { onAdd: util.noop, onRemove: util.noop, onEvent: util.noop, oneTimeEvents: [] },
     opts,
@@ -25,16 +27,18 @@ Observable.prototype = {
    * @param {Object} [scope]
    */
   observe: function(event, callback, cancelFn, scope) {
-    var args = args('observe', arguments, 2, 4);
+    var args = args('observe', arguments, 2, 4), obs;
     event = args.nextFromWarn(this._observableProps.eventsMonitored);
     if( event ) {
       callback = args.nextReq('function');
       cancelFn = args.next('function');
       scope = args.next('object');
-      var obs = new Observer(this, event, callback, scope, cancelFn);
+      obs = new Observer(this, event, callback, scope, cancelFn);
       this._observableProps.observers[event].push(obs);
       this._observableProps.onAdd(event, obs);
-      this.isOneTimeEvent(event) && checkOneTimeEvents(event, this._observableProps, obs);
+      if( this.isOneTimeEvent(event) ) {
+        checkOneTimeEvents(event, this._observableProps, obs);
+      }
     }
     return obs;
   },
@@ -133,16 +137,18 @@ Observable.prototype = {
   },
 
   observeOnce: function(event, callback, cancelFn, scope) {
-    var args = args('observeOnce', arguments, 2, 4);
+    var args = args('observeOnce', arguments, 2, 4), obs;
     event = args.nextFromWarn(this._observableProps.eventsMonitored);
     if( event ) {
       callback = args.nextReq('function');
       cancelFn = args.next('function');
       scope = args.next('object');
-      var obs = new util.Observer(this, event, callback, scope, cancelFn, true);
+      obs = new util.Observer(this, event, callback, scope, cancelFn, true);
       this._observableProps.observers[event].push(obs);
       this._observableProps.onAdd(event, obs);
-      this.isOneTimeEvent(event) && checkOneTimeEvents(event, this._observableProps, obs);
+      if( this.isOneTimeEvent(event) ) {
+        checkOneTimeEvents(event, this._observableProps, obs);
+      }
     }
     return obs;
   }

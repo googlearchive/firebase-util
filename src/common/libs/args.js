@@ -1,8 +1,11 @@
-"use strict";
+'use strict';
 var util = require('./util.js');
+var log = require('./logger.js');
 
 function Args(fnName, args, minArgs, maxArgs) {
-  if( typeof(fnName) !== 'string' || !util.isObject(args) ) { throw new Error('Args requires at least 2 args: fnName, arguments[, minArgs, maxArgs]')}
+  if( typeof(fnName) !== 'string' || !util.isObject(args) ) {
+    throw new Error('Args requires at least 2 args: fnName, arguments[, minArgs, maxArgs]');
+  }
   if( !(this instanceof Args) ) { // allow it to be called without `new` prefix
     return new Args(fnName, args, minArgs, maxArgs);
   }
@@ -156,7 +159,9 @@ Args.prototype = {
       return this.argList.shift();
     }
     else {
-      required && assertRequired(required, this.fnName, this.pos, util.printf('must be one of %s', choices));
+      if( required ) {
+        assertRequired(required, this.fnName, this.pos, util.printf('must be one of %s', choices));
+      }
       return defaultValue;
     }
   },
@@ -188,7 +193,10 @@ Args.prototype = {
       }
     }
     if( util.isEmpty(out) ) {
-      required && assertRequired(required, this.fnName, this.pos, util.printf('choices must be in [%s]', choices));
+      if( required ) {
+        assertRequired(required, this.fnName, this.pos,
+          util.printf('choices must be in [%s]', choices));
+      }
       return defaultValue === true? choices : defaultValue;
     }
     return out;
@@ -244,7 +252,8 @@ function badChoiceWarning(fnName, val, choices) {
 
 function format(val, types) {
   if( types === true ) { return val; }
-  switch(util.isArray(types)? types[0] : types) {
+  var type = util.isArray(types)? types[0] : types;
+  switch(type) {
     case 'array':
       return util.isArray(val)? val : [val];
     case 'string':
