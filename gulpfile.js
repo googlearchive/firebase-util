@@ -27,31 +27,19 @@ gulp.task('build', function(){
 });
 
 gulp.task('watch', function() {
-  gulp.watch('src/**/*.js', ['test']);
-  gulp.watch('test/**/*.spec.js', ['test']);
+  return karma.server.start({
+    configFile: __dirname + '/karma.conf.js'
+  });
 });
 
 gulp.task('test', function () {
   return karma.server.start({
-    files: [
-      'test/test.spec.js' //debug
-//      'test/**/*.spec.js'
-    ],
-    frameworks: ['browserify', 'jasmine'],
-    preprocessors: {
-      'test/**/*.spec.js': ['coverage', 'browserify']
-    },
-    browsers: ['PhantomJS'],
-    reporters: ['coverage', 'spec', 'failed'],
-    browserify: {
-      debug: true,
-      transform: ['browserify-istanbul']
-    },
-//    plugins: ['karma-*'],
+    configFile: __dirname+'/karma.conf.js',
     singleRun: true
   });
 });
 
+//todo include the debug maps as external files
 gulp.task('minify', function() {
   getBundle()
     .bundle()

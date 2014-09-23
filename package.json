@@ -49,6 +49,7 @@
     "karma-chrome-launcher": "^0.1.4",
     "karma-coverage": "^0.2.4",
     "karma-failed-reporter": "0.0.2",
+    "karma-growl": "^0.1.0",
     "karma-jasmine": "~0.2.0",
     "karma-phantomjs-launcher": "^0.1.4",
     "karma-spec-reporter": "0.0.13",
@@ -57,8 +58,6 @@
     "watchify": "^1.0.2"
   },
   "scripts": {
-    "test": "gulp test",
-    "build": "gulp build",
-    "watch": "gulp watch"
+    "test": "gulp test"
   }
 }

@@ -125,7 +125,7 @@ Queue.prototype = {
   }
 };
 
-exports.queue = function(criteriaFns, callback) {
+module.exports = function(criteriaFns, callback) {
   var q = new Queue(criteriaFns);
   if( callback ) { q.done(callback); }
   return q;

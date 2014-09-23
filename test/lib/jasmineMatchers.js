@@ -8,16 +8,6 @@ var Firebase = require('firebase');
 beforeEach(function() {
   'use strict';
 
-  // taken from Angular.js 2.0
-  var isArray = (function() {
-    if (typeof Array.isArray !== 'function') {
-      return function(value) {
-        return toString.call(value) === '[object Array]';
-      };
-    }
-    return Array.isArray;
-  })();
-
   function extendedTypeOf(x) {
     var actual;
     if( isArray(x) ) {
@@ -99,13 +89,19 @@ beforeEach(function() {
      */
     toBeA: function() {
       return {
-        compare: compare.bind(null, 'a')
+        compare: function() {
+          var args = Array.prototype.slice.apply(arguments);
+          return compare.apply(null, ['a'].concat(args));
+        }
       };
     },
 
     toBeAn: function() {
       return {
-        compare: compare.bind(null, 'an')
+        compare: function(actual) {
+          var args = Array.prototype.slice.apply(arguments);
+          return compare.apply(null, ['an'].concat(args));
+        }
       }
     },
 
@@ -120,8 +116,57 @@ beforeEach(function() {
           }
         }
       }
+    },
+
+    toHaveLength: function() {
+      return {
+        compare: function(actual, len) {
+          var actLen = isArray(actual)? actual.length : 'not an array';
+          var pass = actLen === len;
+          var notText = pass? ' not' : '';
+          return {
+            pass: pass,
+            message: 'Expected array ' + notText + ' to have length ' + len + ', but it was ' + actLen
+          }
+        }
+      }
+    },
+
+    toBeEmpty: function() {
+      return {
+        compare: function(actual) {
+          var pass, contents;
+          if( isObject(actual) ) {
+            actual = Object.keys(actual);
+          }
+          if( isArray(actual) ) {
+            pass = actual.length === 0;
+            contents = 'had ' + actual.length + ' items';
+          }
+          else {
+            pass = false;
+            contents = 'was not an array or object';
+          }
+          var notText = pass? ' not' : '';
+          return {
+            pass: pass,
+            message: 'Expected collection ' + notText + ' to be empty, but it ' + contents
+          }
+        }
+      }
     }
   });
+
+  function isObject(x) {
+    return x && typeof(x) === 'object' && !isArray(x);
+  }
+
+  function isArray(x) {
+    if (typeof Array.isArray !== 'function') {
+      return x && typeof x === 'object' && Object.prototype.toString.call(x) === '[object Array]';
+    }
+    return Array.isArray(x);
+  }
 
   function isFirebaseRef(obj) {
     return _.isObject(x) && x.__proto__ && x.__proto__.constructor === exports.Firebase.prototype.constructor

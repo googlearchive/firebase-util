@@ -1,6 +1,6 @@
 'use strict';
 var util = require('./util.js');
-var args = require('./args.js');
+var getArgs = require('./args.js');
 var log = require('./logger.js');
 var Observer = require('./Observer.js');
 
@@ -27,7 +27,7 @@ Observable.prototype = {
    * @param {Object} [scope]
    */
   observe: function(event, callback, cancelFn, scope) {
-    var args = args('observe', arguments, 2, 4), obs;
+    var args = getArgs('observe', arguments, 2, 4), obs;
     event = args.nextFromWarn(this._observableProps.eventsMonitored);
     if( event ) {
       callback = args.nextReq('function');
@@ -57,7 +57,7 @@ Observable.prototype = {
    * @param {Object} [scope]
    */
   stopObserving: function(events, callback, scope) {
-    var args = args('stopObserving', arguments);
+    var args = getArgs('stopObserving', arguments);
     events = args.next(['array', 'string'], this._observableProps.eventsMonitored);
     callback = args.next(['function']);
     scope = args.next(['object']);
@@ -98,12 +98,12 @@ Observable.prototype = {
    * @returns {*}
    */
   getObservers: function(events) {
-    events = args('getObservers', arguments).listFrom(this._observableProps.eventsMonitored, true);
+    events = getArgs('getObservers', arguments).listFrom(this._observableProps.eventsMonitored, true);
     return getObserversFor(this._observableProps, events);
   },
 
   triggerEvent: function(event) {
-    var args = args('triggerEvent', arguments);
+    var args = getArgs('triggerEvent', arguments);
     var events = args.listFromWarn(this._observableProps.eventsMonitored, true);
     var passThruArgs = args.restAsList();
     if( events ) {
@@ -137,13 +137,13 @@ Observable.prototype = {
   },
 
   observeOnce: function(event, callback, cancelFn, scope) {
-    var args = args('observeOnce', arguments, 2, 4), obs;
+    var args = getArgs('observeOnce', arguments, 2, 4), obs;
     event = args.nextFromWarn(this._observableProps.eventsMonitored);
     if( event ) {
       callback = args.nextReq('function');
       cancelFn = args.next('function');
       scope = args.next('object');
-      obs = new util.Observer(this, event, callback, scope, cancelFn, true);
+      obs = new Observer(this, event, callback, scope, cancelFn, true);
       this._observableProps.observers[event].push(obs);
       this._observableProps.onAdd(event, obs);
       if( this.isOneTimeEvent(event) ) {
@@ -184,4 +184,4 @@ function checkOneTimeEvents(event, props, obs) {
   }
 }
 
-exports.Observable = Observable;
+module.exports = Observable;

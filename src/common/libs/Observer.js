@@ -43,4 +43,4 @@ Observer.prototype = {
   }
 };
 
-exports.Observer = Observer;
+module.exports = Observer;

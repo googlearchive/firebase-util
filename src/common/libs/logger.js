@@ -15,7 +15,7 @@ var logger = function() {
  * @param {int} level use -1 to turn off all logging, use 5 for maximum debugging
  * @param {string|RegExp} [grep] filter logs to those whose first value matches this text or expression
  */
-exports.logLevel = logger.logLevel = function(level, grep) {
+logger.logLevel = function(level, grep) {
   if( typeof(level) !== 'number' ) { level = levelInt(level); }
 
   if( oldDebuggingLevel === level ) { return function() {}; }
@@ -42,7 +42,7 @@ exports.logLevel = logger.logLevel = function(level, grep) {
 
   // provide a way to revert the debugging level if I want to change it temporarily
   var off = (function(x) {
-    return function() { exports.logLevel(x); };
+    return function() { logger.logLevel(x); };
   })(oldDebuggingLevel);
   oldDebuggingLevel = level;
 
@@ -116,5 +116,5 @@ function levelInt(x) {
   }
 }
 
-exports.logLevel(getDebugLevel());
-exports.log = logger;
+logger.logLevel(getDebugLevel());
+module.exports = logger;

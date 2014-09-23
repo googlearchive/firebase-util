@@ -4,11 +4,17 @@
  */
 
 var util = require('./libs/util.js');
+var log = require('./libs/logger.js');
 
-util.extend(exports,
-  require('./libs/args.js'),
-  require('./libs/logger.js'),
-  require('./libs/Observable.js'),
-  require('./libs/Observer.js'),
-  require('./libs/queue.js'),
-  util);
+util.extend(
+  exports,
+  util,
+  {
+    args: require('./libs/args.js'),
+    log: log,
+    logLevel: log.logLevel,
+    Observable: require('./libs/Observable.js'),
+    Observer: require('./libs/Observer.js'),
+    queue: require('./libs/queue.js')
+  }
+);

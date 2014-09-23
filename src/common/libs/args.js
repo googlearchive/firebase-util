@@ -275,4 +275,4 @@ function format(val, types) {
   }
 }
 
-exports.args = Args;
+module.exports = Args;

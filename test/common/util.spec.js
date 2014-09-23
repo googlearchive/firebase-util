@@ -1,8 +1,7 @@
-var expect = require('chai').expect;
 
 describe('global.js', function() {
-   var undefined;
-   var util = require('../src/common');
+   var undef;
+   var util = require('../../src/common/index');
 
    describe('#isObject', function() {
       it('should be true for {}', function() {
@@ -34,7 +33,7 @@ describe('global.js', function() {
       });
 
       it('should be false for undefined', function() {
-         expect( util.isObject(undefined)).toBe(false);
+         expect( util.isObject(undef)).toBe(false);
       });
    });
 
@@ -68,7 +67,7 @@ describe('global.js', function() {
       });
 
       it('should be false for undefined', function() {
-         expect( util.isArray(undefined)).toBe(false);
+         expect( util.isArray(undef)).toBe(false);
       });
    });
 
@@ -229,7 +228,7 @@ describe('global.js', function() {
       });
 
       it('should skip undefined values', function() {
-         var res = util.map([1, 2, undefined, 3], function(v) { return v; });
+         var res = util.map([1, 2, undef, 3], function(v) { return v; });
          expect(res).toEqual([1, 2, 3]);
       });
    });
@@ -246,7 +245,7 @@ describe('global.js', function() {
       });
 
       it('should skip undefined values', function() {
-         var res = util.mapObject({a: false, b: null, c: true, d: ''}, function(v,k) { return k === 'c'? undefined : v; });
+         var res = util.mapObject({a: false, b: null, c: true, d: ''}, function(v,k) { return k === 'c'? undef : v; });
          expect(Object.keys(res)).toEqual(['a', 'b', 'd']);
       });
 
@@ -305,7 +304,7 @@ describe('global.js', function() {
 
       it('should not fail if passed null', function() {
          expect(util.remove(null, 5)).toBe(false);
-      })
+      });
    });
 
    describe('#isEmpty', function() {
@@ -367,12 +366,12 @@ describe('global.js', function() {
 
       it('returns undefined if no item found in array', function() {
          var res = util.find(['foo', 'bar'], function() { return false; });
-         expect(res).toEqual(undefined);
+         expect(res).toEqual(undef);
       });
 
       it('returns undefined if no item found in object', function() {
          var res = util.find({'foo': 'bar'}, function() { return false; });
-         expect(res).toEqual(undefined);
+         expect(res).toEqual(undef);
       });
    });
 
@@ -400,7 +399,7 @@ describe('global.js', function() {
       });
 
       it('should return false for null vs undefined', function() {
-         expect(util.isEqual(null, undefined)).toBe(false);
+         expect(util.isEqual(null, undef)).toBe(false);
       });
 
       it('should return true for null,null', function() {
@@ -518,7 +517,7 @@ describe('global.js', function() {
          function A() {}
          function B() {}
          util.inherit(B, A);
-         expect(new B).instanceOf(A);
+         expect(new B()).toBeInstanceOf(A);
       });
 
       it('should preserve prototype methods added before calling inherit', function() {
@@ -526,7 +525,7 @@ describe('global.js', function() {
          function B() {}
          B.prototype.hello = function() { return 'world'; };
          util.inherit(B, A);
-         var b = new B;
+         var b = new B();
          expect(b.hello).toBeA('function');
          expect(b.hello()).toEqual('world');
       });
@@ -537,7 +536,7 @@ describe('global.js', function() {
          function B() {}
          B.prototype.foo = function() { return 'B'; };
          util.inherit(B, A);
-         var b = new B;
+         var b = new B();
          expect(b.foo).toBeA('function');
          expect(b.foo()).toEqual('B');
       });
@@ -548,7 +547,7 @@ describe('global.js', function() {
          function B() {}
          B.prototype.bar = 'B';
          util.inherit(B, A);
-         var b = new B;
+         var b = new B();
          expect(b.foo).toEqual('A');
          expect(b.bar).toEqual('B');
       });
@@ -559,7 +558,7 @@ describe('global.js', function() {
          function B() {}
          B.prototype.foo = 'B';
          util.inherit(B, A, {foo: 'C'});
-         var b = new B;
+         var b = new B();
          expect(b.foo).toEqual('C');
       });
 
@@ -572,9 +571,9 @@ describe('global.js', function() {
          C.prototype.foo = 'C';
          util.inherit(B, A);
          util.inherit(C, B);
-         var c = new C;
-         expect(c).instanceOf(B);
-         expect(c).instanceOf(A);
+         var c = new C();
+         expect(c).toBeInstanceOf(B);
+         expect(c).toBeInstanceOf(A);
          expect(c.foo).toEqual('C');
       });
    });
@@ -628,7 +627,7 @@ describe('global.js', function() {
          util.each(['a', 'b', 'c'], function() {
             expect(this).toEqual(a);
          }, a);
-      })
+      });
    });
 
 });
