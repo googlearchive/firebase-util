@@ -1,7 +1,7 @@
 module.exports = function(config) {
   config.set({
     files: [
-      'test/lib/jasmineMatchers.js',
+      'test/lib/*.js',
       'test/**/*.spec.js'
     ],
     frameworks: ['browserify', 'jasmine'],

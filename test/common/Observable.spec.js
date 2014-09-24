@@ -1,3 +1,4 @@
+'use strict';
 var fbutil = require('../../src/common');
 var Observable = fbutil.Observable;
 
@@ -57,7 +58,10 @@ describe('global.Observable.js', function() {
    describe('#observe', function() {
       it('should call function with the correct context', function() {
          var x, y = new Date();
-         function fn() { x = this; }
+         function fn() {
+           /*jshint validthis:true */
+           x = this;
+         }
 
          var obs = new Observable(['test']);
          obs.observe('test', fn, y);

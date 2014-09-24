@@ -17,7 +17,7 @@ util.isUndefined = function(v) {
 };
 
 util.isObject = function(v) {
-  return v !== null && typeof(v) === 'object';
+  return Object.prototype.isPrototypeOf(v);
 };
 
 util.isArray = function(v) {
@@ -236,38 +236,6 @@ util.defer = function(fn, scope) {
 };
 
 /**
- * Inherit prototype of another JS class. Adds an _super() method for the constructor to call.
- * It takes any number of arguments (whatever the inherited classes constructor methods are),
- * the first of which must be the `this` instance.
- *
- * Limitations:
- *    1. Inherited constructor must be callable with no arguments (to make instanceof work), but can be called
- *       properly during instantiation with arguments by using _super(this, args...)
- *    2. Can only inherit one super class, no exceptions
- *    3. Cannot call prototype = {} after using this method
- *
- * @param {Function} InheritingClass
- * @param {Function} InheritedClass a class which can be constructed without passing any arguments
- * @returns {Function}
- */
-util.inherit = function(InheritingClass, InheritedClass) {
-  // make sure we don't blow away any existing prototype methods on the object
-  // and also accept additional arguments to inherit() and extend the prototype accordingly
-  var moreFns = [InheritingClass.prototype || {}].concat(util.toArray(arguments, 2));
-
-  InheritingClass.prototype = new InheritedClass();
-  util.each(moreFns, function(fns) {
-    util.extend(InheritingClass.prototype, fns);
-  });
-
-  InheritingClass.prototype._super = function(self) {
-    InheritedClass.apply(self, util.toArray(arguments,1));
-  };
-
-  return InheritingClass;
-};
-
-/**
  * Call a method on each instance contained in the list. Any additional args are passed into the method.
  *
  * @param {Object|Array} list contains instantiated objects
@@ -372,6 +340,35 @@ util._mockFirebaseRef = function(mock) {
 
 util.escapeEmail = function(email) {
   return (email||'').replace('.', ',');
+};
+
+/**
+ * Inherit prototype of another JS class. Adds an _super() method for the constructor to call.
+ * It takes any number of arguments (whatever the inherited classes constructor methods are),
+ *
+ * Limitations:
+ *    1. Inherited constructor must be callable with no arguments (to make instanceof work), but can be called
+ *       properly during instantiation with arguments by using _super(this, args...)
+ *    2. Can only inherit one super class, no exceptions
+ *    3. Cannot call prototype = {} after using this method
+ *
+ * @param {Function} Child
+ * @param {Function} Parent a class which can be constructed without passing any arguments
+ * @returns {Function}
+ */
+util.inherits = function(Child, Parent) {
+  var methodSets = [Child.prototype].concat(util.toArray(arguments).slice(2));
+  Child.prototype = new Parent();
+  Child.prototype.constructor = Parent;
+  util.each(methodSets, function(fnSet) {
+    util.each(fnSet, function(fn, key) {
+      Child.prototype[key] = fn;
+    });
+  });
+  Child.prototype._super = function() {
+    Parent.apply(this, arguments);
+  };
+  return Child;
 };
 
 function format(v, type) {

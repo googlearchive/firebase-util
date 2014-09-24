@@ -7,6 +7,9 @@ var source     = require('vinyl-source-stream');
 var buffer     = require('vinyl-buffer');
 var karma      = require('karma-as-promised');
 var fs         = require('fs');
+var argv       = require('yargs').argv;
+var gutil      = require('gulp-util');
+var path       = require('path');
 
 function getBundle(debug, args) {
   return browserify({debug: debug||false}, args)
@@ -15,12 +18,38 @@ function getBundle(debug, args) {
     .add('./src/expose.js');
 }
 
+function copyTemplate(ext, isSpec) {
+  if( !argv.t || !argv.d || !argv.n ) {
+    throw new Error('Usage: gulp template -t type -d directory -n name');
+  }
+
+  var baseDir = isSpec? 'test' : 'src';
+  var subDir = argv.d;
+  if( !isSpec ) { subDir = path.join(subDir, 'libs'); }
+  var dest = path.join(baseDir, subDir, argv.n + ext);
+  var src = path.join('gulp', argv.t + (isSpec? '.spec' : '') + '.tpl');
+  var renameProps = {
+    dirname: subDir,
+    basename: argv.n,
+    extname: ext
+  };
+
+  if( fs.existsSync(dest) ) {
+    throw new Error('File exists: '+dest);
+  }
+  gutil.log('Creating ', gutil.colors.magenta(dest));
+  return gulp.src(src)
+    .pipe(plugins.template({ name: argv.n }))
+    .pipe(plugins.rename(renameProps))
+    .pipe(gulp.dest(baseDir));
+}
+
 gulp.task('build', function(){
   return getBundle()
     .bundle()
     .pipe(source('./firebase-util.js'))
     .pipe(buffer())
-    .pipe(plugins.header(fs.readFileSync('./gulp/header.txt'), {
+    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
       pkg: require('./package.json')
     }))
     .pipe(gulp.dest('dist'));
@@ -57,5 +86,15 @@ gulp.task('lint', function () {
     .pipe(plugins.jshint.reporter('fail'));
 });
 
+
+gulp.task('scaffold-file', function() {
+  return copyTemplate('.js');
+});
+
+gulp.task('scaffold-test', function() {
+  return copyTemplate('.spec.js', true);
+});
+
+gulp.task('scaffold', ['scaffold-file', 'scaffold-test']);
 gulp.task('bundle', ['lint', 'build', 'minify']);
 gulp.task('default', ['bundle', 'test']);

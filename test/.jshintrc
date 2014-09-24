@@ -1,5 +1,19 @@
 {
   "predef": [
-    "require", "describe", "it", "expect"
-  ]
+    "it", "describe", "jasmine", "spyOn", "expect"
+  ],
+  "curly": true,
+  "eqeqeq": true,
+  "forin": true,
+  "freeze": true,
+  "indent": 2,
+  "latedef": "nofunc",
+  "node": true,
+  "noempty": true,
+  "nonbsp": true,
+  "quotmark": "single",
+  "strict": true,
+  "trailing": true,
+  "undef": false,
+  "unused": false
 }
