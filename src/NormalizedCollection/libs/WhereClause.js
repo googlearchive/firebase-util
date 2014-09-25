@@ -28,7 +28,7 @@ function Condition(field, operator, match) {
 
 Condition.prototype = {
   test: function(data) {
-    return true; //todo
+    return false; //todo
   }
 };
 

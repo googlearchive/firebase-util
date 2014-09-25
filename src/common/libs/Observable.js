@@ -13,11 +13,7 @@ var Observer = require('./Observer.js');
  */
 function Observable(eventsMonitored, opts) {
   if( !opts ) { opts = {}; }
-  this._observableProps = util.extend(
-    { onAdd: util.noop, onRemove: util.noop, onEvent: util.noop, oneTimeEvents: [] },
-    opts,
-    { eventsMonitored: eventsMonitored, observers: {}, oneTimeResults: {} }
-  );
+  this._observableProps = parseProps(eventsMonitored, opts);
   this.resetObservers();
 }
 Observable.prototype = {
@@ -36,7 +32,7 @@ Observable.prototype = {
       scope = args.next('object');
       obs = new Observer(this, event, callback, scope, cancelFn);
       this._observableProps.observers[event].push(obs);
-      this._observableProps.onAdd(event, obs);
+      this._observableProps.onAdd(event, obs, this.getObservers().length);
       if( this.isOneTimeEvent(event) ) {
         checkOneTimeEvents(event, this._observableProps, obs);
       }
@@ -72,7 +68,7 @@ Observable.prototype = {
         }
       }, this);
       removeAll(this._observableProps.observers[event], removes);
-      this._observableProps.onRemove(event, removes);
+      removes.length && this._observableProps.onRemove(event, removes, this.getObservers().length);
     }, this);
   },
 
@@ -90,7 +86,7 @@ Observable.prototype = {
         removes.push(obs);
       }, this);
       this.resetObservers();
-      this._observableProps.onRemove(this.event, removes);
+      removes.length && this._observableProps.onRemove(this.event, removes, this.getObservers().length);
     }
   },
 
@@ -117,7 +113,6 @@ Observable.prototype = {
           this._observableProps.oneTimeResults[event] = passThruArgs;
         }
         var observers = this.getObservers(e), ct = 0;
-        //            log('triggering %s for %d observers with args', event, observers.length, args, onEvent);
         util.each(observers, function(obs) {
           obs.notify.apply(obs, passThruArgs.slice(0));
           ct++;
@@ -146,7 +141,7 @@ Observable.prototype = {
       scope = args.next('object');
       obs = new Observer(this, event, callback, scope, cancelFn, true);
       this._observableProps.observers[event].push(obs);
-      this._observableProps.onAdd(event, obs);
+      this._observableProps.onAdd(event, obs, this.getObservers().length);
       if( this.isOneTimeEvent(event) ) {
         checkOneTimeEvents(event, this._observableProps, obs);
       }
@@ -183,6 +178,14 @@ function checkOneTimeEvents(event, props, obs) {
   if( util.has(props.oneTimeResults, event) ) {
     obs.notify.apply(obs, props.oneTimeResults[event]);
   }
+}
+
+function parseProps(eventsMonitored, opts) {
+  return util.extend(
+    { onAdd: util.noop, onRemove: util.noop, onEvent: util.noop, oneTimeEvents: [] },
+    opts,
+    { eventsMonitored: eventsMonitored, observers: {}, oneTimeResults: {} }
+  )
 }
 
 module.exports = Observable;

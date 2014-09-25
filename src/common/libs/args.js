@@ -33,8 +33,14 @@ Args.prototype = {
    * Return whatever args remain as a list
    * @returns {Array|string|Buffer|Blob|*}
    */
-  restAsList: function() {
-    return this.argList.slice(0);
+  restAsList: function(minLength, types) {
+    var list = this.argList.slice(0);
+    if( minLength || types ) {
+      for (var i = 0, len = list.length; i < len; i++) {
+        this._arg(types||true, null, i < minLength);
+      }
+    }
+    return list;
   },
 
   /**

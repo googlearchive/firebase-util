@@ -162,9 +162,7 @@ util.filter = function(list, iterator, scope) {
 };
 
 util.has = function(vals, key) {
-  return (util.isArray(vals) && vals[key] !== undef) ||
-    (util.isObject(vals) && vals[key] !== undef) ||
-    false;
+  return util.isObject(vals) && vals[key] !== undef;
 };
 
 util.val = function(list, key) {
@@ -369,6 +367,15 @@ util.inherits = function(Child, Parent) {
     Parent.apply(this, arguments);
   };
   return Child;
+};
+
+util.deepCopy = function(data) {
+  if( !util.isObject(data) ) { return data; }
+  var out = util.isArray(data)? [] : {};
+  util.each(data, function(v,k) {
+    out[k] = util.deepCopy(v);
+  });
+  return out;
 };
 
 function format(v, type) {

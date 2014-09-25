@@ -1,7 +1,11 @@
 'use strict';
 
-function Query(ref) {
+var RecordSet = require('./RecordSet');
+var Record = require('./Record');
+
+function Query(ref, record) {
   this._ref = ref;
+  this._record = record;
 }
 
 Query.prototype = {
