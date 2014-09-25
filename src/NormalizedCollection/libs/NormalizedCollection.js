@@ -13,9 +13,7 @@ var opList      = util.toArray(require('./constants'));
  * @constructor
  */
 function NormalizedCollection(path) { //jshint unused:vars
-  if( arguments.length < 1 ) {
-    throw new Error('Must provide at least one path definition');
-  }
+  assertPaths(arguments);
   this.pathMgr = new PathManager(arguments);
   this.map = new FieldMap();
   this.filters = new WhereClause();
@@ -44,5 +42,21 @@ NormalizedCollection.prototype = {
     return new Ref(recordSet);
   }
 };
+
+function assertPaths(args) {
+  if( args.length < 1 ) {
+    throw new Error('Must provide at least one path definition');
+  }
+  function notValidRef(p) {
+    if( util.isArray(p) ) {
+      p = p[0];
+    }
+    return !util.isFirebaseRef(p);
+  }
+  if( util.contains(args, notValidRef) ) {
+    throw new Error('Each argument to the NormalizedCollection constructor must be a ' +
+      'valid Firebase reference or an Array');
+  }
+}
 
 module.exports = NormalizedCollection;

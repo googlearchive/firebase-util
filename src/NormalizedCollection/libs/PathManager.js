@@ -6,15 +6,15 @@ var util = require('../../common');
 function PathManager(fieldMap, paths) {
   this.fields = fieldMap;
   this.paths = [];
-  util.each(paths, function(pathProps) {
-    this.add(new Path(pathProps));
-  }, this);
+  this.deps = {};
+  util.each(paths, this.add, this);
 }
 
 PathManager.prototype = {
-  add: function(path) {
+  add: function(pathProps) {
+    var path = pathProps instanceof Path? pathProps : new Path(pathProps);
+    this._map(path);
     this.paths.push(path);
-    //todo map dependencies
   },
 
   first: function() {
@@ -36,9 +36,25 @@ PathManager.prototype = {
     return pm;
   },
 
-  getDependencyMap: function() {
-    //todo
+  getDependencyGraph: function() {}, //todo !!!
+
+  _map: function(path) {
+    var first = this.first();
+    var dep = path.getDependency();
+    if( !dep && first ) {
+      dep = { path: first.name(), field: '$key' };
+    }
+    if( dep ) {
+      this.deps[dep.path] = dep.field;
+    }
   }
 };
+
+function graphDeps(first, deps, done) {
+  var out = [];
+  var curr = deps[first];
+
+  return out;
+}
 
 module.exports = PathManager;

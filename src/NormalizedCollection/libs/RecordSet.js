@@ -13,6 +13,10 @@ util.inherits(RecordSet, AbstractRecord, {
   child: function(key) {
     return Record(this.paths.child(key), this.fields);
   }
+
+  //_start: function() {} //todo
+  //_end:   function() {} //todo
+  //toJSON: function() {} //todo
 });
 
 module.exports = RecordSet;

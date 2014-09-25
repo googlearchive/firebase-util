@@ -325,10 +325,24 @@ util.construct = function(constructor, args) {
 
 util.noop = function() {};
 
-/** necessary because instanceof won't work Firebase Query objects */
+var wrappingClasses = [];
 util.isFirebaseRef = function(x) {
+  // necessary because instanceof won't work on Firebase Query objects
+  // so we can't simply do instanceof here
   var proto = util.isObject(x)? Object.getPrototypeOf(x) : false;
-  return proto && proto.constructor === util.Firebase.prototype.constructor;
+  if( proto && proto.constructor === util.Firebase.prototype.constructor ) {
+    return true;
+  }
+  return util.find(wrappingClasses, function(C) {
+    return x instanceof C;
+  });
+};
+
+// Add a Class as a valid substitute for a Firebase reference, so that it will
+// pass util.isFirebaseRef(). This means that it must provide all the Firebase
+// API methods and behave exactly like a Firebase instance in all cases.
+util.registerFirebaseWrapper = function(WrappingClass) {
+  wrappingClasses.push(WrappingClass);
 };
 
 // for test units

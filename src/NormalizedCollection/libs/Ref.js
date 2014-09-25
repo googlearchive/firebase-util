@@ -39,17 +39,17 @@ util.inherits(Ref, Query, {
     }).join('][') + ']';
   },
 
-  'set': function() {},
+  'set': function() {}, //todo
 
-  'update': function() {},
+  'update': function() {}, //todo
 
-  'remove': function() {},
+  'remove': function() {}, //todo
 
-  'push': function() {},
+  'push': function() {}, //todo
 
-  'setWithPriority': function() {},
+  'setWithPriority': function() {}, //todo
 
-  'setPriority': function() {},
+  'setPriority': function() {}, //todo
 
   /****************************
    * UNSUPPORTED FUNCTIONS

@@ -7,3 +7,4 @@ exports.GT = 'GT';
 exports.GTE = 'GTE';
 exports.LT = 'LT';
 exports.LTE = 'LTE';
+exports.FUNCTION = 'FUNCTION';

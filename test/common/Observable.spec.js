@@ -289,7 +289,7 @@ describe('global.Observable.js', function() {
       });
 
      it('should give the total observer count', function() {
-       var fn = jasmine.createSpy().and.callFake(function() { console.log('onRemove', arguments[0], arguments[1], arguments[2])});
+       var fn = jasmine.createSpy();
        var obs = new Observable(['test1', 'test2'], {onRemove: fn});
        obs.observe('test1', function() {});
        obs.observe('test2', function() {});

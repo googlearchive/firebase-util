@@ -1,6 +1,5 @@
 'use strict';
 
-//todo we need a path alias map here
 function FieldMap() {
   this.fields = {};
   this.length = 0;
@@ -43,9 +42,7 @@ function Field(props) {
   this.alias = props.alias;
 }
 
-Field.prototype = {
-
-};
+Field.prototype = {};
 
 function parseProps(propsRaw) {
   if( typeof(propsRaw) === 'string' ) {

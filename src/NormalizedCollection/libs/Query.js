@@ -2,6 +2,7 @@
 
 var RecordSet = require('./RecordSet');
 var Record = require('./Record');
+var util = require('../../common');
 
 function Query(ref, record) {
   this._ref = ref;
@@ -9,14 +10,22 @@ function Query(ref, record) {
 }
 
 Query.prototype = {
-  'on': function() {},
-  'once': function() {},
-  'off': function() {},
-  'limit': function() {},
-  'startAt': function() {},
-  'endAt': function() {},
-  'equalTo': function() {},
+  'on': function() {}, //todo
+
+  'once': function() {}, //todo
+
+  'off': function() {}, //todo
+
+  'limit': function() {}, //todo
+
+  'startAt': function() {}, //todo
+
+  'endAt': function() {}, //todo
+
+  'equalTo': function() {}, //todo
+
   'ref': function() { return this._ref; }
 };
 
+util.registerFirebaseWrapper(Query);
 module.exports = Query;
