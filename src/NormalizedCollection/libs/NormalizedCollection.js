@@ -20,12 +20,12 @@ function NormalizedCollection(path) { //jshint unused:vars
 }
 
 NormalizedCollection.prototype = {
-  select: function(props) {
+  select: function(props) { //jshint unused:vars
     var args = util.args('NormalizedCollection.select', arguments, 1);
     this.map.add(args.restAsList(1, ['string', 'object']));
   },
 
-  where: function(field, op, match) {
+  where: function(field, op, match) { //jshint unused:vars
     var args = util.args('NormalizedCollection.where', arguments, 2, 3);
     this.filters.add(
       args.nextReq('string'),

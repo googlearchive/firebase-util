@@ -1,7 +1,5 @@
 'use strict';
 
-var RecordSet = require('./RecordSet');
-var Record = require('./Record');
 var util = require('../../common');
 
 function Query(ref, record) {

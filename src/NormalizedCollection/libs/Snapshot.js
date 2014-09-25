@@ -9,13 +9,13 @@ function Snapshot(ref, pri, data) {
 }
 
 Snapshot.prototype = {
-  val: function() { return util.deepCopy(data); },
+  val: function() { return util.deepCopy(this._data); },
   child: function(key) {
     return new Snapshot(
       this._ref.child(key),
       null,
       util.has(this._data, key)? util.deepCopy(this._data[key]) : null
-    )
+    );
   },
   forEach: function(cb, context) {
     util.each(this._data, cb, context);
@@ -43,7 +43,7 @@ Snapshot.prototype = {
   ref: function() { return this._ref; },
   getPriority: function() { return this._pri; },
   exportVal: function() {
-    var out = util.isObject(this._data)? util.deepCopy(data) : {'.value': this._data};
+    var out = util.isObject(this._data)? util.deepCopy(this._data) : {'.value': this._data};
     if( this._pri !== null ) {
       out['.priority'] = this._pri;
     }

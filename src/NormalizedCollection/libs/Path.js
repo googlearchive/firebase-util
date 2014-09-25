@@ -1,6 +1,6 @@
 'use strict';
 
-var Query = require('./Query');
+var util = require('../../common');
 
 function Path(pathProps) {
   var props = parseProps(pathProps);
@@ -37,7 +37,7 @@ function parseProps(props) {
   }
   return {
     ref: ref, alias: alias||ref.name(), dep: parseDep(dep)
-  }
+  };
 }
 
 function parseDep(dep) {

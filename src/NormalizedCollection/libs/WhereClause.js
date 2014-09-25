@@ -33,49 +33,40 @@ function createMatchFunction(field, operator, match) {
       return function(key, data) {
         return extract(field, key, data) === match;
       };
-      break;
     case OP.NOT_EQUALS:
       return function(key, data) {
         return extract(field, key, data) !== match;
       };
-      break;
     case OP.NULL:
       return function(key, data) {
         return extract(field, key, data) === null;
       };
-      break;
     case OP.NOT_NULL:
       return function(key, data) {
         return extract(field, key, data) !== null;
       };
-      break;
     case OP.GT:
       return function(key, data) {
         return extract(field, key, data) > match;
       };
-      break;
     case OP.GTE:
       return function(key, data) {
         return extract(field, key, data) >= match;
       };
-      break;
     case OP.LT:
       return function(key, data) {
         return extract(field, key, data) < match;
       };
-      break;
     case OP.LTE:
       return function(key, data) {
         return extract(field, key, data) <= match;
       };
-      break;
     case OP.FUNCTION:
       if( typeof match !== 'function' ) {
         throw new Error('where() comparator was Firebase.util.FUNCTION, but match' +
           ' argument was a ' +typeof match);
       }
       return match;
-      break;
     default:
       throw new Error('Invalid comparator '+operator+', must be one of the Firebase.util' +
         ' constants (EQUALS, NOT_EQUALS, NULL, NOT_NULL, GT, GTE, LT, LTE, or FUNCTION)');

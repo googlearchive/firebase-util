@@ -68,7 +68,9 @@ Observable.prototype = {
         }
       }, this);
       removeAll(this._observableProps.observers[event], removes);
-      removes.length && this._observableProps.onRemove(event, removes, this.getObservers().length);
+      if( removes.length ) {
+        this._observableProps.onRemove(event, removes, this.getObservers().length);
+      }
     }, this);
   },
 
@@ -86,7 +88,9 @@ Observable.prototype = {
         removes.push(obs);
       }, this);
       this.resetObservers();
-      removes.length && this._observableProps.onRemove(this.event, removes, this.getObservers().length);
+      if( removes.length ) {
+        this._observableProps.onRemove(this.event, removes, this.getObservers().length);
+      }
     }
   },
 
@@ -185,7 +189,7 @@ function parseProps(eventsMonitored, opts) {
     { onAdd: util.noop, onRemove: util.noop, onEvent: util.noop, oneTimeEvents: [] },
     opts,
     { eventsMonitored: eventsMonitored, observers: {}, oneTimeResults: {} }
-  )
+  );
 }
 
 module.exports = Observable;

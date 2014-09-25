@@ -11,7 +11,7 @@ function RecordSet(pathManager, fieldMap, whereClause) {
 }
 util.inherits(RecordSet, AbstractRecord, {
   child: function(key) {
-    return Record(this.paths.child(key), this.fields);
+    return new Record(this.paths.child(key), this.fields);
   }
 
   //_start: function() {} //todo

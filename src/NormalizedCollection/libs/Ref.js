@@ -2,7 +2,6 @@
 
 var util      = require('../../common');
 var Query     = require('./Query');
-var RecordSet = require('./RecordSet');
 
 function Ref(record, parent) {
   this._parent = parent||null;
@@ -65,7 +64,7 @@ util.inherits(Ref, Query, {
 function notSupported(method) {
   return function() {
     throw new Error(method + ' is not supported for NormalizedCollection references');
-  }
+  };
 }
 
 module.exports = Ref;

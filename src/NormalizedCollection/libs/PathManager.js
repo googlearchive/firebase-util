@@ -50,11 +50,4 @@ PathManager.prototype = {
   }
 };
 
-function graphDeps(first, deps, done) {
-  var out = [];
-  var curr = deps[first];
-
-  return out;
-}
-
 module.exports = PathManager;

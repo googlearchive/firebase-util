@@ -1,5 +1,7 @@
 'use strict';
 
+var util = require('../../common');
+
 function FieldMap() {
   this.fields = {};
   this.length = 0;
