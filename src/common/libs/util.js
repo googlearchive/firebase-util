@@ -6,6 +6,8 @@
 var undef;
 var util = exports;
 
+util.undef = undef;
+
 util.Firebase = global.Firebase || require('firebase');
 
 util.isDefined = function(v) {

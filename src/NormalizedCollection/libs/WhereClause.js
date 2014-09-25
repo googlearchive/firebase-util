@@ -3,8 +3,7 @@
 var util = require('../../common');
 var OP = require('./constants.js');
 
-function WhereClause(fieldMap) {
-  this.fields = fieldMap;
+function WhereClause() {
   this.criteria = [];
 }
 
@@ -14,9 +13,12 @@ WhereClause.prototype = {
       new Condition(field, operator, match)
     );
   },
-  matches: function(snapshot) {
+  test: function(snapshot) {
+    console.log('contains?', util.contains(this.criteria, function(cond) {
+      return !cond.test(snapshot);
+    })); //debug
     return util.contains(this.criteria, function(cond) {
-      return cond.test(snapshot.name(), snapshot.val());
+      return !cond.test(snapshot);
     }) === false;
   }
 };
@@ -24,42 +26,45 @@ WhereClause.prototype = {
 function Condition(field, operator, match) {
   this.field = field;
   this.operator = operator;
+  this.match = match;
   this.test = createMatchFunction(field, operator, match);
 }
 
 function createMatchFunction(field, operator, match) {
   switch(operator) {
     case OP.EQUALS:
-      return function(key, data) {
-        return extract(field, key, data) === match;
+      return function(snapshot) {
+        return extract(field, snapshot) === match;
       };
     case OP.NOT_EQUALS:
-      return function(key, data) {
-        return extract(field, key, data) !== match;
+      return function(snapshot) {
+        return extract(field, snapshot) !== match;
       };
     case OP.NULL:
-      return function(key, data) {
-        return extract(field, key, data) === null;
+      return function(snapshot) {
+        console.log('testing', field, operator, match, snapshot.getPriority(), extract(field, snapshot), extract(field, snapshot) === match); //debug
+
+        return extract(field, snapshot) === null;
       };
     case OP.NOT_NULL:
-      return function(key, data) {
-        return extract(field, key, data) !== null;
+      return function(snapshot) {
+        return extract(field, snapshot) !== null;
       };
     case OP.GT:
-      return function(key, data) {
-        return extract(field, key, data) > match;
+      return function(snapshot) {
+        return extract(field, snapshot) > match;
       };
     case OP.GTE:
-      return function(key, data) {
-        return extract(field, key, data) >= match;
+      return function(snapshot) {
+        return extract(field, snapshot) >= match;
       };
     case OP.LT:
-      return function(key, data) {
-        return extract(field, key, data) < match;
+      return function(snapshot) {
+        return extract(field, snapshot) < match;
       };
     case OP.LTE:
-      return function(key, data) {
-        return extract(field, key, data) <= match;
+      return function(snapshot) {
+        return extract(field, snapshot) <= match;
       };
     case OP.FUNCTION:
       if( typeof match !== 'function' ) {
@@ -73,13 +78,19 @@ function createMatchFunction(field, operator, match) {
   }
 }
 
-function extract(field, key, data) {
-  if( field === '$key' ) { return key; }
-  else if( util.has(data, field) ) {
-    return data[field];
-  }
+function extract(field, snapshot) {
+  if( field === '$key' ) { return snapshot.name(); }
+  if( field === '$priority' ) { return snapshot.getPriority(); }
   else {
-    return null;
+    // snapshot.val() can be expensive so wait to call it
+    // and only call it once here
+    var data = snapshot.val();
+    if (util.has(data, field)) {
+      return data[field];
+    }
+    else {
+      return null; // because there is no undef for Firebase
+    }
   }
 }
 
