@@ -11,13 +11,6 @@ describe('Filter', function() {
       f.add(fn);
       expect(f.criteria.length).toBe(1);
     });
-
-    it('should blow up if argument is not a function', function() {
-      var f = new Filter();
-      expect(function() {
-        f.add({});
-      }).toThrowError(Error);
-    });
   });
 
   describe('#test', function() {

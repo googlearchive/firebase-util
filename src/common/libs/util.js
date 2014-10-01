@@ -394,6 +394,15 @@ util.deepCopy = function(data) {
   return out;
 };
 
+util.pick = function(obj, keys) {
+  if( !util.isObject(obj) ) { return {}; }
+  var out = util.isArray(obj)? [] : {};
+  util.each(keys, function(k) {
+    out[k] = obj[k];
+  });
+  return out;
+};
+
 function format(v, type) {
   switch(type) {
     case '%d':

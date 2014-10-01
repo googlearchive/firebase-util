@@ -13,6 +13,10 @@ function PathManager(fieldMap, paths) {
 PathManager.prototype = {
   add: function(pathProps) {
     var path = pathProps instanceof Path? pathProps : new Path(pathProps);
+    if( !this.paths.length && path.hasDependency() ) {
+      throw new Error('The master path (i.e. the first) may not declare a dependency.' +
+        ' Perhaps you have put the wrong path first in the list?');
+    }
     this._map(path);
     this.paths.push(path);
   },
@@ -36,7 +40,15 @@ PathManager.prototype = {
     return pm;
   },
 
-  getDependencyGraph: function() {}, //todo !!!
+  getDependencyGraph: function() {
+    var deps = { order: [], paths: {} };
+    util.each(this.paths, function(p) {
+      deps.paths[p.name()] = [];
+    });
+    util.each(this.deps, function(dep, pathName) {
+      dep.paths[dep.path].push(pathName);
+    });
+  },
 
   _map: function(path) {
     var first = this.first();
@@ -45,9 +57,29 @@ PathManager.prototype = {
       dep = { path: first.name(), field: '$key' };
     }
     if( dep ) {
-      this.deps[dep.path] = dep.field;
+      this.deps[path.name()] = dep;
+      this._assertNotCircularDep(path.name());
+    }
+  },
+
+  _assertNotCircularDep: function(pathName) {
+    var map = [pathName], dep = this.deps[pathName];
+    while(util.isDefined(dep)) {
+      var p = dep.path;
+      if(util.contains(map, p)) {
+        map.push(p);
+        throw new Error('Circular dependencies in paths: ' + depChain(map, this.deps));
+      }
+      map.push(p);
+      dep = util.val(this.deps, p);
     }
   }
 };
+
+function depChain(map, deps) {
+  return util.map(map, function(p) {
+    return deps[p].path + '.' + deps[p].field;
+  }).join(' >> ');
+}
 
 module.exports = PathManager;

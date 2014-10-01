@@ -21,9 +21,6 @@ Filter.prototype = {
 };
 
 function Condition(fn) {
-  if( typeof fn !== 'function' ) {
-    throw new Error('First argument to NormalizedCollection.filter() must be a function');
-  }
   this.match = fn;
 }
 
