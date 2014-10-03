@@ -98,7 +98,8 @@ describe('global.js', function() {
 
   describe('#extend', function() {
     it('should work for merging objects', function() {
-      expect(util.extend({happy: 'happy'}, {'joy': 'joy'})).toEqual({happy: 'happy', joy: 'joy'});
+      expect(util.extend({happy: 'happy'}, {'joy': 'joy'}))
+        .toEqual({happy: 'happy', joy: 'joy'});
     });
 
     it('should return the first argument', function() {
@@ -107,20 +108,29 @@ describe('global.js', function() {
     });
 
     it('should not fail if a non-object is passed in', function() {
-      expect(util.extend({happy: 'happy'}, null, 5, true, {'joy': 'joy'})).toEqual({happy: 'happy', joy: 'joy'});
+      expect(util.extend({happy: 'happy'}, null, 5, true, {'joy': 'joy'}))
+        .toEqual({happy: 'happy', joy: 'joy'});
     });
 
     it('should ignore strings and not iterate their characters', function() {
-      expect(util.extend({foo: 'bar'}, 'hello world', {hello: 'world'})).toEqual({foo: 'bar', hello: 'world'});
+      expect(util.extend({foo: 'bar'}, 'hello world', {hello: 'world'}))
+        .toEqual({foo: 'bar', hello: 'world'});
     });
 
     it('should work for many objects', function() {
-      expect(util.extend({}, {one: 1}, {two: 2}, {three: {thirty: 30}}, {four: 4})).toEqual({one: 1, two: 2, three: {thirty: 30}, four: 4});
+      expect(util.extend({}, {one: 1}, {two: 2}, {three: {thirty: 30}}, {four: 4}))
+        .toEqual({one: 1, two: 2, three: {thirty: 30}, four: 4});
     });
 
     it('should recursively merge if true is passed as first arg', function() {
-      expect(util.extend(true, {a: {one: 1, two: 2}, b: 2}, {a: {two: 22, three: 33}, b: 22})).toEqual({a: {one: 1, two: 22, three: 33}, b: 22});
+      expect(util.extend(true, {a: {one: 1, two: 2}, b: 2}, {a: {two: 22, three: 33}, b: 22}))
+        .toEqual({a: {one: 1, two: 22, three: 33}, b: 22});
     });
+
+    it('should not recursively merge if false is passed as first arg', function() {
+      expect(util.extend(false, {a: {one: 1, two: 2}, b: 2}, {a: {two: 22}, b: 22}))
+        .toEqual({a: {two: 22}, b: 22})
+    })
   });
 
   describe('#bind', function() {

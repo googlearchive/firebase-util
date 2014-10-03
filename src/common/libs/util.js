@@ -52,7 +52,7 @@ util.toArray = function(vals, startFrom) {
  */
 util.extend = function(recursive, base) {
   var args = util.toArray(arguments);
-  var recurse = args[0] === true && args.shift();
+  var recurse = typeof args[0] === 'boolean' && args.shift();
   var out = args.shift();
   util.each(args, function(o) {
     if( util.isObject(o) ) {
