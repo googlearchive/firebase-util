@@ -1,7 +1,6 @@
 'use strict';
 
 var util = require('../../common');
-var PathManager = require('./PathManager');
 
 function FieldMap(pathManager) {
   this.fields = {};
@@ -17,7 +16,8 @@ FieldMap.prototype = {
     }
     if( f.path === null ) {
       throw new Error('Invalid path specified for field ' + f.key + '; it was not in the paths ' +
-        'provided, which are : ' + util.map(this.pathMgr.paths, function(p) { return p.name() }).join(', '));
+        'provided, which are : ' +
+        util.map(this.pathMgr.paths, function(p) { return p.name(); }).join(', '));
     }
     this.fields[f.alias] = f;
     this.length++;

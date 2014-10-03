@@ -9,6 +9,7 @@ function RecordSet(pathManager, fieldMap, whereClause) {
   this._super(pathManager, fieldMap);
   this.filters = whereClause;
 }
+
 util.inherits(RecordSet, AbstractRecord, {
   child: function(key) {
     var paths = util.map(this.pathMgr.paths, function(p) {
@@ -33,7 +34,7 @@ util.inherits(RecordSet, AbstractRecord, {
    * @param {boolean} isExport true if exportVal() was called
    * @returns {Object}
    */
-  mergeData: function(snaps, isExport) {
+  mergeData: function(/*snaps, isExport*/) {
     //todo
     //todo use the field map to apply values
     //todo

@@ -66,13 +66,18 @@ function notSupported(method) {
 }
 
 function _name(paths) {
-  return paths.count() > 1? '[' + util.map(this.paths, function(p) {
-    return p.name();
-  }).join('][') + ']' : paths[0].name();
+  if( paths.count() > 1 ) {
+    return '[' + util.map(paths, function(p) {
+      return p.name();
+    }).join('][') + ']';
+  }
+  else {
+    return paths[0].name();
+  }
 }
 
 function _toString(paths) {
-  return paths.count() > 1? '[' + util.map(this.paths, function(p) {
+  return paths.count() > 1? '[' + util.map(paths, function(p) {
     return p.url();
   }).join('][') + ']' : paths[0].url();
 }

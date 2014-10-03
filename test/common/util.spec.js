@@ -129,8 +129,8 @@ describe('common/util.js', function() {
 
     it('should not recursively merge if false is passed as first arg', function() {
       expect(util.extend(false, {a: {one: 1, two: 2}, b: 2}, {a: {two: 22}, b: 22}))
-        .toEqual({a: {two: 22}, b: 22})
-    })
+        .toEqual({a: {two: 22}, b: 22});
+    });
   });
 
   describe('#bind', function() {

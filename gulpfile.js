@@ -10,6 +10,7 @@ var fs         = require('fs');
 var argv       = require('yargs').argv;
 var gutil      = require('gulp-util');
 var path       = require('path');
+var seq        = require('run-sequence');
 
 function getBundle(debug, args) {
   return browserify({debug: debug||false}, args)
@@ -95,6 +96,16 @@ gulp.task('scaffold-test', function() {
   return copyTemplate('.spec.js', true);
 });
 
+gulp.task('e2e', function() {
+  //todo
+});
+
 gulp.task('scaffold', ['scaffold-file', 'scaffold-test']);
-gulp.task('bundle', ['lint', 'build', 'minify']);
-gulp.task('default', ['bundle', 'test']);
+
+gulp.task('bundle', function() {
+  return seq('lint', 'build', 'minify');
+});
+
+gulp.task('default', function() {
+  return seq('test', 'bundle', 'e2e');
+});

@@ -148,9 +148,9 @@ describe('FieldMap', function() {
 
   function stubPath(path, alias, url) {
     var p = jasmine.createSpyObj('Path', ['name', 'id', 'url', 'child']);
-    p.name.and.callFake(function() { return alias });
-    p.id.and.callFake(function() { return path });
-    p.url.and.callFake(function() { return (url? url + '/' : 'Mock://') + path });
+    p.name.and.callFake(function() { return alias; });
+    p.id.and.callFake(function() { return path; });
+    p.url.and.callFake(function() { return (url? url + '/' : 'Mock://') + path; });
     p.child.and.callFake(function(key) { return stubPath(key, key, p.url()); });
     return p;
   }
@@ -169,7 +169,7 @@ describe('FieldMap', function() {
     obj.child.and.callFake(function(key) { return stubRef(key); });
     obj.ref.and.callFake(function() { return obj; });
     obj.name.and.callFake(function() { return pathName; });
-    obj.toString.and.callFake(function() { return 'Mock://' + pathName });
+    obj.toString.and.callFake(function() { return 'Mock://' + pathName; });
     return obj;
   }
 });

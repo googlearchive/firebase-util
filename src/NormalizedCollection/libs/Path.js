@@ -22,7 +22,7 @@ Path.prototype = {
   getDependency: function() {
     return this._dep;
   },
-  url: function() { return this.reff().toString() },
+  url: function() { return this.reff().toString(); },
   name: function() { return this._alias; },
   id: function() { return this.reff().name(); },
   parent: function() { return this._parent; }

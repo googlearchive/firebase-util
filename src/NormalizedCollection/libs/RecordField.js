@@ -30,7 +30,7 @@ util.inherits(RecordField, AbstractRecord, {
    * @param {boolean} isExport true if exportVal() was called
    * @returns {Object}
    */
-  mergeData: function(snaps, isExport) {
+  mergeData: function(/*snaps, isExport*/) {
     //todo
     //todo use the field map to apply values
     //todo

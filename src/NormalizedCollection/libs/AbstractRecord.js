@@ -35,13 +35,4 @@ function abstract(method) {
   };
 }
 
-function objectVal(isExport, snap) {
-  var v = valFor(isExport, snap);
-  return util.isObject(v)? v : { ".value": v };
-}
-
-function valFor(isExport, snap) {
-  return isExport? snap.exportVal() : snap.val();
-}
-
 module.exports = AbstractRecord;
