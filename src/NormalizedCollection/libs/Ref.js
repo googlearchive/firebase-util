@@ -4,10 +4,11 @@ var util      = require('../../common');
 var Query     = require('./Query');
 
 function Ref(record, parent) {
+  var paths = record.getPathMgr().paths;
   this._parent = parent||null;
   this._super(this, record);
-  this._name = _name(record);
-  this._toString = _toString(record);
+  this._name = _name(paths);
+  this._toString = _toString(paths);
 }
 
 util.inherits(Ref, Query, {
@@ -66,7 +67,7 @@ function notSupported(method) {
 }
 
 function _name(paths) {
-  if( paths.count() > 1 ) {
+  if( paths.length > 1 ) {
     return '[' + util.map(paths, function(p) {
       return p.name();
     }).join('][') + ']';
@@ -77,7 +78,7 @@ function _name(paths) {
 }
 
 function _toString(paths) {
-  return paths.count() > 1? '[' + util.map(paths, function(p) {
+  return paths.length > 1? '[' + util.map(paths, function(p) {
     return p.url();
   }).join('][') + ']' : paths[0].url();
 }

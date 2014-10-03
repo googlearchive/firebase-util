@@ -1,7 +1,8 @@
 
 //var _ = require('lodash');
+//var exports = exports || {};
 //
-//var doAfterTest = (function() {
+//exports.doAfterTest = (function() {
 //  var subs = [];
 //  afterEach(function() {
 //    _.each(subs, function(fn) { fn(); });
@@ -12,3 +13,7 @@
 //    subs.push(_.bind.apply(null, _.toArray(arguments)));
 //  }
 //})();
+//
+//beforeEach(function() {
+//  this.helpers = exports;
+//});

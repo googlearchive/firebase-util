@@ -26,6 +26,10 @@ AbstractRecord.prototype = {
 
   getFieldMap: function() {
     return this.map;
+  },
+
+  getPathMgr: function() {
+    return this.pathMgr;
   }
 };
 

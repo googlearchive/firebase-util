@@ -6,7 +6,7 @@ var Query = require('../../src/NormalizedCollection/libs/Query.js');
 describe('Ref', function() {
   describe('<constructor>', function() {
     it('should inherit Query', function() {
-      var ref = new Ref({});
+      var ref = new Ref(stubRec());
       expect(ref).toBeInstanceOf(Query);
     });
 
@@ -76,5 +76,23 @@ describe('Ref', function() {
   describe('goOnline', function () {
     it('should have tests'); //todo-test
   });
-  
+
+  function stubRec() {
+    var rec = jasmine.createSpyObj('RecordStub', ['getPathMgr']);
+    var mgr = jasmine.createSpyObj('PathManagerStub', ['getPath']);
+    mgr.paths = [stubPath()];
+    rec.getPathMgr.and.callFake(function() {
+      return mgr;
+    });
+    return rec;
+  }
+
+  function stubPath() {
+    var path = jasmine.createSpyObj('PathStub', ['name', 'id', 'url']);
+    path.name.and.callFake(function() { return 'path1'; });
+    path.id.and.callFake(function() { return 'path1'; });
+    path.url.and.callFake(function() { return 'Mock://path1'; });
+    return path;
+  }
+
 });
