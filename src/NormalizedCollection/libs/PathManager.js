@@ -3,9 +3,9 @@
 var Path = require('./Path');
 var util = require('../../common');
 
-function PathManager(fieldMap, paths) {
-  this.fields = fieldMap;
+function PathManager(paths) {
   this.paths = [];
+  this.pathsByUrl = {};
   this.deps = {};
   util.each(paths, this.add, this);
 }
@@ -17,8 +17,16 @@ PathManager.prototype = {
       throw new Error('The master path (i.e. the first) may not declare a dependency.' +
         ' Perhaps you have put the wrong path first in the list?');
     }
+    if( util.has(this.pathsByUrl, path.url()) ) {
+      throw new Error('Duplicate path: ' + path.url());
+    }
     this._map(path);
     this.paths.push(path);
+    this.pathsByUrl[path.url()] = path.id();
+  },
+
+  count: function() {
+    return this.paths.length;
   },
 
   first: function() {
@@ -31,13 +39,8 @@ PathManager.prototype = {
     });
   },
 
-  child: function(key) {
-    var pm = new PathManager();
-    pm.isChild = true;
-    util.each(this.paths, function(p) {
-      pm.add(p.child(key));
-    });
-    return pm;
+  getPathName: function(url) {
+    return this.pathsByUrl[url] || null;
   },
 
   getDependencyGraph: function() {

@@ -2,28 +2,24 @@
 
 var PathManager = require('./PathManager');
 var FieldMap = require('./FieldMap');
-var RecordField = require('./RecordField');
 var AbstractRecord = require('./AbstractRecord');
 var util = require('../../common');
 
-function Record(pathManager, fieldMap) {
+function RecordField(pathManager, fieldMap) {
   this._super(pathManager, fieldMap);
 }
 
-util.inherits(Record, AbstractRecord, {
+util.inherits(RecordField, AbstractRecord, {
   child: function(key) {
-    var pm = new PathManager([this.map.pathFor(key)]);
+    var pm = new PathManager([this.pathMgr.first().child(key)]);
     var fm = new FieldMap(pm);
     fm.add(FieldMap.key(pm.first(), key));
     return new RecordField(pm, fm);
   },
 
   getChildSnaps: function(snapsArray, fieldName) {
-    var pathUrl = this.map.pathFor(fieldName).url();
-    var snap = util.find(snapsArray, function(ss) {
-      return ss.ref().ref().toString() === pathUrl;
-    }) || snapsArray[0];
-    return [snap];
+    // there are no aliases at this level so fieldName === key
+    return [snapsArray[0].child(fieldName)];
   },
 
   /**
@@ -47,4 +43,4 @@ util.inherits(Record, AbstractRecord, {
   toJSON: function() {} //todo
 });
 
-module.exports = Record;
+module.exports = RecordField;

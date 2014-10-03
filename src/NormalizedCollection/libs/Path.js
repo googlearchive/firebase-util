@@ -2,11 +2,12 @@
 
 var util = require('../../common');
 
-function Path(pathProps) {
+function Path(pathProps, parent) {
   var props = parseProps(pathProps);
   this._ref = props.ref;
   this._alias = props.alias;
   this._dep = props.dep;
+  this._parent = parent || null;
 }
 
 Path.prototype = {
@@ -21,8 +22,10 @@ Path.prototype = {
   getDependency: function() {
     return this._dep;
   },
+  url: function() { return this.reff().toString() },
   name: function() { return this._alias; },
-  id: function() { return this.reff().name(); }
+  id: function() { return this.reff().name(); },
+  parent: function() { return this._parent; }
 };
 
 function parseProps(props) {

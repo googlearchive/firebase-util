@@ -163,6 +163,13 @@ util.filter = function(list, iterator, scope) {
   return out;
 };
 
+util.reduce = function(list, accumulator, iterator) {
+  util.each(list, function(v, k) {
+    accumulator = iterator(accumulator, v, k, list);
+  });
+  return accumulator;
+};
+
 util.has = function(vals, key) {
   return util.isObject(vals) && vals[key] !== undef;
 };

@@ -2,7 +2,7 @@
 var fbutil = require('../../src/common');
 var Observable = fbutil.Observable;
 
-describe('global.Observable.js', function() {
+describe('common/Observable.js', function() {
 
    describe('#triggerEvent', function() {
       it('should notify all observers', function() {

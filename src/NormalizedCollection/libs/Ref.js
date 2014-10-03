@@ -6,6 +6,8 @@ var Query     = require('./Query');
 function Ref(record, parent) {
   this._parent = parent||null;
   this._super(this, record);
+  this._name = _name(record);
+  this._toString = _toString(record);
 }
 
 util.inherits(Ref, Query, {
@@ -27,15 +29,11 @@ util.inherits(Ref, Query, {
   },
 
   'name': function() {
-    return '[' + util.map(this.paths, function(p) {
-      return p.name();
-    }).join('][') + ']';
+    return this._name;
   },
 
   'toString': function() {
-    return '[' + util.map(this.paths, function(p) {
-      return p.reff().toString();
-    }).join('][') + ']';
+    return this._toString;
   },
 
   'set': function() {}, //todo
@@ -65,6 +63,18 @@ function notSupported(method) {
   return function() {
     throw new Error(method + ' is not supported for NormalizedCollection references');
   };
+}
+
+function _name(paths) {
+  return paths.count() > 1? '[' + util.map(this.paths, function(p) {
+    return p.name();
+  }).join('][') + ']' : paths[0].name();
+}
+
+function _toString(paths) {
+  return paths.count() > 1? '[' + util.map(this.paths, function(p) {
+    return p.url();
+  }).join('][') + ']' : paths[0].url();
 }
 
 module.exports = Ref;

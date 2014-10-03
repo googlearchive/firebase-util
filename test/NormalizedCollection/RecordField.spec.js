@@ -1,5 +1,5 @@
 'use strict';
 
-describe('Record', function() {
+describe('RecordField', function() {
   it('should have tests'); //todo-test
 });

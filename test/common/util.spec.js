@@ -1,6 +1,6 @@
 'use strict';
 
-describe('global.js', function() {
+describe('common/util.js', function() {
   var undef;
   var util = require('../../src/common/index');
 
@@ -639,6 +639,29 @@ describe('global.js', function() {
       util.each(['a', 'b', 'c'], function() {
         expect(this).toEqual(a);
       }, a);
+    });
+  });
+
+  describe('#reduce', function() {
+    it('should iterate objects', function() {
+      function it(accum, v, k) {
+        return accum + v;
+      }
+
+      expect(util.reduce({one: 1, five: 5, nine: 9}, 0, it)).toBe(15);
+    });
+    it('should iterate arrays', function() {
+      function it(accum, v, k) {
+        return accum + v;
+      }
+      expect(util.reduce([1, 5, 9], 0, it)).toBe(15);
+    });
+
+    it('should not care about primitives', function() {
+      function it(accum, v, k) {
+        return accum + v;
+      }
+      expect(util.reduce(null, 0, it)).toBe(0);
     });
   });
 

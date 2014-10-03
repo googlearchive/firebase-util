@@ -2,52 +2,74 @@
 
 var util = require('../../common');
 
-function Snapshot(ref, pri, data) {
+function Snapshot(ref, snaps) {
   this._ref = ref;
-  this._pri = pri;
-  this._data = data;
+  // coupling: uses the private _record from Ref
+  this._rec = ref._record;
+  this._pri = snaps[0].getPriority();
+  this._snaps = snaps;
 }
 
 Snapshot.prototype = {
-  val: function() { return util.deepCopy(this._data); },
+  val: function() {
+    return this._rec.mergeData(this._snaps, false);
+  },
+
   child: function(key) {
-    return new Snapshot(
-      this._ref.child(key),
-      null,
-      util.has(this._data, key)? util.deepCopy(this._data[key]) : null
+    var snap;
+    // keys may contain / to separate nested child paths
+    // so make a list of child keys (we reverse it once
+    // as this is faster than unshift() on each iteration)
+    var childParts = key.split('/').reverse();
+    // grab the first key and get the child snapshot
+    var firstChildName = childParts.pop();
+    snap = new Snapshot(
+      this._ref.child(firstChildName),
+      this._rec.getChildSnaps(this._snaps, firstChildName),
+      false
     );
+    // iterate any nested keys and keep calling child on them
+    while(childParts.length) {
+      snap = snap.child(childParts.pop());
+    }
+    return snap;
   },
+
   forEach: function(cb, context) {
-    util.each(this._data, cb, context);
+    var list = this.isMaster? this._snaps.slice(0, 1) : this._snaps;
+    var map = this._rec.getFieldMap();
+    util.each(list, function(snap) {
+      snap.forEach(function(ss) {
+        var ref = ss.ref().ref();
+        cb.call(context, this.child(map.aliasFor(ref.parent().name(), ref.name())));
+      }, this);
+    });
   },
+
   hasChild: function(key) {
-    return util.has(this._data, key);
+    return this._snaps.hasChild(key);
   },
+
   hasChildren: function() {
-    return util.isObject(this._data) && !util.isEmpty(this._data);
+    return this.numChildren() > 0;
   },
+
   name: function() {
     return this._ref.ref().name();
   },
+
   numChildren: function() {
-    if( util.isArray(this._data) ) {
-      return this._data.length;
-    }
-    else if( util.isObject(this._data) ) {
-      return util.keys(this._data).length;
-    }
-    else {
-      return 0;
-    }
+    return util.reduce(this._snaps, 0, function(accum, snap) {
+      return accum + snap.numChildren();
+    });
   },
+
   ref: function() { return this._ref; },
+
   getPriority: function() { return this._pri; },
+
   exportVal: function() {
-    var out = util.isObject(this._data)? util.deepCopy(this._data) : {'.value': this._data};
-    if( this._pri !== null ) {
-      out['.priority'] = this._pri;
-    }
-    return out;
+    return this._rec.mergeData(this._snaps, true);
   }
 };
 
