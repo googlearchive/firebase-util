@@ -37,7 +37,7 @@ util.inherits(RecordSet, AbstractRecord, {
   mergeData: function(/*snaps, isExport*/) {
     //todo
     //todo use the field map to apply values
-    //todo
+    //todo use the filters
     //todo
     //todo
   },

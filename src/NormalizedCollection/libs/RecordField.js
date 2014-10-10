@@ -13,7 +13,7 @@ util.inherits(RecordField, AbstractRecord, {
   child: function(key) {
     var pm = new PathManager([this.pathMgr.first().child(key)]);
     var fm = new FieldMap(pm);
-    fm.add(FieldMap.key(pm.first(), key));
+    fm.add({key: FieldMap.key(pm.first(), '$value'), alias: key});
     return new RecordField(pm, fm);
   },
 

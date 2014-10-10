@@ -27,14 +27,6 @@ FieldMap.prototype = {
     return this.fields[fieldName]||null;
   },
 
-  hasField: function(fieldName) {
-    return util.has(this.fields, fieldName);
-  },
-
-  hasFieldId: function(pathUrl, fieldId) {
-    return this.hasField(this.aliasFor(pathUrl, fieldId));
-  },
-
   pathFor: function(fieldName) {
     var f = this.get(fieldName);
     return f? f.path : this.pathMgr.first();
@@ -51,6 +43,31 @@ FieldMap.prototype = {
       return f.path.url() === pathUrl && fieldId === f.id;
     }, this);
     return f? f.alias : null;
+  },
+
+  extractData: function(snapshot, isExport) {
+    var out = {};
+    var pathName = this.pathMgr.getPathName(snapshot.ref().ref().toString());
+    var fx = isExport? 'exportVal' : 'val';
+    util.each(this.fields, function(f) {
+      if(f.pathName !== pathName ) { return; }
+      switch(f.id) {
+        case '$key':
+          putIn(out, f.alias, snapshot.name());
+          break;
+        case '$value':
+          putIn(out, f.alias, snapshot[fx]());
+          break;
+        default:
+          if( snapshot.hasChild(f.id) ) {
+            putIn(out, f.alias, snapshot.child(f.id)[fx]());
+          }
+      }
+    });
+    if( isExport && snapshot.getPriority() !== null ) {
+      out['.priority'] = snapshot.getPriority();
+    }
+    return out;
   }
 };
 
@@ -71,7 +88,6 @@ function Field(props) {
 }
 
 function parseProps(propsRaw, pathMgr) {
-    //todo this isn't quite right, we need to use the pathManager to get the unaliased keys
   if( propsRaw instanceof Field ) {
     return util.pick(propsRaw, ['path', 'id', 'key', 'alias', 'pathName']);
   }
@@ -87,6 +103,18 @@ function parseProps(propsRaw, pathMgr) {
     alias: propsRaw.alias || parts[1],
     path: path
   };
+}
+
+function putIn(data, alias, val) {
+  if( val === null ) { return; }
+  if( alias.indexOf('.') > 0 ) {
+    var parts = alias.split('.').reverse(), p;
+    while(parts.length > 1 && (p = parts.pop())) {
+      data = data[p] = util.has(data, p)? data[p] : {};
+    }
+    alias = parts.pop();
+  }
+  data[alias] = val;
 }
 
 module.exports = FieldMap;

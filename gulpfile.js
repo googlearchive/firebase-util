@@ -5,7 +5,7 @@ var plugins    = require('gulp-load-plugins')();
 var browserify = require('browserify');
 var source     = require('vinyl-source-stream');
 var buffer     = require('vinyl-buffer');
-var karma      = require('karma-as-promised');
+var karma      = require('karma-as-promised').server;
 var fs         = require('fs');
 var argv       = require('yargs').argv;
 var gutil      = require('gulp-util');
@@ -57,13 +57,13 @@ gulp.task('build', function(){
 });
 
 gulp.task('watch', function() {
-  return karma.server.start({
+  return karma.start({
     configFile: __dirname + '/karma.conf.js'
   });
 });
 
 gulp.task('test', function () {
-  return karma.server.start({
+  return karma.start({
     configFile: __dirname+'/karma.conf.js',
     singleRun: true
   });

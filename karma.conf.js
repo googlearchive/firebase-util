@@ -9,7 +9,7 @@ module.exports = function(config) {
       'test/**/*.js': ['browserify']
     },
     browsers: ['PhantomJS'],
-    reporters: ['spec', 'failed', 'growl'],
+    reporters: ['spec', 'failed', 'growl', 'beep'],
     browserify: {
       debug: true
     }
