@@ -240,7 +240,6 @@ describe('FieldMap', function() {
       });
       var res = map.extractData(snapshot, true);
       expect(res).toEqual({foo: 'path1', bar: {baz: {'.value': 0, '.priority': 100}}});
-      expect(true).toBe(false);
     });
   });
 
