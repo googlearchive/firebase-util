@@ -39,6 +39,10 @@ PathManager.prototype = {
     });
   },
 
+  getPaths: function() {
+    return this.paths.slice();
+  },
+
   getPathName: function(url) {
     return this.pathsByUrl[url] || null;
   },

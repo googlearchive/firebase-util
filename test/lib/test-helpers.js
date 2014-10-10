@@ -16,7 +16,7 @@ exports.doAfterTest = (function() {
 
 exports.stubPathMgr = function() {
   var paths = stubPaths(_.toArray(arguments));
-  var mgr = jasmine.createSpyObj('PathManager', ['getPath', 'first', 'getPathName', 'child']);
+  var mgr = jasmine.createSpyObj('PathManager', ['getPath', 'first', 'getPathName', 'child', 'getPaths']);
   mgr.getPath.and.callFake(function(fieldName) {
     return paths[fieldName] || null;
   });
@@ -30,20 +30,30 @@ exports.stubPathMgr = function() {
   mgr.child.and.callFake(function(key) {
     return exports.stubPathMgr.apply(null, _.map(paths, function(p) { return p.child(key); }));
   });
+  mgr.getPaths.and.callFake(function() {
+    return _.map(paths, function(v) { return v; });
+  });
   return mgr;
 };
 
 function stubPaths(pathList) {
   var paths = {};
   _.each(pathList, function(p) {
-    var parts = p.split('.');
-    var alias = parts[1]||parts[0];
-    paths[alias] = exports.stubPath(parts[0], alias);
+    if( typeof p === 'string' ) {
+      var parts = p.split('.');
+      var alias = parts[1]||parts[0];
+      paths[alias] = exports.stubPath(parts[0], alias);
+    }
+    else {
+      paths[p.name()] = p;
+    }
   });
   return paths;
-};
+}
 
 exports.stubPath = function(path, alias, url) {
+  if( !path ) { path = 'path1'; }
+  if( !alias ) { alias = path; }
   var p = jasmine.createSpyObj('Path', ['name', 'id', 'url', 'child']);
   p.name.and.callFake(function() { return alias; });
   p.id.and.callFake(function() { return path; });
@@ -120,6 +130,16 @@ exports.stubRef = function(pathName) {
   obj.name.and.callFake(function() { return pathName; });
   obj.toString.and.callFake(function() { return 'Mock://' + pathName; });
   return obj;
+};
+
+
+exports.stubRec = function() {
+  var rec = jasmine.createSpyObj('RecordStub', ['getPathMgr']);
+  var mgr = exports.stubPathMgr('path1');
+  rec.getPathMgr.and.callFake(function() {
+    return mgr;
+  });
+  return rec;
 };
 
 beforeEach(function() {

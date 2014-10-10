@@ -4,7 +4,7 @@ var util      = require('../../common');
 var Query     = require('./Query');
 
 function Ref(record, parent) {
-  var paths = record.getPathMgr().paths;
+  var paths = record.getPathMgr().getPaths();
   this._parent = parent||null;
   this._super(this, record);
   this._name = _name(paths);
