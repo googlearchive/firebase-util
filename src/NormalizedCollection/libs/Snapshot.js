@@ -5,7 +5,10 @@ var util = require('../../common');
 function Snapshot(ref, snaps) {
   this._ref = ref;
   // coupling: uses the private _record from Ref
-  this._rec = ref._record;
+  this._rec = ref._getRec();
+  if( !snaps || !snaps.length ) {
+    throw new Error('Must provide at least one valid snapshot to merge');
+  }
   this._pri = snaps[0].getPriority();
   this._snaps = snaps;
 }
@@ -22,11 +25,11 @@ Snapshot.prototype = {
     // as this is faster than unshift() on each iteration)
     var childParts = key.split('/').reverse();
     // grab the first key and get the child snapshot
+    //todo this should probably be using aliases
     var firstChildName = childParts.pop();
     snap = new Snapshot(
       this._ref.child(firstChildName),
-      this._rec.getChildSnaps(this._snaps, firstChildName),
-      false
+      this._rec.getChildSnaps(this._snaps, firstChildName)
     );
     // iterate any nested keys and keep calling child on them
     while(childParts.length) {
@@ -36,22 +39,28 @@ Snapshot.prototype = {
   },
 
   forEach: function(cb, context) {
-    var list = this.isMaster? this._snaps.slice(0, 1) : this._snaps;
-    var map = this._rec.getFieldMap();
-    util.each(list, function(snap) {
-      snap.forEach(function(ss) {
-        var ref = ss.ref().ref();
-        cb.call(context, this.child(map.aliasFor(ref.parent().name(), ref.name())));
-      }, this);
-    });
+    return this._rec.forEach(this._snaps, cb, context);
   },
 
-  hasChild: function(key) {
-    return this._snaps.hasChild(key);
+  hasChild: function(fieldName) {
+    var f = this._rec.getFieldMap().get(fieldName);
+    if( f !== null ) {
+      var url = f.path.url();
+      var snap = util.find(this._snaps, function(ss) {
+        return ss.ref().toString() === url;
+      });
+      return snap && snap.hasChild(f.id);
+    }
+    return false;
   },
 
   hasChildren: function() {
-    return this.numChildren() > 0;
+    var rec = this._rec;
+    return util.find(this._snaps, function(snap) {
+      return snap.forEach(function(ss) {
+        return rec.hasChild(ss.ref().toString());
+      });
+    }) !== util.undef;
   },
 
   name: function() {
@@ -59,8 +68,14 @@ Snapshot.prototype = {
   },
 
   numChildren: function() {
+    var rec = this._rec;
     return util.reduce(this._snaps, 0, function(accum, snap) {
-      return accum + snap.numChildren();
+      snap.forEach(function(ss) {
+        if( rec.hasChild(ss.ref().toString()) ) {
+          accum++;
+        }
+      });
+      return accum;
     });
   },
 

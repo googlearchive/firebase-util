@@ -101,7 +101,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       var p = pm.getPath('p1');
       map.add('p1.field1');
-      expect(map.aliasFor(p.url(), 'field1')).toBe('field1');
+      expect(map.aliasFor(p.child('field1').url())).toBe('field1');
     });
 
     it('should return alias if provided', function() {
@@ -110,7 +110,7 @@ describe('FieldMap', function() {
       var p = pm.getPath('p2');
       map.add('p1.field1');
       map.add({key: 'p2.field2', alias: 'foo'});
-      expect(map.aliasFor(p.url(), 'field2')).toBe('foo');
+      expect(map.aliasFor(p.child('field2').url())).toBe('foo');
     });
 
     it('should return null if not found', function() {
@@ -119,7 +119,7 @@ describe('FieldMap', function() {
       var p = pm.getPath('p2');
       map.add('p1.field1');
       map.add({key: 'p2.field2', alias: 'foo'});
-      expect(map.aliasFor(p.url(), 'bar')).toBe(null);
+      expect(map.aliasFor(p.child('bar').url())).toBe(null);
     });
   });
 

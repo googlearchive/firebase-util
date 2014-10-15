@@ -128,7 +128,7 @@ util.mapObject = function(list, iterator, scope) {
  * Returns the first match
  * @param {Object|Array} vals
  * @param {Function} iterator
- * @param {Object} [scope] set `this` in the callback
+ * @param {Object} [scope] set `this` in the callback or undefined
  */
 util.find = function(vals, iterator, scope) {
   if( util.isArray(vals) ) {
@@ -338,12 +338,13 @@ var wrappingClasses = [];
 util.isFirebaseRef = function(x) {
   // necessary because instanceof won't work on Firebase Query objects
   // so we can't simply do instanceof here
-  var proto = util.isObject(x)? Object.getPrototypeOf(x) : false;
+  var isObject = util.isObject(x);
+  var proto = isObject? Object.getPrototypeOf(x) : false;
   if( proto && proto.constructor === util.Firebase.prototype.constructor ) {
     return true;
   }
   return util.find(wrappingClasses, function(C) {
-    return x instanceof C;
+    return isObject? x instanceof C : x === C;
   });
 };
 

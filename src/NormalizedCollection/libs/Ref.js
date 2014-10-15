@@ -58,6 +58,7 @@ util.inherits(Ref, Query, {
   'goOffline': notSupported('goOffline'),
   'goOnline': notSupported('goOnline'),
   'onDisconnect': notSupported('onDisconnect')
+
 });
 
 function notSupported(method) {

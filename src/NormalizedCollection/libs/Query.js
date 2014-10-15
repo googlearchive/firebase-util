@@ -23,7 +23,13 @@ Query.prototype = {
 
   'equalTo': function() {}, //todo
 
-  'ref': function() { return this._ref; }
+  'ref': function() { return this._ref; },
+
+  /****************************
+   * PACKAGE FUNCTIONS (not API)
+   ***************************/
+
+  '_getRec': function() { return this._rec; }
 };
 
 util.registerFirebaseWrapper(Query);

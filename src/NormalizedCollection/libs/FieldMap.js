@@ -38,9 +38,9 @@ FieldMap.prototype = {
     });
   },
 
-  aliasFor: function(pathUrl, fieldId) {
+  aliasFor: function(url) {
     var f = util.find(this.fields, function(f) {
-      return f.path.url() === pathUrl && fieldId === f.id;
+      return f.url === url;
     }, this);
     return f? f.alias : null;
   },
@@ -84,12 +84,13 @@ function Field(props) {
   this.id = props.id;
   this.key = props.key;
   this.alias = props.alias;
+  this.url = props.url;
   this.pathName = props.pathName;
 }
 
 function parseProps(propsRaw, pathMgr) {
   if( propsRaw instanceof Field ) {
-    return util.pick(propsRaw, ['path', 'id', 'key', 'alias', 'pathName']);
+    return util.pick(propsRaw, ['path', 'id', 'key', 'alias', 'pathName', 'url']);
   }
   else if( typeof(propsRaw) === 'string' ) {
     propsRaw = { key: propsRaw };
@@ -101,7 +102,8 @@ function parseProps(propsRaw, pathMgr) {
     id: parts[1],
     key: propsRaw.key,
     alias: propsRaw.alias || parts[1],
-    path: path
+    path: path,
+    url: path? path.url() + '/' + parts[1] : null
   };
 }
 
