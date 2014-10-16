@@ -25,14 +25,14 @@ Observable.prototype = {
    */
   observe: function(event, callback, cancelFn, scope) {
     var args = getArgs('observe', arguments, 2, 4), obs;
-    event = args.nextFromWarn(this._observableProps.eventsMonitored);
+    event = args.nextFromReq(this._observableProps.eventsMonitored);
     if( event ) {
       callback = args.nextReq('function');
       cancelFn = args.next('function');
       scope = args.next('object');
       obs = new Observer(this, event, callback, scope, cancelFn);
       this._observableProps.observers[event].push(obs);
-      this._observableProps.onAdd(event, obs, this.getObservers().length);
+      this._observableProps.onAdd(event, obs);
       if( this.isOneTimeEvent(event) ) {
         checkOneTimeEvents(event, this._observableProps, obs);
       }
@@ -69,7 +69,7 @@ Observable.prototype = {
       }, this);
       removeAll(this._observableProps.observers[event], removes);
       if( removes.length ) {
-        this._observableProps.onRemove(event, removes, this.getObservers().length);
+        this._observableProps.onRemove(event, removes);
       }
     }, this);
   },
@@ -89,7 +89,7 @@ Observable.prototype = {
       }, this);
       this.resetObservers();
       if( removes.length ) {
-        this._observableProps.onRemove(this.event, removes, this.getObservers().length);
+        this._observableProps.onRemove(this.event, removes);
       }
     }
   },
@@ -145,7 +145,7 @@ Observable.prototype = {
       scope = args.next('object');
       obs = new Observer(this, event, callback, scope, cancelFn, true);
       this._observableProps.observers[event].push(obs);
-      this._observableProps.onAdd(event, obs, this.getObservers().length);
+      this._observableProps.onAdd(event, obs);
       if( this.isOneTimeEvent(event) ) {
         checkOneTimeEvents(event, this._observableProps, obs);
       }

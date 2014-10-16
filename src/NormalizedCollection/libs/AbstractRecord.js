@@ -1,15 +1,35 @@
 'use strict';
 
+var util = require('../../common/');
+
 function AbstractRecord(pathManager, fieldMap) {
-  this.pathMgr = pathManager;
-  this.map = fieldMap;
+  var self = this;
+  self.pathMgr = pathManager;
+  self.map = fieldMap;
+  self.obs = new util.Observable(
+    ['value', 'child_added', 'child_removed', 'child_moved', 'child_updated'],
+    {
+      onAdd: function(event) {
+        var count = self.obs.getObservers(event).length;
+        if( count === 1 ) {
+          self._start(event, self.obs.getObservers().length);
+        }
+      },
+      onRemove: function(event) {
+        var count = self.obs.getObservers(event).length;
+        if( count === 0 ) {
+          self._stop(event, self.obs.getObservers().length);
+        }
+      }
+    }
+  );
 }
 
 AbstractRecord.prototype = {
   /**
    * Called internally by AbstractRecord whenever the first listener
    * is attached for a given event. Also includes a count of the
-   * total number of listeners.
+   * total number of listeners
    *
    * @param {string} type
    * @param {int} totalListeners
@@ -79,8 +99,13 @@ AbstractRecord.prototype = {
    */
   mergeData: abstract('mergeData'),
 
-  watch: function() {}, //todo
-  unwatch: function() {}, //todo
+  watch: function(event, callback, cancel, context) {
+    this.obs.observe(event, callback, cancel, context);
+  },
+
+  unwatch: function(event, callback, context) {
+    this.obs.stopObserving(event, callback, context);
+  },
 
   getFieldMap: function() {
     return this.map;
@@ -88,6 +113,10 @@ AbstractRecord.prototype = {
 
   getPathMgr: function() {
     return this.pathMgr;
+  },
+
+  _trigger: function() {
+    this.obs.triggerEvent.apply(this.obs, arguments);
   }
 };
 

@@ -265,15 +265,6 @@ describe('common/Observable.js', function() {
          expect(fn.calls.argsFor(0)[0]).toBe('test1');
          expect(fn.calls.argsFor(1)[0]).toBe('test2');
       });
-
-     it('should give the total observer count', function() {
-       var fn = jasmine.createSpy();
-       var obs = new Observable(['test1', 'test2'], {onAdd: fn});
-       obs.observe('test1', function() {});
-       obs.observe('test2', function() {});
-       expect(fn.calls.count()).toBe(2);
-       expect(fn.calls.argsFor(1)[2]).toBe(2);
-     });
    });
 
    describe('onRemove', function() {
@@ -287,17 +278,6 @@ describe('common/Observable.js', function() {
          expect(fn.calls.argsFor(0)[0]).toBe('test1');
          expect(fn.calls.argsFor(1)[0]).toBe('test2');
       });
-
-     it('should give the total observer count', function() {
-       var fn = jasmine.createSpy();
-       var obs = new Observable(['test1', 'test2'], {onRemove: fn});
-       obs.observe('test1', function() {});
-       obs.observe('test2', function() {});
-       obs.stopObserving('test1');
-       obs.stopObserving();
-       expect(fn.calls.count()).toBe(2);
-       expect(fn.calls.argsFor(1)[2]).toBe(0);
-     });
    });
 
    describe('onEvent', function() {
