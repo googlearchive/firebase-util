@@ -7,11 +7,12 @@ var util = require('../../common');
 
 function RecordField(pathManager, fieldMap) {
   this._super(pathManager, fieldMap);
+  this.path = pathManager.first();
 }
 
 util.inherits(RecordField, AbstractRecord, {
   child: function(key) {
-    var pm = new PathManager([this.pathMgr.first().child(key)]);
+    var pm = new PathManager([this.path.child(key)]);
     var fm = new FieldMap(pm);
     fm.add({key: FieldMap.key(pm.first(), '$value'), alias: key});
     return new RecordField(pm, fm);
@@ -23,24 +24,27 @@ util.inherits(RecordField, AbstractRecord, {
   },
 
   /**
-   * Merge the data by iterating the snapshots in reverse order
-   * so that keys from later paths do not overwrite keys from earlier paths
+   * There is nothing to merge at this level because there is only one
+   * path and no field map
    *
    * @param {Array} snaps list of snapshots to be merged
    * @param {boolean} isExport true if exportVal() was called
    * @returns {Object}
    */
-  mergeData: function(/*snaps, isExport*/) {
-    //todo
-    //todo use the field map to apply values
-    //todo
-    //todo
-    //todo
+  mergeData: function(snaps, isExport) {
+    if( snaps.length !== 1 ) {
+      throw new Error('RecordField must have exactly one snapshot, but we got '+snaps.length);
+    }
+    return isExport? snaps[0].exportVal() : snaps[0].val();
   },
 
-  _start: function() {}, //todo
-  _end:   function() {}, //todo
-  toJSON: function() {} //todo
+  _start: function(event) {
+    this.path.ref().on(event, this._handler(event), this._cancel, this);
+  },
+
+  _end:   function(event) {
+    this.path.ref().off(event, this._handler(event), this);
+  }
 });
 
 module.exports = RecordField;

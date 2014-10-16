@@ -54,10 +54,12 @@ function stubPaths(pathList) {
 exports.stubPath = function(path, alias, url) {
   if( !path ) { path = 'path1'; }
   if( !alias ) { alias = path; }
-  var p = jasmine.createSpyObj('Path', ['name', 'id', 'url', 'child']);
+  var p = jasmine.createSpyObj('Path', ['name', 'id', 'url', 'child', 'ref', 'reff']);
   p.name.and.callFake(function() { return alias; });
   p.id.and.callFake(function() { return path; });
   p.url.and.callFake(function() { return (url? url + '/' : 'Mock://') + path; });
+  p.ref.and.callFake(function() { return exports.stubRef(path); });
+  p.reff.and.callFake(function() { return exports.stubRef(path); });
   p.child.and.callFake(function(key) { return exports.stubPath(key, key, p.url()); });
   return p;
 };
@@ -224,6 +226,18 @@ exports.deepExtend = function() {
   });
   return base;
 };
+
+exports.snaps = function() {
+  var i = 0;
+  return _.map(arguments, function(snapData) {
+    i++;
+    return exports.stubSnap(
+      exports.stubRef('path' + i),
+      snapData,
+      i
+    );
+  });
+}
 
 beforeEach(function() {
   this.helpers = exports;

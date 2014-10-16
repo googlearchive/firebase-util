@@ -23,6 +23,13 @@ function AbstractRecord(pathManager, fieldMap) {
       }
     }
   );
+  self.eventHandlers = {
+    'value': util.bind(self._trigger, self, 'value'),
+    'child_added': util.bind(self._trigger, self, 'child_added'),
+    'child_changed': util.bind(self._trigger, self, 'child_changed'),
+    'child_removed': util.bind(self._trigger, self, 'child_removed'),
+    'child_moved': util.bind(self._trigger, self, 'child_moved')
+  };
 }
 
 AbstractRecord.prototype = {
@@ -117,6 +124,15 @@ AbstractRecord.prototype = {
 
   _trigger: function() {
     this.obs.triggerEvent.apply(this.obs, arguments);
+  },
+
+  _handler: function(event) {
+    return this.eventHandlers[event];
+  },
+
+  _cancel: function(error) {
+    util.error(error);
+    this.obs.abortObservers('error');
   }
 };
 
