@@ -54,4 +54,19 @@ describe('RecordField', function() {
       expect(rec.mergeData(hp.snaps(data), true)).toEqual({foo: 'bar', '.priority': 1});
     });
   });
+
+
+  describe('watch', function() {
+    it('should trigger callbacks with a Snapshot object'); //todo-test
+
+    it('should include one snapshot for the specific child'); //todo-test
+  });
+
+  describe('#_start', function() {
+    it('should invoke on() for all refs/paths'); //todo-test
+  });
+
+  describe('#_stop', function() {
+    it('should invoke off() for all refs/paths'); //todo-test
+  });
 });

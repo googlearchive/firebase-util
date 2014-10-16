@@ -5,7 +5,7 @@ var util = require('../../common');
 function Query(ref, record) {
   this._ref = ref;
   // coupling: this is referenced directly by Snapshot.js
-  this._record = record;
+  this._rec = record;
 }
 
 Query.prototype = {

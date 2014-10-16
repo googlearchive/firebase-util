@@ -7,6 +7,7 @@ function PathManager(paths) {
   this.paths = [];
   this.pathsByUrl = {};
   this.deps = {};
+  this.pathNames = [];
   util.each(paths, this.add, this);
 }
 
@@ -23,6 +24,7 @@ PathManager.prototype = {
     this._map(path);
     this.paths.push(path);
     this.pathsByUrl[path.url()] = path.id();
+    this.pathNames.push(path.name());
   },
 
   count: function() {
@@ -47,14 +49,20 @@ PathManager.prototype = {
     return this.pathsByUrl[url] || null;
   },
 
+  getPathNames: function() {
+    return this.pathNames.slice();
+  },
+
   getDependencyGraph: function() {
-    var deps = { order: [], paths: {} };
+    var out = { names: [], deps: {} };
     util.each(this.paths, function(p) {
-      deps.paths[p.name()] = [];
+      out.names.push(p.name());
+      out.deps[p.name()] = [];
     });
     util.each(this.deps, function(dep, pathName) {
-      dep.paths[dep.path].push(pathName);
+      out.deps[dep.path].push(pathName);
     });
+    return out;
   },
 
   _map: function(path) {

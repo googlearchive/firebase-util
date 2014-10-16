@@ -14,6 +14,7 @@ Path.prototype = {
   ref: function() { return this._ref; },
   reff: function() { return this.ref().ref(); },
   child: function(key) {
+    //todo-dynamic-keys
     return new Path(this.reff().child(key));
   },
   hasDependency: function() {

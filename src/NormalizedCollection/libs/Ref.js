@@ -4,16 +4,16 @@ var util      = require('../../common');
 var Query     = require('./Query');
 
 function Ref(record, parent) {
+  this._super(this, record);
   var paths = record.getPathMgr().getPaths();
   this._parent = parent||null;
-  this._super(this, record);
   this._name = _name(paths);
   this._toString = _toString(paths);
 }
 
 util.inherits(Ref, Query, {
   'child': function(key) {
-    var record = this._record.child(key);
+    var record = this._rec.child(key);
     return new Ref(record, this);
   },
 
