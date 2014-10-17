@@ -21,12 +21,25 @@ util.inherits(Record, AbstractRecord, {
   },
 
   getChildSnaps: function(snapsArray, fieldName) {
-    var pathUrl = this.map.pathFor(fieldName).url();
-    var snap = util.find(snapsArray, function(ss) {
-      return ss.ref().ref().toString() === pathUrl;
-    }) || snapsArray[0];
-    return [snap];
+    //todo handle $key and $value
+    //todo should return snap.child(field.id)
+    //todo
+    //todo
+    //todo
+    //todo
+//    var pathUrl = this.map.pathFor(fieldName).url();
+//    var snap = util.find(snapsArray, function(ss) {
+//      return ss.ref().ref().toString() === pathUrl;
+//    }) || snapsArray[0];
+//    return [snap];
   },
+
+  //todo forEachKey
+  //todo
+  //todo
+  //todo
+  //todo
+  //todo
 
   /**
    * Merge the data by iterating the snapshots in reverse order

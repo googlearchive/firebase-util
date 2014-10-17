@@ -67,17 +67,27 @@ AbstractRecord.prototype = {
   },
 
   /**
-   * Should iterate snapshot children in priority order. Note that
-   * for the RecordSet, this would be the order of the master ref
-   * (i.e. the first snapshot) and for a Record, this
-   * is simply the order of the keymap.
+   * Given a list of snapshots to iterate, returns the valid keys
+   * which exist in both the snapshots and the field map, in the
+   * order they should be iterated.
+   *
+   * Calls iterator with a {string|number} key for the next field to
+   * iterate only.
+   *
+   * If iterator returns true, this method should abort and return true,
+   * otherwise it should return false (same as Snapshot.forEach).
+   *
+   * We do not include $key fields or $value fields because there is no
+   * appropriate child snapshot or ref for them. We should include any
+   * nested children only once, by the nesting object's key.
    *
    * @param {array} snaps
    * @param {function} iterator
    * @param {object} [context]
+   * @return {boolean} true if aborted
    * @abstract
    */
-  forEach: abstract('forEach'),
+  forEachKey: abstract('forEach'),
 
   /**
    * When .child() is called on a Snapshot, this will reconcile
@@ -106,10 +116,21 @@ AbstractRecord.prototype = {
    */
   mergeData: abstract('mergeData'),
 
+  /**
+   * @param {string} event
+   * @param {function} callback
+   * @param {function} [cancel]
+   * @param {object} [context]
+   */
   watch: function(event, callback, cancel, context) {
     this.obs.observe(event, callback, cancel, context);
   },
 
+  /**
+   * @param {string} event
+   * @param {function} [callback]
+   * @param {object} [context]
+   */
   unwatch: function(event, callback, context) {
     this.obs.stopObserving(event, callback, context);
   },
@@ -126,13 +147,20 @@ AbstractRecord.prototype = {
     this.obs.triggerEvent.apply(this.obs, arguments);
   },
 
+  /**
+   * @param {string} event
+   * @returns {function}
+   */
   _handler: function(event) {
     return this.eventHandlers[event];
   },
 
+  /**
+   * @param {object} error
+   */
   _cancel: function(error) {
     util.error(error);
-    this.obs.abortObservers('error');
+    this.obs.abortObservers(error);
   }
 };
 

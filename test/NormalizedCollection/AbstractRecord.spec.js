@@ -2,11 +2,11 @@
 
 var AbstractRecord = require('../../src/NormalizedCollection/libs/AbstractRecord');
 var util = require('../../src/common');
+var hp = require('./helpers');
 
 describe('AbstractRecord', function() {
-  var hp, Rec;
+  var Rec;
   beforeEach(function() {
-    hp = this.helpers;
     Rec = function() {
       this._super(hp.stubPathMgr(), hp.stubFieldMap());
     };

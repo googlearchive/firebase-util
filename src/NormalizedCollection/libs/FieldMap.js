@@ -16,8 +16,7 @@ FieldMap.prototype = {
     }
     if( f.path === null ) {
       throw new Error('Invalid path specified for field ' + f.key + '; it was not in the paths ' +
-        'provided, which are : ' +
-        util.map(this.pathMgr.paths, function(p) { return p.name(); }).join(', '));
+        'provided, which are : ' + this.pathMgr.getPathNames().join(','));
     }
     this.fields[f.alias] = f;
     this.length++;
@@ -47,7 +46,7 @@ FieldMap.prototype = {
 
   extractData: function(snapshot, isExport) {
     var out = {};
-    var pathName = this.pathMgr.getPathName(snapshot.ref().ref().toString());
+    var pathName = this.pathMgr.getPathName(snapshot.ref().toString());
     var fx = isExport? 'exportVal' : 'val';
     util.each(this.fields, function(f) {
       if(f.pathName !== pathName ) { return; }
@@ -86,6 +85,7 @@ function Field(props) {
   this.alias = props.alias;
   this.url = props.url;
   this.pathName = props.pathName;
+  this.isNested = props.alias.indexOf('.') >= 0;
 }
 
 function parseProps(propsRaw, pathMgr) {

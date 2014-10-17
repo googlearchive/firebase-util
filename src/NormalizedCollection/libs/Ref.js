@@ -12,8 +12,8 @@ function Ref(record, parent) {
 }
 
 util.inherits(Ref, Query, {
-  'child': function(key) {
-    var record = this._rec.child(key);
+  'child': function(fieldName) {
+    var record = this._rec.child(fieldName);
     return new Ref(record, this);
   },
 

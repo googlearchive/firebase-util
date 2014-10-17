@@ -112,7 +112,7 @@ beforeEach(function() {
           var notText = pass? ' not' : '';
           return {
             pass: pass,
-            message: 'Expected ' + key + notText + ' to exist in ' + extendedTypeOf(actual)
+            message: 'Expected key ' + key + notText + ' to exist in ' + extendedTypeOf(actual)
           }
         }
       }

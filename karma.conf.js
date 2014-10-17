@@ -2,8 +2,7 @@ module.exports = function(config) {
   config.set({
     files: [
       'test/lib/*.js',
-      'test/NormalizedCollection/RecordField.spec.js'
-//      'test/**/*.spec.js'
+      'test/**/*.spec.js'
     ],
     frameworks: ['browserify', 'jasmine'],
     preprocessors: {

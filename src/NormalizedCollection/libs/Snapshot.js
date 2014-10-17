@@ -19,13 +19,13 @@ Snapshot.prototype = {
   },
 
   child: function(key) {
+    //todo-bug does not work for $value and $key properly
     var snap;
     // keys may contain / to separate nested child paths
     // so make a list of child keys (we reverse it once
     // as this is faster than unshift() on each iteration)
     var childParts = key.split('/').reverse();
     // grab the first key and get the child snapshot
-    //todo this should probably be using aliases
     var firstChildName = childParts.pop();
     snap = new Snapshot(
       this._ref.child(firstChildName),
@@ -39,22 +39,35 @@ Snapshot.prototype = {
   },
 
   forEach: function(cb, context) {
-    return this._rec.forEach(this._snaps, cb, context);
+    //todo-bug should probably work for $value
+    return this._rec.forEachKey(this._snaps, function(childKey) {
+      return cb.call(context, this.child(childKey));
+    }, this);
   },
 
   hasChild: function(fieldName) {
+    //todo optimize and/or memoize?
+    var snap;
     var f = this._rec.getFieldMap().get(fieldName);
     if( f !== null ) {
-      var url = f.path.url();
-      var snap = util.find(this._snaps, function(ss) {
-        return ss.ref().toString() === url;
-      });
-      return snap && snap.hasChild(f.id);
+      switch(f.key) {
+        case '$key':
+          return true;
+          break;
+        case '$value':
+          snap = snapFor(this._snaps, f.path.url());
+          return snap && snap.val() !== null;
+          break;
+        default:
+          snap = snapFor(this._snaps, f.path.url());
+          return snap && snap.hasChild(f.id);
+      }
     }
     return false;
   },
 
   hasChildren: function() {
+    //todo-bug does not account for $value keys
     var rec = this._rec;
     return util.find(this._snaps, function(snap) {
       return snap.forEach(function(ss) {
@@ -64,10 +77,11 @@ Snapshot.prototype = {
   },
 
   name: function() {
-    return this._ref.ref().name();
+    return this._ref.name();
   },
 
   numChildren: function() {
+    //todo-bug does not account for nested aliases (they will change the count here)
     var rec = this._rec;
     return util.reduce(this._snaps, 0, function(accum, snap) {
       snap.forEach(function(ss) {
@@ -79,7 +93,7 @@ Snapshot.prototype = {
     });
   },
 
-  ref: function() { return this._ref; },
+  ref: function() { return this._ref.ref(); },
 
   getPriority: function() { return this._pri; },
 
@@ -87,5 +101,11 @@ Snapshot.prototype = {
     return this._rec.mergeData(this._snaps, true);
   }
 };
+
+function snapFor(snaps, url) {
+  return util.find(snaps, function(ss) {
+    return ss.ref().toString() === url;
+  });
+}
 
 module.exports = Snapshot;

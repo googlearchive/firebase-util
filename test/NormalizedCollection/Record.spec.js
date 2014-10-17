@@ -10,6 +10,8 @@ describe('Record', function() {
     it('should have exactly one field');
 
     it('should use the primary/first path if none matches the field name');
+
+    it('should work with / (nested children)');
   });
 
   describe('#getChildSnaps', function() {

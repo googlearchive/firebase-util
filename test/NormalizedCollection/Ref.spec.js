@@ -2,13 +2,9 @@
 
 var Ref = require('../../src/NormalizedCollection/libs/Ref.js');
 var Query = require('../../src/NormalizedCollection/libs/Query.js');
+var hp = require('./helpers');
 
 describe('Ref', function() {
-  var hp;
-  beforeEach(function() {
-    hp = this.helpers;
-  });
-
   describe('<constructor>', function() {
     it('should inherit Query', function() {
       var ref = new Ref(hp.stubRec());

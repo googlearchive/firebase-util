@@ -32,6 +32,5 @@
     "firebase": "1.0.x"
   },
   "devDependencies": {
-    "mockfirebase": "~0.3.0"
   }
 }
