@@ -92,8 +92,8 @@ exports.stubPath = function(props) {
       return exports.stubPath({id: k, alias: k, url: base.url() + '/' + k});
     });
   });
-  p.ref.and.callFake(function() { return exports.stubFbRef(p); });
-  p.reff.and.callFake(function() { return exports.stubFbRef(p); });
+  p.ref.and.callFake(function() { return exports.stubRef(p); });
+  p.reff.and.callFake(function() { return exports.stubRef(p); });
   p.hasDependency.and.callFake(function() {
     return _.has(props, 'dep');
   });
@@ -111,8 +111,8 @@ exports.stubPath = function(props) {
  * @param [pri] any priority to be return (defaults to null)
  * @returns {*}
  */
-exports.stubSnap = function(ref, data, pri) {
-  if( arguments.length === 0 ) { ref = exports.stubRef(); }
+exports.stubNormSnap = function(ref, data, pri) {
+  if( arguments.length === 0 ) { ref = exports.stubNormRef(); }
   if( arguments.length < 2 || _.isUndefined(data) ) { data = null; }
   if( arguments.length < 3 ) { pri = null; }
   var obj = jasmine.createSpyObj('SnapshotStub',
@@ -129,7 +129,7 @@ exports.stubSnap = function(ref, data, pri) {
       return denestChildKey(obj, key, function(parent, k) {
         var cdata = parent.$$rawData();
         var pri = parent.getPriority();
-        return exports.stubSnap(
+        return exports.stubNormSnap(
           parent.ref().child(k),
           _.has(cdata, k)? cdata[k] : null,
           typeof pri === 'function'? pri : null
@@ -186,14 +186,14 @@ exports.stubSnap = function(ref, data, pri) {
  * @param {Array} [pathList] see PATHS above for example and defaults
  * @returns {object}
  */
-exports.stubRef = function(pathList, fieldList) {
+exports.stubNormRef = function(pathList, fieldList) {
   var paths = exports.stubPaths(pathList);
   var rec = exports.stubRec(paths, fieldList);
   var obj = jasmine.createSpyObj('RefStub', ['name', 'child', 'ref', 'toString', '_getRec']);
   obj.child.and.callFake(function(key) {
     var lastKey = obj.$$firstPath().name();
     return denestChildKey(obj, key, function(nextParent, nextKey) {
-      return exports.stubRef(
+      return exports.stubNormRef(
         [nextParent.$$firstPath().child(nextKey)],
         [lastKey + ',' + nextKey]
       );
@@ -324,19 +324,19 @@ exports.snaps = function() {
   var i = 0;
   return _.map(_.flatten(arguments), function(snapData) {
     i++;
-    return exports.stubFbSnap(
-      exports.stubFbRef(exports.stubPath('p' + i)),
+    return exports.stubSnap(
+      exports.stubRef(exports.stubPath('p' + i)),
       snapData,
       i
     );
   });
 };
 
-exports.stubFbRef = function(path) {
+exports.stubRef = function(path) {
   var obj = jasmine.createSpyObj('ref', ['name', 'child', 'ref', 'toString']);
   obj.child.and.callFake(function(key) {
     return denestChildKey(obj, key, function(nextParent, nextKey) {
-      return exports.stubFbRef(nextParent.$$getPath().child(nextKey));
+      return exports.stubRef(nextParent.$$getPath().child(nextKey));
     });
   });
   obj.ref.and.callFake(function() { return obj; });
@@ -354,7 +354,7 @@ exports.stubFbRef = function(path) {
  * @param {number|string|function} [pri]
  * @returns {*}
  */
-exports.stubFbSnap = function(fbRef, data, pri) {
+exports.stubSnap = function(fbRef, data, pri) {
   if( arguments.length < 2 || _.isUndefined(data) ) { data = null; }
   if( arguments.length < 3 ) { pri = null; }
   var obj = jasmine.createSpyObj('snapshot',
@@ -370,7 +370,7 @@ exports.stubFbSnap = function(fbRef, data, pri) {
     function(key) {
       return denestChildKey(obj, key, function(nextParent, nextKey) {
         var cdata = nextParent.val();
-        return exports.stubFbSnap(
+        return exports.stubSnap(
           nextParent.ref().child(nextKey),
           _.has(cdata, nextKey)? cdata[nextKey] : null,
             typeof pri === 'function'? pri : null

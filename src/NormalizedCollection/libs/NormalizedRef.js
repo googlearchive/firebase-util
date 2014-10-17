@@ -3,7 +3,7 @@
 var util      = require('../../common');
 var Query     = require('./Query');
 
-function Ref(record, parent) {
+function NormalizedRef(record, parent) {
   this._super(this, record);
   var paths = record.getPathMgr().getPaths();
   this._parent = parent||null;
@@ -11,10 +11,10 @@ function Ref(record, parent) {
   this._toString = _toString(paths);
 }
 
-util.inherits(Ref, Query, {
+util.inherits(NormalizedRef, Query, {
   'child': function(fieldName) {
     var record = this._rec.child(fieldName);
-    return new Ref(record, this);
+    return new NormalizedRef(record, this);
   },
 
   'parent': function() {
@@ -84,4 +84,4 @@ function _toString(paths) {
   }).join('][') + ']' : paths[0].url();
 }
 
-module.exports = Ref;
+module.exports = NormalizedRef;

@@ -1,16 +1,16 @@
 'use strict';
 
 var _ = require('lodash');
-var Snapshot = require('../../src/NormalizedCollection/libs/Snapshot.js');
+var NormalizedSnapshot = require('../../src/NormalizedCollection/libs/NormalizedSnapshot.js');
 var hp = require('./helpers');
 
-describe('Snapshot', function() {
+describe('NormalizedSnapshot', function() {
   describe('#val', function() {
     it('should call the mergeData method on the record and return than value', function() {
       var snapList = hp.snaps(true);
-      var ref = hp.stubRef();
+      var ref = hp.stubNormRef();
       var expVal = {foo: 'bar'};
-      var snap = new Snapshot(ref, snapList);
+      var snap = new NormalizedSnapshot(ref, snapList);
       ref._getRec().mergeData.and.callFake(function() { return expVal; });
       expect(snap.val()).toBe(expVal);
       expect(ref._getRec().mergeData).toHaveBeenCalled();
@@ -18,33 +18,33 @@ describe('Snapshot', function() {
   });
 
   describe('#child', function() {
-    it('should return a Snapshot', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps(null)).child('foo');
-      expect(snap).toBeInstanceOf(Snapshot);
+    it('should return a NormalizedSnapshot', function() {
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps(null)).child('foo');
+      expect(snap).toBeInstanceOf(NormalizedSnapshot);
     });
 
     it('should have a ref for the correct child', function() {
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref, hp.snaps(0)).child('bar');
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref, hp.snaps(0)).child('bar');
       expect(snap.ref().toString()).toBe(ref.child('bar').toString());
     });
 
     it('should work for paths with / (nested children)', function() {
-      var ref = hp.stubRef(['p1']);
-      var cref = hp.stubRef(['p1']);
+      var ref = hp.stubNormRef(['p1']);
+      var cref = hp.stubNormRef(['p1']);
       ref.child.and.callFake(function(key){
         cref.name.and.callFake(function() {
           return key;
         });
         return cref;
       });
-      var snap = new Snapshot(ref, hp.snaps(true));
+      var snap = new NormalizedSnapshot(ref, hp.snaps(true));
       var childSnap = snap.child('foo/bar');
       expect(childSnap.name()).toBe('bar');
     });
 
     it('should be null if child does not exist in data', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({ foo: {bar: 'baz'} })).child('baz');
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({ foo: {bar: 'baz'} })).child('baz');
       expect(snap.name()).toBe('baz');
       expect(snap.val()).toBe(null);
     });
@@ -53,13 +53,13 @@ describe('Snapshot', function() {
   describe('#forEach', function() {
     it('should iterate each key in rec.forEachKey', function() {
       var expKeys = ['a', 'b', 'c', 'e'];
-      var ref = hp.stubRef();
+      var ref = hp.stubNormRef();
       ref._getRec().forEachKey.and.callFake(function(snaps, callback, context) {
         for (var i = 0, len = expKeys.length; i < len; i++) {
           callback.call(context, expKeys[i]);
         }
       });
-      var snap = new Snapshot(ref, hp.snaps(true));
+      var snap = new NormalizedSnapshot(ref, hp.snaps(true));
       var keys = [];
       snap.forEach(function(ss) {
         keys.push(ss.name());
@@ -69,8 +69,8 @@ describe('Snapshot', function() {
 
     it('should only include fields in the snapshot', function() {
       var expKeys = ['f10', 'bar'];
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref,
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref,
         hp.snaps({f10: 'foo', happy: 'baz'}, {f99: 'boo', joy: true})
       );
       var keys = [];
@@ -82,7 +82,7 @@ describe('Snapshot', function() {
 
     it('should abort if true is returned', function() {
       var spy = jasmine.createSpy().and.callFake(function() { return true; });
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({
         f10: true, f11: false
       }));
       snap.forEach(spy);
@@ -91,7 +91,7 @@ describe('Snapshot', function() {
 
     it('should return true if aborted', function() {
       var spy = jasmine.createSpy().and.callFake(function() { return true; });
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({
         f10: true, f11: false
       }));
       var res = snap.forEach(spy);
@@ -100,7 +100,7 @@ describe('Snapshot', function() {
 
     it('should return false if not aborted', function() {
       var spy = jasmine.createSpy().and.callFake(function() { return null; });
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({
         field1: true, field2: false, field3: {bar: 'baz'}
       }));
       var res = snap.forEach(spy);
@@ -112,7 +112,7 @@ describe('Snapshot', function() {
       var spy = jasmine.createSpy().and.callFake(function() {
         expect(this).toBe(ctx);
       });
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({f10: true}));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({f10: true}));
       snap.forEach(spy, ctx);
       expect(spy).toHaveBeenCalled();
     });
@@ -120,94 +120,94 @@ describe('Snapshot', function() {
 
   describe('#hasChild', function() {
     it('should return true if child exists in both snapshots and field list', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({f11: true}));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({f11: true}));
       expect(snap.hasChild('foo')).toBe(true);
     });
 
     it('should return false if child does not exist in field list', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({notakey: true}));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({notakey: true}));
       expect(snap.hasChild('notakey')).toBe(false);
     });
 
     it('should return false if child does not exist in snapshot data', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({notakey: true}));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({notakey: true}));
       expect(snap.hasChild('foo')).toBe(false);
     });
 
     it('should return false if value is a primitive', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps(9));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps(9));
       expect(snap.hasChild('f10')).toBe(false);
     });
   });
 
   describe('#hasChildren', function() {
     it('should return true if data is an object with at least one key', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({f10: true}));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({f10: true}));
       expect(snap.hasChildren()).toBe(true);
     });
 
     it('should return false if data is not an object', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps(2));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps(2));
       expect(snap.hasChildren()).toBe(false);
     });
 
     it('should return false for an object that does not have fields in map', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps({notinmap: true}));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({notinmap: true}));
       expect(snap.hasChildren()).toBe(false);
     });
   });
 
   describe('#name', function() {
     it('should equal ref.name', function() {
-      var ref = hp.stubRef(['p1']);
-      var snap = new Snapshot(ref, hp.snaps(null));
+      var ref = hp.stubNormRef(['p1']);
+      var snap = new NormalizedSnapshot(ref, hp.snaps(null));
       expect(snap.name()).toBe('p1');
     });
   });
 
   describe('#numChildren', function() {
     it('should return the count of children in both map and data', function() {
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref, hp.snaps({f10: 3, notakey: 4, notakey2: 5}, {f20: 44, notakey3: true}, {key: 4}));
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref, hp.snaps({f10: 3, notakey: 4, notakey2: 5}, {f20: 44, notakey3: true}, {key: 4}));
       expect(snap.numChildren()).toBe(2);
     });
 
     it('should return 0 if data is null', function() {
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref, hp.snaps(null, null));
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref, hp.snaps(null, null));
       expect(snap.numChildren()).toBe(0);
     });
 
     it('should return 0 if data is primitive', function() {
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref, hp.snaps(true, 99));
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref, hp.snaps(true, 99));
       expect(snap.numChildren()).toBe(0);
     });
 
     it('should not include $value or $key', function() {
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref, hp.snaps(true, 1, 2, 3));
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref, hp.snaps(true, 1, 2, 3));
       expect(snap.numChildren()).toBe(0);
     })
   });
 
   describe('#ref', function() {
     it('should return the original ref', function() {
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref, hp.snaps(true));
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref, hp.snaps(true));
       expect(snap.ref()).toBe(ref);
     });
 
     it('should return correct child after .child() is used', function() {
-      var ref = hp.stubRef();
-      var snap = new Snapshot(ref, hp.snaps(true)).child('foo');
+      var ref = hp.stubNormRef();
+      var snap = new NormalizedSnapshot(ref, hp.snaps(true)).child('foo');
       expect(snap.ref().toString()).toBe(ref.child('foo').toString());
     });
   });
 
   describe('#getPriority', function() {
     it('should return priority from first snapshot', function() {
-      var snap = new Snapshot(hp.stubRef(), hp.snaps(true, false));
+      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps(true, false));
       expect(snap.getPriority()).toBe(1);
     });
   });

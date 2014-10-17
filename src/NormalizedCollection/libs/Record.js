@@ -4,7 +4,7 @@ var PathManager = require('./PathManager');
 var FieldMap = require('./FieldMap');
 var RecordField = require('./RecordField');
 var AbstractRecord = require('./AbstractRecord');
-var Snapshot = require('./Snapshot');
+var Snapshot = require('./NormalizedSnapshot');
 var util = require('../../common');
 
 function Record(pathManager, fieldMap) {

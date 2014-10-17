@@ -2,7 +2,7 @@
 
 var util = require('../../common');
 
-function Snapshot(ref, snaps) {
+function NormalizedSnapshot(ref, snaps) {
   this._ref = ref;
   // coupling: uses the private _record from Ref
   this._rec = ref._getRec();
@@ -13,7 +13,7 @@ function Snapshot(ref, snaps) {
   this._snaps = snaps;
 }
 
-Snapshot.prototype = {
+NormalizedSnapshot.prototype = {
   val: function() {
     return this._rec.mergeData(this._snaps, false);
   },
@@ -27,7 +27,7 @@ Snapshot.prototype = {
     var childParts = key.split('/').reverse();
     // grab the first key and get the child snapshot
     var firstChildName = childParts.pop();
-    snap = new Snapshot(
+    snap = new NormalizedSnapshot(
       this._ref.child(firstChildName),
       this._rec.getChildSnaps(this._snaps, firstChildName)
     );
@@ -108,4 +108,4 @@ function snapFor(snaps, url) {
   });
 }
 
-module.exports = Snapshot;
+module.exports = NormalizedSnapshot;

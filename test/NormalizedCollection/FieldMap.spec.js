@@ -138,8 +138,8 @@ describe('FieldMap', function() {
       map.add('p1.field2');
       map.add({key: 'p2.field1', alias: 'foo'});
       map.add('p3.field3');
-      var snapshot = hp.stubFbSnap(
-        hp.stubFbRef(hp.stubPath('p1')),
+      var snapshot = hp.stubSnap(
+        hp.stubRef(hp.stubPath('p1')),
         {field1: 'p1.f1', field2: 'p1.f2', foo: 'p2.f2', bar: 'p3.f3'}
       );
       var res = map.extractData(snapshot);
@@ -151,7 +151,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add('p1.field1');
       map.add('p1.field2');
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 'p1.f1', field2: null});
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 'p1.f1', field2: null});
       var res = map.extractData(snapshot);
       expect(res).not.toHaveKey('field2');
     });
@@ -161,7 +161,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add('p1.field1');
       map.add({key: 'p1.field2', alias: 'foo'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 'p1.f1', field2: 'p1.f2'});
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 'p1.f1', field2: 'p1.f2'});
       var res = map.extractData(snapshot);
       expect(res.foo).toBe('p1.f2');
     });
@@ -171,7 +171,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add('p1.field1');
       map.add({key: 'p1.$key', alias: 'foo'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 'p1.f1', field2: 'p1.f2'});
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 'p1.f1', field2: 'p1.f2'});
       var res = map.extractData(snapshot);
       expect(res.foo).toBe('path1');
     });
@@ -181,7 +181,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add({key: 'p1.$value', alias: 'foo'});
       map.add({key: 'p2.$value', alias: 'bar'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), 'hello');
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), 'hello');
       var res = map.extractData(snapshot);
       expect(res.foo).toBe('hello');
     });
@@ -190,7 +190,7 @@ describe('FieldMap', function() {
       var pm = hp.stubPathMgr();
       var map = new FieldMap(pm);
       map.add({key: 'p1.$value', alias: 'foo.bar.baz'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), 'hello');
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), 'hello');
       var res = map.extractData(snapshot);
       expect(res).toEqual({foo: {bar: {baz: 'hello'}}});
     });
@@ -199,7 +199,7 @@ describe('FieldMap', function() {
       var pm = hp.stubPathMgr();
       var map = new FieldMap(pm);
       map.add({key: 'p1.$value', alias: 'foo.bar'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), null);
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), null);
       var res = map.extractData(snapshot);
       expect(res.foo).toBeUndefined();
     });
@@ -209,7 +209,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add({key: 'p1.$key', alias: 'foo.key'});
       map.add({key: 'p1.$value', alias: 'foo.val'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), false);
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), false);
       var res = map.extractData(snapshot);
       expect(res).toEqual({foo: {key: 'path1', val: false}});
     });
@@ -219,7 +219,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add({key: 'p1.$key', alias: 'foo'});
       map.add({key: 'p1.field1', alias: 'bar.baz'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 0});
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0});
       var res = map.extractData(snapshot, true);
       expect(res).toEqual({foo: 'path1', bar: {baz: 0}});
     });
@@ -229,7 +229,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add({key: 'p1.$key', alias: 'foo'});
       map.add({key: 'p1.field1', alias: 'f1'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 0}, false);
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, false);
       var res = map.extractData(snapshot, true);
       expect(res).toEqual({foo: 'path1', f1: 0, '.priority': false});
     });
@@ -238,7 +238,7 @@ describe('FieldMap', function() {
       var pm = hp.stubPathMgr();
       var map = new FieldMap(pm);
       map.add('p1.$key');
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 0}, 100);
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, 100);
       var res = map.extractData(snapshot, true);
       expect(res).toEqual({'$key': 'path1', '.priority': 100});
     });
@@ -247,7 +247,7 @@ describe('FieldMap', function() {
       var pm = hp.stubPathMgr();
       var map = new FieldMap(pm);
       map.add('p1.$key');
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 0}, 100);
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, 100);
       var res = map.extractData(snapshot, null);
       expect(res['.priority']).toBeUndefined();
     });
@@ -257,7 +257,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(pm);
       map.add({key: 'p1.$key', alias: 'foo'});
       map.add({key: 'p1.field1', alias: 'bar.baz'});
-      var snapshot = hp.stubFbSnap(hp.stubFbRef(hp.stubPath('p1')), {field1: 0}, function(snap) {
+      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, function(snap) {
         console.log('prifn', snap.name()); //debug
         if (snap.name() === 'field1') {
           return 100;

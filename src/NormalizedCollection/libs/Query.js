@@ -4,7 +4,7 @@ var util = require('../../common');
 
 function Query(ref, record) {
   this._ref = ref;
-  // coupling: this is referenced directly by Snapshot.js
+  // coupling: this is referenced directly by NormalizedSnapshot.js
   this._rec = record;
 }
 

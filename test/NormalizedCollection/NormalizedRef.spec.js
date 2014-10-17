@@ -1,13 +1,13 @@
 'use strict';
 
-var Ref = require('../../src/NormalizedCollection/libs/Ref.js');
+var NormalizedRef = require('../../src/NormalizedCollection/libs/NormalizedRef.js');
 var Query = require('../../src/NormalizedCollection/libs/Query.js');
 var hp = require('./helpers');
 
-describe('Ref', function() {
+describe('NormalizedRef', function() {
   describe('<constructor>', function() {
     it('should inherit Query', function() {
-      var ref = new Ref(hp.stubRec());
+      var ref = new NormalizedRef(hp.stubRec());
       expect(ref).toBeInstanceOf(Query);
     });
 

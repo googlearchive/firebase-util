@@ -1,11 +1,11 @@
 'use strict';
 
-var util        = require('../../common');
-var PathManager = require('./PathManager');
-var Filter = require('./Filter');
-var FieldMap    = require('./FieldMap');
-var Ref         = require('./Ref');
-var RecordSet   = require('./RecordSet');
+var util          = require('../../common');
+var PathManager   = require('./PathManager');
+var Filter        = require('./Filter');
+var FieldMap      = require('./FieldMap');
+var NormalizedRef = require('./NormalizedRef');
+var RecordSet     = require('./RecordSet');
 
 /**
  * @param {...object} path
@@ -42,7 +42,7 @@ NormalizedCollection.prototype = {
     }
     this.finalized = true;
     var recordSet = new RecordSet(this.pathMgr, this.map, this.filters);
-    return new Ref(recordSet);
+    return new NormalizedRef(recordSet);
   }
 };
 
