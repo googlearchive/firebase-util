@@ -2,6 +2,13 @@
 var _ = require('lodash');
 //var MockFirebase = require('mockfirebase');
 
+//todo the stubs in here are a bit of a mess; some of them are nearly as complex as
+//todo the objects they attempt to stub. Instead, those methods should be stubbed
+//todo to throw errors, and the test units should specify what they return using
+//todo and.callFake(...) to give back exact results, instead of having to spend so
+//todo much time debugging these stubs and keeping them updated so they function
+//todo like the originals
+
 var exports = exports || {};
 
 var PATHS = {
@@ -184,6 +191,7 @@ exports.stubNormSnap = function(ref, data, pri) {
  * Simulates a Ref instance.
  *
  * @param {Array} [pathList] see PATHS above for example and defaults
+ * @param {Array} [fieldList] see FIELDS above for defaults
  * @returns {object}
  */
 exports.stubNormRef = function(pathList, fieldList) {
@@ -193,11 +201,12 @@ exports.stubNormRef = function(pathList, fieldList) {
   obj.child.and.callFake(function(key) {
     var lastKey = obj.$$firstPath().name();
     return denestChildKey(obj, key, function(nextParent, nextKey) {
-      return exports.stubNormRef(
+      var out = exports.stubNormRef(
         [nextParent.$$firstPath().child(nextKey)],
         [lastKey + ',' + nextKey]
       );
       lastKey = nextKey;
+      return out;
     });
   });
   obj.ref.and.callFake(function() { return obj; });
