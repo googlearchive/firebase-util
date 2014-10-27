@@ -53,11 +53,9 @@ NormalizedSnapshot.prototype = {
       switch(f.key) {
         case '$key':
           return true;
-          break;
         case '$value':
           snap = snapFor(this._snaps, f.path.url());
           return snap && snap.val() !== null;
-          break;
         default:
           snap = snapFor(this._snaps, f.path.url());
           return snap && snap.hasChild(f.id);

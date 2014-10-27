@@ -188,7 +188,7 @@ describe('NormalizedSnapshot', function() {
       var ref = hp.stubNormRef();
       var snap = new NormalizedSnapshot(ref, hp.snaps(true, 1, 2, 3));
       expect(snap.numChildren()).toBe(0);
-    })
+    });
   });
 
   describe('#ref', function() {

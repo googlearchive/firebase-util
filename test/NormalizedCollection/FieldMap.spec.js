@@ -1,7 +1,6 @@
 'use strict';
 
 var FieldMap = require('../../src/NormalizedCollection/libs/FieldMap');
-var util = require('../../src/common');
 var hp = require('./helpers');
 
 describe('FieldMap', function() {
@@ -258,7 +257,6 @@ describe('FieldMap', function() {
       map.add({key: 'p1.$key', alias: 'foo'});
       map.add({key: 'p1.field1', alias: 'bar.baz'});
       var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, function(snap) {
-        console.log('prifn', snap.name()); //debug
         if (snap.name() === 'field1') {
           return 100;
         }

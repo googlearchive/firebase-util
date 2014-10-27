@@ -416,7 +416,6 @@ exports.stubSnap = function(fbRef, data, pri) {
   obj.exportVal.and.callFake(
     function() {
       var pri = obj.getPriority(), out = null;
-      console.log('exportVal', obj.name(), pri, data); //debug
       if( _.isObject(data) ) {
         out = {};
         if( pri !== null ) { out['.priority'] = pri; }
@@ -430,7 +429,6 @@ exports.stubSnap = function(fbRef, data, pri) {
       else {
         out = data;
       }
-      console.log('exportVal!', out); //debug
       return out;
     }
   );

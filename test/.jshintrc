@@ -1,6 +1,6 @@
 {
   "predef": [
-    "it", "describe", "jasmine", "spyOn", "expect"
+    "it", "describe", "jasmine", "spyOn", "expect", "beforeEach", "afterEach"
   ],
   "curly": true,
   "eqeqeq": true,

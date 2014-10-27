@@ -4,7 +4,7 @@ var PathManager = require('./PathManager');
 var FieldMap = require('./FieldMap');
 var RecordField = require('./RecordField');
 var AbstractRecord = require('./AbstractRecord');
-var Snapshot = require('./NormalizedSnapshot');
+//var Snapshot = require('./NormalizedSnapshot');
 var util = require('../../common');
 
 function Record(pathManager, fieldMap) {
@@ -20,7 +20,7 @@ util.inherits(Record, AbstractRecord, {
     return new RecordField(pm, fm);
   },
 
-  getChildSnaps: function(snapsArray, fieldName) {
+  getChildSnaps: function(/*snapsArray, fieldName*/) {
     //todo handle $key and $value
     //todo should return snap.child(field.id)
     //todo
