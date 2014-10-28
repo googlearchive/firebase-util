@@ -1,6 +1,7 @@
 'use strict';
 
 var util = require('../../common');
+var PathManager = require('./PathManager');
 
 function FieldMap(pathManager) {
   this.fields = {};
@@ -26,12 +27,20 @@ FieldMap.prototype = {
     return util.find(this.fields, callback, context) !== util.undef;
   },
 
-  'get': function(fieldName) {
+  getField: function(fieldName) {
     return this.fields[fieldName]||null;
   },
 
+  getPath: function(pathName) {
+    return this.getPathManager().getPath(pathName);
+  },
+
+  getPathManager: function() {
+    return this.pathMgr;
+  },
+
   pathFor: function(fieldName) {
-    var f = this.get(fieldName);
+    var f = this.getField(fieldName);
     return f? f.path : this.pathMgr.first();
   },
 
@@ -39,6 +48,14 @@ FieldMap.prototype = {
     return util.filter(util.toArray(this.fields), function(f) {
       return f.pathName === pathName;
     });
+  },
+
+  idFor: function(fieldName) {
+    var f = this.getField(fieldName);
+    if( f ) {
+      return f.id;
+    }
+    return fieldName;
   },
 
   aliasFor: function(url) {
@@ -86,6 +103,27 @@ FieldMap.key = function(path, field) {
     path = path.name();
   }
   return path + '.' + field;
+};
+
+FieldMap.fieldMap = function(map, fieldName) {
+  var childPath = map.pathFor(fieldName).child(fieldName);
+  var pm = new PathManager([childPath]);
+  var fm = new FieldMap(pm);
+  fm.add({key: FieldMap.key(childPath, '$value'), alias: fieldName});
+  return fm;
+};
+
+FieldMap.recordMap = function(map, fieldName) {
+  var mgr = map.getPathManager();
+  var fieldId = map.idFor(fieldName);
+  var paths = util.map(mgr.getPaths(), function(p) {
+    return p.child(fieldId);
+  });
+  var childMap = new FieldMap(new PathManager(paths));
+  map.forEach(function(field) {
+    childMap.add(field);
+  });
+  return childMap;
 };
 
 function Field(props) {

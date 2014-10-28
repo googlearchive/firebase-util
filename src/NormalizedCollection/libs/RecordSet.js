@@ -4,18 +4,17 @@ var Record = require('./Record');
 var AbstractRecord = require('./AbstractRecord');
 var util = require('../../common');
 var PathManager = require('./PathManager');
+var FieldMap = require('./FieldMap');
 
-function RecordSet(pathManager, fieldMap, whereClause) {
-  this._super(pathManager, fieldMap);
+function RecordSet(fieldMap, whereClause) {
+  this._super(fieldMap);
   this.filters = whereClause;
 }
 
 util.inherits(RecordSet, AbstractRecord, {
   child: function(key) {
-    var paths = util.map(this.pathMgr.paths, function(p) {
-      return p.child(key);
-    });
-    return new Record(new PathManager(paths), this.fields);
+    var fm = FieldMap.recordMap(this.map, key);
+    return new Record(fm);
   },
 
   getChildSnaps: function(snapsArray, recordId) {

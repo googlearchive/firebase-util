@@ -41,13 +41,13 @@ describe('FieldMap', function() {
     it('should set isNested=true if alias references a nested child node', function() {
       var map = new FieldMap(hp.stubPathMgr());
       map.add({ key: 'p1.field2', alias: 'foo.bar' });
-      expect(map.get('foo.bar').isNested).toBe(true);
+      expect(map.getField('foo.bar').isNested).toBe(true);
     });
 
     it('should set isNested=false if alias does not ref a nested child', function() {
       var map = new FieldMap(hp.stubPathMgr());
       map.add({ key: 'p1.field2', alias: 'foo' });
-      expect(map.get('foo').isNested).toBe(false);
+      expect(map.getField('foo').isNested).toBe(false);
     });
   });
 
@@ -89,7 +89,7 @@ describe('FieldMap', function() {
       map.add('p1.field1');
       map.add({ key: 'p2.field2', alias: 'foo' });
       map.add({ key: 'p2.foo', alias: 'bar' });
-      var res = map.get('foo');
+      var res = map.getField('foo');
       expect(res.key).toBe('p2.field2');
     });
 
@@ -97,7 +97,7 @@ describe('FieldMap', function() {
       var map = new FieldMap(hp.stubPathMgr());
       map.add('p1.field1');
       map.add({ key: 'p2.field2', alias: 'foo' });
-      expect(map.get('bar')).toBe(null);
+      expect(map.getField('bar')).toBe(null);
     });
   });
 
@@ -275,5 +275,21 @@ describe('FieldMap', function() {
 
   describe('#snapFor', function() {
     it('should have tests');
+  });
+
+  describe('#fieldMap', function() {
+    it('should return exactly one field (the key specified)');
+
+    it('should use $value for the field id');
+
+    it('should return child of the appropriate parent path');
+
+    it('should return the first path if child not in any of the paths');
+  });
+
+  describe('#recordMap', function() {
+    it('should return the same fields as the parent');
+
+    it('should return children of all the paths');
   });
 });

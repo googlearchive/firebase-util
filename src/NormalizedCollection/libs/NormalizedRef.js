@@ -5,7 +5,7 @@ var Query     = require('./Query');
 
 function NormalizedRef(record, parent) {
   this._super(this, record);
-  var paths = record.getPathMgr().getPaths();
+  var paths = record.getPathManager().getPaths();
   this._parent = parent||null;
   this._name = _name(paths);
   this._toString = _toString(paths);

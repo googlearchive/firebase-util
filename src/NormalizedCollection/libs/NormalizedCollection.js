@@ -41,7 +41,7 @@ NormalizedCollection.prototype = {
         ' before creating a ref');
     }
     this.finalized = true;
-    var recordSet = new RecordSet(this.pathMgr, this.map, this.filters);
+    var recordSet = new RecordSet(this.map, this.filters);
     return new NormalizedRef(recordSet);
   }
 };

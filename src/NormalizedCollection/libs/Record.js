@@ -1,29 +1,25 @@
 'use strict';
 
-var PathManager = require('./PathManager');
 var FieldMap = require('./FieldMap');
 var RecordField = require('./RecordField');
 var AbstractRecord = require('./AbstractRecord');
 var util = require('../../common');
 
-function Record(pathManager, fieldMap) {
-  this._super(pathManager, fieldMap);
+function Record(fieldMap) {
+  this._super(fieldMap);
   this._eventManagers = {};
 }
 
 util.inherits(Record, AbstractRecord, {
   child: function(key) {
-    var childPath = this.map.pathFor(key).child(key);
-    var pm = new PathManager([childPath]);
-    var fm = new FieldMap(pm);
-    fm.add({key: FieldMap.key(childPath, '$value'), alias: key});
-    return new RecordField(pm, fm);
+    var fm = FieldMap.fieldMap(this.map, key);
+    return new RecordField(fm);
   },
 
   getChildSnaps: function(snaps, fieldName) {
     var child;
     var snap = this.map.snapFor(snaps, fieldName);
-    var field = this.map.get(fieldName);
+    var field = this.map.getField(fieldName);
     if( !field ) {
       child = snap.child(fieldName);
     }
@@ -80,7 +76,7 @@ util.inherits(Record, AbstractRecord, {
 
 function ValueEventManager(rec) {
   this.rec = rec;
-  this.pm = rec.getPathMgr();
+  this.pm = rec.getPathManager();
   this.running = false;
   this._init();
 }
@@ -115,7 +111,7 @@ ValueEventManager.prototype = {
     var path = self.pm.getPath(pathName);
     var fn = util.bind(self.update, self, pathName);
     if( path.hasDependency() ) {
-      var dyno = new Dyno(path, this.rec.getPathMgr(), this.rec.getFieldMap(), 'value', fn);
+      var dyno = new Dyno(path, this.rec.getPathManager(), this.rec.getFieldMap(), 'value', fn);
       this.subs.push(dyno.dispose);
     }
     else {
@@ -138,7 +134,7 @@ ValueEventManager.prototype = {
 function ChildEventManager(event, rec) {
   this.event = event;
   this.rec = rec;
-  this.pm = rec.getPathMgr();
+  this.pm = rec.getPathManager();
 }
 
 ChildEventManager.prototype = {
@@ -148,7 +144,7 @@ ChildEventManager.prototype = {
       var path = this.pm.getPath(pathName);
       var fn = util.bind(this.update, this);
       if( path.hasDependency() ) {
-        var dyno = new Dyno(path, this.rec.getPathMgr(), this.rec.getFieldMap(), event, fn);
+        var dyno = new Dyno(path, this.rec.getFieldMap(), event, fn);
         this.subs.push(dyno.dispose);
       }
       else {
@@ -178,18 +174,17 @@ ChildEventManager.prototype = {
  * the ref that we listen on whenever the id is modified.
  *
  * @param {Path} path
- * @param {PathManager} pathMgr
  * @param {FieldMap} fieldMap
  * @param {string} event
  * @param {function} updateFn
  * @constructor
  */
-function Dyno(path, pathMgr, fieldMap, event, updateFn) {
+function Dyno(path, fieldMap, event, updateFn) {
   var dep = path.getDependency();
-  var depPath = pathMgr.getPath(dep.path);
+  var depPath = fieldMap.getPath(dep.path);
   var depRef = depPath.ref();
   if( dep.field !== '$value' ) {
-    depRef = depRef.child(fieldMap.get(dep.field).id);
+    depRef = depRef.child(fieldMap.getField(dep.field).id);
   }
   var ref;
 

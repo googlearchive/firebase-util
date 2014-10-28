@@ -48,7 +48,7 @@ NormalizedSnapshot.prototype = {
   hasChild: function(fieldName) {
     //todo optimize and/or memoize?
     var snap;
-    var f = this._rec.getFieldMap().get(fieldName);
+    var f = this._rec.getFieldMap().getField(fieldName);
     if( f !== null ) {
       switch(f.key) {
         case '$key':

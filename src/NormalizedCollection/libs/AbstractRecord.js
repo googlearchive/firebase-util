@@ -2,9 +2,8 @@
 
 var util = require('../../common/');
 
-function AbstractRecord(pathManager, fieldMap) {
+function AbstractRecord(fieldMap) {
   var self = this;
-  self.pathMgr = pathManager;
   self.map = fieldMap;
   self.obs = new util.Observable(
     ['value', 'child_added', 'child_removed', 'child_moved', 'child_updated'],
@@ -77,10 +76,6 @@ AbstractRecord.prototype = {
    * If iterator returns true, this method should abort and return true,
    * otherwise it should return false (same as Snapshot.forEach).
    *
-   * We do not include $key fields or $value fields because there is no
-   * appropriate child snapshot or ref for them. We should include any
-   * nested children only once, by the nesting object's key.
-   *
    * @param {Array} snaps
    * @param {function} iterator
    * @param {object} [context]
@@ -139,8 +134,8 @@ AbstractRecord.prototype = {
     return this.map;
   },
 
-  getPathMgr: function() {
-    return this.pathMgr;
+  getPathManager: function() {
+    return this.map.getPathManager();
   },
 
   _trigger: function() {

@@ -45,7 +45,7 @@ exports.doAfterTest = (function() {
  */
 exports.stubPathMgr = function(pathList) {
   var paths = exports.stubPaths(pathList);
-  var mgr = jasmine.createSpyObj('PathManagerStub', ['getPath', 'first', 'getPathName', 'getPaths', 'getPathNames']);
+  var mgr = jasmine.createSpyObj('PathManagerStub', ['getPath', 'first', 'getPathName', 'getPaths', 'getPathNames', 'count']);
   mgr.getPath.and.callFake(function(fieldName) {
     return paths[fieldName] || null;
   });
@@ -61,6 +61,9 @@ exports.stubPathMgr = function(pathList) {
   });
   mgr.getPathNames.and.callFake(function() {
     return _.keys(paths);
+  });
+  mgr.count.and.callFake(function() {
+    return _.keys(paths).length;
   });
   return mgr;
 };
@@ -221,14 +224,22 @@ exports.stubNormRef = function(pathList, fieldList) {
 /**
  * Generates a FieldMap stub.
  *
- * @param {Array} [optionalFields] defaults to FIELDS above
+ * @param {Array} [fields] defaults to FIELDS above
+ * @param {Array|object} [paths] the field manager stub or an array of fields to create it with
  * @returns {*}
  */
-exports.stubFieldMap = function(optionalFields) {
-  var map = jasmine.createSpyObj('FieldMapStub', ['extractData', 'aliasFor', 'fieldsFor', 'pathFor', 'get', 'add', 'forEach']);
+exports.stubFieldMap = function(fields, paths) {
+  var mgr;
+  if( !paths || _.isArray(paths) ) { mgr = exports.stubPathMgr(paths); }
+  else { mgr = paths; }
+  var map = jasmine.createSpyObj('FieldMapStub', [
+    'extractData', 'aliasFor', 'fieldsFor', 'pathFor',
+    'getField', 'add', 'forEach', 'getPath', 'getPathManager'
+  ]);
   map.fieldsByKey = {};
   map.fieldsByAlias = {};
-  _.each(optionalFields || FIELDS, function(f) {
+  map.length = (fields||FIELDS).length;
+  _.each(fields || FIELDS, function(f) {
     var parts = f.split(',');
     var field = {};
     field.pathName = parts[0];
@@ -240,7 +251,7 @@ exports.stubFieldMap = function(optionalFields) {
     map.fieldsByKey[field.id] = field;
     map.fieldsByAlias[field.alias] = field;
   });
-  map.get.and.callFake(function(fieldName) {
+  map.getField.and.callFake(function(fieldName) {
     return map.fieldsByAlias[fieldName]||null;
   });
   map.key = function(path, field) { return path + '.' + field; };
@@ -252,6 +263,8 @@ exports.stubFieldMap = function(optionalFields) {
   map.forEach = function(callback, context) {
     _.each(map.fieldsByAlias, callback, context);
   };
+  map.getPathManager.and.callFake(function() { return mgr; });
+  map.getPath.and.callFake(function(pathName) { return mgr.getPath(pathName); });
   return map;
 };
 
@@ -265,10 +278,10 @@ exports.stubRec = function(pathList, fieldList) {
   var paths = exports.stubPaths(pathList);
   var fieldMap = exports.stubFieldMap(fieldList);
   var rec = jasmine.createSpyObj('RecordStub',
-    ['getPathMgr', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap']
+    ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap']
   );
   var mgr = exports.stubPathMgr();
-  rec.getPathMgr.and.callFake(function() {
+  rec.getPathManager.and.callFake(function() {
     return mgr;
   });
   rec.child.and.callFake(function(key) {
@@ -285,7 +298,7 @@ exports.stubRec = function(pathList, fieldList) {
     return _.isObject(dat) && _.isEmpty(dat)? null : dat;
   });
   rec.getChildSnaps.and.callFake(function(snaps, fieldName) {
-    var f = fieldMap.get(fieldName);
+    var f = fieldMap.getField(fieldName);
     var key = f? f.id : fieldName;
     return [(_.find(snaps, function(ss) {
       return !f || f.url === ss.ref().toString();

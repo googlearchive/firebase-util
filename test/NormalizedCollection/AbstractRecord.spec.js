@@ -8,27 +8,28 @@ describe('AbstractRecord', function() {
   var Rec;
   beforeEach(function() {
     Rec = function() {
-      this._super(hp.stubPathMgr(), hp.stubFieldMap());
+      this._super(hp.stubFieldMap());
     };
     util.inherits(Rec, AbstractRecord, {
-      _start: jasmine.createSpy(),
-      _stop: jasmine.createSpy()
+      _start: jasmine.createSpy('_start'),
+      _stop: jasmine.createSpy('_stop')
     });
   });
 
   describe('#getFieldMap', function() {
     it('should return the FieldMap', function() {
-      var pm = {}, map = {};
-      var rec = new AbstractRecord(pm, map);
+      var map = {};
+      var rec = new AbstractRecord(map);
       expect(rec.getFieldMap()).toBe(map);
     });
   });
 
-  describe('#getPathMgr', function() {
+  describe('#getPathManager', function() {
     it('should return the PathManager', function() {
-      var pm = {}, map = {};
-      var rec = new AbstractRecord(pm, map);
-      expect(rec.getPathMgr()).toBe(pm);
+      var pm = {};
+      var map = { getPathManager: function() { return pm; }};
+      var rec = new AbstractRecord(map);
+      expect(rec.getPathManager()).toBe(pm);
     });
   });
 
