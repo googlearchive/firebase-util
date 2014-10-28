@@ -48,9 +48,7 @@ util.inherits(RecordField, AbstractRecord, {
   },
 
   /**
-   * Given a list of snapshots to iterate, returns the valid keys
-   * which exist in both the snapshots and the field map, in the
-   * order they should be iterated.
+   * Iterates all keys of snapshot.
    *
    * Calls iterator with a {string|number} key for the next field to
    * iterate only.
@@ -69,11 +67,8 @@ util.inherits(RecordField, AbstractRecord, {
       throw new Error('RecordField must have exactly one snapshot, but we got '+snaps.length);
     }
     var firstSnap = snaps[0];
-    return this.map.forEach(function(field) {
-        if( field.id === '$key' || field.id === '$value' || firstSnap.hasChild(field.id) ) {
-          return iterator.call(context, field.id) === true;
-        }
-        return false;
+    return firstSnap.forEach(function(ss) {
+      iterator.call(context, ss.name());
     });
   },
 

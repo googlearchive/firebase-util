@@ -154,6 +154,22 @@ beforeEach(function() {
           }
         }
       }
+    },
+
+    toHaveCallCount: function() {
+      return {
+        compare: function(spy, expCount) {
+          var pass, not, count;
+          count = spy.calls.count();
+          pass = count === expCount;
+          not = pass? '" not' : '"';
+          return {
+            pass: pass,
+            message: 'Expected spy "' + spy.and.identity() + not + ' to have been called ' + expCount + ' times'
+             + (pass? '' : ', but it was called ' + count)
+          }
+        }
+      }
     }
   });
 

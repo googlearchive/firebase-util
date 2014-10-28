@@ -65,25 +65,33 @@ describe('RecordField', function() {
   });
 
   describe('#forEachKey', function() {
-    it('should iterate $value', function() {
-      var data = true;
-      var spy = jasmine.createSpy().and.callFake(function(nextKey) {
-        expect(nextKey).toBe('$value');
+    it('should iterate all snapshot children regardless of field map', function() {
+      var data = {foo: 'fooval', bar: 'barval'};
+      var keys = _.keys(data).reverse();
+      var count = keys.length;
+      var spy = jasmine.createSpy('iterator').and.callFake(function(nextKey) {
+        expect(nextKey).toBe(keys.pop());
       });
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
       rec.forEachKey(hp.snaps(data), spy);
-      expect(spy).toHaveBeenCalled();
+      expect(spy).toHaveCallCount(count);
     });
 
+    it('should skip if null', function() {
+      var spy = jasmine.createSpy('iterator');
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      rec.forEachKey(hp.snaps(null), spy);
+      expect(spy).toHaveCallCount(0);
+    });
 
     it('should evaluate in the correct context', function() {
       var ctx = {};
-      var spy = jasmine.createSpy().and.callFake(function() {
+      var spy = jasmine.createSpy('iterator').and.callFake(function() {
         expect(this).toBe(ctx);
       });
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
       rec.forEachKey(hp.snaps({f10: true, f11: false}), spy, ctx);
-      expect(spy).toHaveBeenCalled();
+      expect(spy).toHaveCallCount(2);
     });
   });
 
