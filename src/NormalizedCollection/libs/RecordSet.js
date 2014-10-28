@@ -3,7 +3,6 @@
 var Record = require('./Record');
 var AbstractRecord = require('./AbstractRecord');
 var util = require('../../common');
-var PathManager = require('./PathManager');
 var FieldMap = require('./FieldMap');
 
 function RecordSet(fieldMap, whereClause) {

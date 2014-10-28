@@ -21,7 +21,7 @@ describe('RecordField', function() {
 
     it('should throw error if more than one field', function() {
       expect(function() {
-        new RecordField(hp.stubFieldMap(['p1,$value', 'p1,foo'], ['p1']))
+        new RecordField(hp.stubFieldMap(['p1,$value', 'p1,foo'], ['p1']));
       }).toThrowError(Error);
     });
   });
