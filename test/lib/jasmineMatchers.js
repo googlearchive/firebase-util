@@ -70,12 +70,12 @@ beforeEach(function() {
     // inspired by: https://gist.github.com/prantlf/8631877
     toBeInstanceOf: function() {
       return {
-        compare: function (actual, expected) {
+        compare: function (actual, expected, name) {
           var result = {
             pass: actual instanceof expected
           };
           var notText = result.pass? ' not' : '';
-          result.message = 'Expected ' + actual + notText + ' to be an instance of ' + expected;
+          result.message = 'Expected ' + actual + notText + ' to be an instance of ' + (name||expected.constructor.name);
           return result;
         }
       };

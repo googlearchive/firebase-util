@@ -4,7 +4,6 @@ var PathManager = require('./PathManager');
 var FieldMap = require('./FieldMap');
 var RecordField = require('./RecordField');
 var AbstractRecord = require('./AbstractRecord');
-//var Snapshot = require('./NormalizedSnapshot');
 var util = require('../../common');
 
 function Record(pathManager, fieldMap) {
@@ -14,24 +13,32 @@ function Record(pathManager, fieldMap) {
 
 util.inherits(Record, AbstractRecord, {
   child: function(key) {
-    var pm = new PathManager([this.map.pathFor(key)]);
+    var childPath = this.map.pathFor(key).child(key);
+    var pm = new PathManager([childPath]);
     var fm = new FieldMap(pm);
-    fm.add({key: FieldMap.key(pm.first(), '$value'), alias: key});
+    fm.add({key: FieldMap.key(childPath, '$value'), alias: key});
     return new RecordField(pm, fm);
   },
 
-  getChildSnaps: function(/*snapsArray, fieldName*/) {
-    //todo handle $key and $value
-    //todo should return snap.child(field.id)
-    //todo
-    //todo
-    //todo
-    //todo
-//    var pathUrl = this.map.pathFor(fieldName).url();
-//    var snap = util.find(snapsArray, function(ss) {
-//      return ss.ref().ref().toString() === pathUrl;
-//    }) || snapsArray[0];
-//    return [snap];
+  getChildSnaps: function(snaps, fieldName) {
+    var child;
+    var snap = this.map.snapFor(snaps, fieldName);
+    var field = this.map.get(fieldName);
+    if( !field ) {
+      child = snap.child(fieldName);
+    }
+    else {
+      switch(field.id) {
+        case '$key':
+          throw new Error('Cannot get child snapshot from key (not a real child element)');
+        case '$value':
+          child = snap;
+          break;
+        default:
+          child = snap.child(field.id);
+      }
+    }
+    return [child];
   },
 
   //todo forEachKey

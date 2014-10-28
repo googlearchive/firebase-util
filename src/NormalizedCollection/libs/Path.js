@@ -15,7 +15,11 @@ Path.prototype = {
   reff: function() { return this.ref().ref(); },
   child: function(key) {
     //todo-dynamic-keys
-    return new Path(this.reff().child(key));
+    return new Path(this.reff().child(key), this);
+  },
+  normChild: function(key) {
+    //todo-dynamic-keys
+    return new Path([this.reff().child(key), this.name()], this);
   },
   hasDependency: function() {
     return this._dep !== null;

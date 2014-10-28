@@ -268,4 +268,12 @@ describe('FieldMap', function() {
       expect(res).toEqual({foo: 'path1', bar: {baz: {'.value': 0, '.priority': 100}}});
     });
   });
+
+  describe('#forEach', function() {
+    it('should have tests');
+  });
+
+  describe('#snapFor', function() {
+    it('should have tests');
+  });
 });

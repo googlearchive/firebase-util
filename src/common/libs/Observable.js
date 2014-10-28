@@ -25,7 +25,9 @@ Observable.prototype = {
    */
   observe: function(event, callback, cancelFn, scope) {
     var args = getArgs('observe', arguments, 2, 4), obs;
+    console.log('observe', event, this._observableProps.eventsMonitored); //debug
     event = args.nextFromReq(this._observableProps.eventsMonitored);
+    console.log('it went okay'); //debug
     if( event ) {
       callback = args.nextReq('function');
       cancelFn = args.next('function');

@@ -37,7 +37,7 @@ PathManager.prototype = {
 
   getPath: function(pathName) {
     return util.find(this.paths, function(p) {
-      return p.alias === pathName;
+      return p.name() === pathName;
     });
   },
 

@@ -22,6 +22,10 @@ FieldMap.prototype = {
     this.length++;
   },
 
+  forEach: function(callback, context) {
+    return util.find(this.fields, callback, context) !== util.undef;
+  },
+
   'get': function(fieldName) {
     return this.fields[fieldName]||null;
   },
@@ -67,6 +71,13 @@ FieldMap.prototype = {
       out['.priority'] = snapshot.getPriority();
     }
     return out;
+  },
+
+  snapFor: function(snaps, fieldName) {
+    var url = this.pathFor(fieldName).url();
+    return util.find(snaps, function(snap) {
+      return snap.ref().toString() === url;
+    }) || null;
   }
 };
 

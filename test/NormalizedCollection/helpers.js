@@ -1,6 +1,6 @@
 
 var _ = require('lodash');
-//var MockFirebase = require('mockfirebase');
+var MockFirebase = require('mockfirebase').MockFirebase;
 
 //todo the stubs in here are a bit of a mess; some of them are nearly as complex as
 //todo the objects they attempt to stub. Instead, those methods should be stubbed
@@ -91,6 +91,7 @@ exports.stubPath = function(props) {
     props = PATHS[props];
   }
   var p = jasmine.createSpyObj('PathStub', ['name', 'id', 'url', 'child', 'ref', 'reff', 'hasDependency', 'getDependency']);
+  var ref = exports.stubRef(p);
   p.name.and.callFake(function() { return props.alias || null; });
   p.id.and.callFake(function() { return props.id || null; });
   p.url.and.callFake(function() { return props.url; });
@@ -99,8 +100,8 @@ exports.stubPath = function(props) {
       return exports.stubPath({id: k, alias: k, url: base.url() + '/' + k});
     });
   });
-  p.ref.and.callFake(function() { return exports.stubRef(p); });
-  p.reff.and.callFake(function() { return exports.stubRef(p); });
+  p.ref.and.callFake(function() { return ref; });
+  p.reff.and.callFake(function() { return ref; });
   p.hasDependency.and.callFake(function() {
     return _.has(props, 'dep');
   });
@@ -224,7 +225,7 @@ exports.stubNormRef = function(pathList, fieldList) {
  * @returns {*}
  */
 exports.stubFieldMap = function(optionalFields) {
-  var map = jasmine.createSpyObj('FieldMapStub', ['extractData', 'aliasFor', 'fieldsFor', 'pathFor', 'get', 'add']);
+  var map = jasmine.createSpyObj('FieldMapStub', ['extractData', 'aliasFor', 'fieldsFor', 'pathFor', 'get', 'add', 'forEach']);
   map.fieldsByKey = {};
   map.fieldsByAlias = {};
   _.each(optionalFields || FIELDS, function(f) {
@@ -248,6 +249,9 @@ exports.stubFieldMap = function(optionalFields) {
       return f.url === url;
     }) || null;
   });
+  map.forEach = function(callback, context) {
+    _.each(map.fieldsByAlias, callback, context);
+  };
   return map;
 };
 
@@ -342,7 +346,7 @@ exports.snaps = function() {
 };
 
 exports.stubRef = function(path) {
-  var obj = jasmine.createSpyObj('ref', ['name', 'child', 'ref', 'toString']);
+  var obj = jasmine.createSpyObj('ref', ['name', 'child', 'ref', 'toString', 'on', 'once', 'off']);
   obj.child.and.callFake(function(key) {
     return denestChildKey(obj, key, function(nextParent, nextKey) {
       return exports.stubRef(nextParent.$$getPath().child(nextKey));
@@ -433,6 +437,14 @@ exports.stubSnap = function(fbRef, data, pri) {
     }
   );
   return obj;
+};
+
+exports.mockRef = function(path) {
+  var pathString = _.flatten(arguments).join('/');
+  if( pathString.match('://') ) {
+    return new MockFirebase(pathString);
+  }
+  return new MockFirebase().child(pathString);
 };
 
 function pathString(paths) {

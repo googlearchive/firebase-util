@@ -81,7 +81,7 @@ AbstractRecord.prototype = {
    * appropriate child snapshot or ref for them. We should include any
    * nested children only once, by the nesting object's key.
    *
-   * @param {array} snaps
+   * @param {Array} snaps
    * @param {function} iterator
    * @param {object} [context]
    * @return {boolean} true if aborted
@@ -98,7 +98,7 @@ AbstractRecord.prototype = {
    * from the correct snapshot, or the first if the child is not
    * in the map.
    *
-   * @param {array} snaps
+   * @param {Array} snaps
    * @param {string} key
    * @abstract
    */
@@ -110,7 +110,7 @@ AbstractRecord.prototype = {
    * return records ordered by the first reference. For a Record,
    * this should return the fields in the field map.
    *
-   * @param {array} snaps
+   * @param {Array} snaps
    * @param {boolean} isExport
    * @abstract
    */

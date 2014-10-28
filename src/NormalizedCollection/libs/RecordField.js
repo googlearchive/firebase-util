@@ -7,6 +7,9 @@ var util = require('../../common');
 
 function RecordField(pathManager, fieldMap) {
   this._super(pathManager, fieldMap);
+  if( pathManager.getPaths().length !== 1 ) {
+    throw new Error('RecordField must have exactly one snapshot, but we got '+ pathManager.getPaths().length);
+  }
   this.path = pathManager.first();
 }
 
@@ -18,9 +21,12 @@ util.inherits(RecordField, AbstractRecord, {
     return new RecordField(pm, fm);
   },
 
-  getChildSnaps: function(snapsArray, fieldName) {
-    // there are no aliases at this level so fieldName === key
-    return [snapsArray[0].child(fieldName)];
+  getChildSnaps: function(snaps, fieldName) {
+    if( snaps.length !== 1 ) {
+      throw new Error('RecordField must have exactly one snapshot, but we got '+snaps.length);
+    }
+    // there is exactly one snap and there are no aliases to deal with
+    return [snaps[0].child(fieldName)];
   },
 
   /**
@@ -38,11 +44,45 @@ util.inherits(RecordField, AbstractRecord, {
     return isExport? snaps[0].exportVal() : snaps[0].val();
   },
 
+  /**
+   * Given a list of snapshots to iterate, returns the valid keys
+   * which exist in both the snapshots and the field map, in the
+   * order they should be iterated.
+   *
+   * Calls iterator with a {string|number} key for the next field to
+   * iterate only.
+   *
+   * If iterator returns true, this method should abort and return true,
+   * otherwise it should return false (same as Snapshot.forEach).
+   *
+   * We do not include $key fields or $value fields because there is no
+   * appropriate child snapshot or ref for them. We should include any
+   * nested children only once, by the nesting object's key.
+   *
+   * @param {Array} snaps
+   * @param {function} iterator
+   * @param {object} [context]
+   * @return {boolean} true if aborted
+   * @abstract
+   */
+  forEachKey: function(snaps, iterator, context) {
+    if( snaps.length !== 1 ) {
+      throw new Error('RecordField must have exactly one snapshot, but we got '+snaps.length);
+    }
+    var firstSnap = snaps[0];
+    return this.map.forEach(function(field) {
+      if( firstSnap.hasChild(field.id) ) {
+        return iterator.call(context, field.id) === true;
+      }
+      return false;
+    });
+  },
+
   _start: function(event) {
     this.path.ref().on(event, this._handler(event), this._cancel, this);
   },
 
-  _end:   function(event) {
+  _stop:   function(event) {
     this.path.ref().off(event, this._handler(event), this);
   }
 });

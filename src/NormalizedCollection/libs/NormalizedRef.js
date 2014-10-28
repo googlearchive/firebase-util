@@ -54,6 +54,9 @@ util.inherits(NormalizedRef, Query, {
    ***************************/
   'auth': notSupported('auth'),
   'unauth': notSupported('unauth'),
+
+  //todo upgrade this to include 1.1.x API methods
+
   'transaction': notSupported('transaction'),
   'goOffline': notSupported('goOffline'),
   'goOnline': notSupported('goOnline'),
