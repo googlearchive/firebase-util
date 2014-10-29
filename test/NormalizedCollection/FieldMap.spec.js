@@ -213,44 +213,6 @@ describe('FieldMap', function() {
       expect(res).toEqual({foo: {key: 'path1', val: false}});
     });
 
-    it('should not use .value for primitive if isExport but no priority', function() {
-      var pm = hp.stubPathMgr();
-      var map = new FieldMap(pm);
-      map.add({key: 'p1.$key', alias: 'foo'});
-      map.add({key: 'p1.field1', alias: 'bar.baz'});
-      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0});
-      var res = map.extractData(snapshot, true);
-      expect(res).toEqual({foo: 'path1', bar: {baz: 0}});
-    });
-
-    it('should use .value for primitive if isExport and there is a priority', function() {
-      var pm = hp.stubPathMgr();
-      var map = new FieldMap(pm);
-      map.add({key: 'p1.$key', alias: 'foo'});
-      map.add({key: 'p1.field1', alias: 'f1'});
-      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, false);
-      var res = map.extractData(snapshot, true);
-      expect(res).toEqual({foo: 'path1', f1: 0, '.priority': false});
-    });
-
-    it('should include .priority for values if isExport', function() {
-      var pm = hp.stubPathMgr();
-      var map = new FieldMap(pm);
-      map.add('p1.$key');
-      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, 100);
-      var res = map.extractData(snapshot, true);
-      expect(res).toEqual({'$key': 'path1', '.priority': 100});
-    });
-
-    it('should not include null priority', function() {
-      var pm = hp.stubPathMgr();
-      var map = new FieldMap(pm);
-      map.add('p1.$key');
-      var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, 100);
-      var res = map.extractData(snapshot, null);
-      expect(res['.priority']).toBeUndefined();
-    });
-
     it('should include nested priorities', function() {
       var pm = hp.stubPathMgr();
       var map = new FieldMap(pm);

@@ -65,6 +65,19 @@ FieldMap.prototype = {
     return f? f.alias : null;
   },
 
+  /**
+   * Pulls data out of a snapshot aliased by the field map. Only keys in the field map
+   * will be returned. Always returns an object. Does not return a priority at the root
+   * level but will return priorties for all children. If the snapshot contains a primitive,
+   * an empty object will be returned.
+   *
+   * This is not intended to provide finalized values but instead to provide an object representation
+   * of each snapshot useful for merging snapshot data into a finalized value (see Record.mergeData)
+   *
+   * @param {object} snapshot a Firebase snapshot
+   * @param {boolean} isExport
+   * @returns {object}
+   */
   extractData: function(snapshot, isExport) {
     var out = {};
     var pathName = this.pathMgr.getPathName(snapshot.ref().toString());
@@ -87,6 +100,14 @@ FieldMap.prototype = {
     return out;
   },
 
+  /**
+   * Given an array of snapshots and an aliased fieldName, this will return the appropriate
+   * snapshot containing the corresponding field. If no snapshot matches, it will return null.
+   *
+   * @param {Array} snaps a list of Firebase snapshots
+   * @param {String} fieldName
+   * @returns {object|null}
+   */
   snapFor: function(snaps, fieldName) {
     var url = this.pathFor(fieldName).url();
     return util.find(snaps, function(snap) {
