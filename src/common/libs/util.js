@@ -5,9 +5,9 @@
 
 var undef;
 var util = exports;
+var READ_EVENTS = ['value', 'child_added', 'child_removed', 'child_updated', 'child_changed'];
 
 util.undef = undef;
-
 util.Firebase = global.Firebase || require('firebase');
 
 util.isDefined = function(v) {
@@ -362,6 +362,13 @@ util._mockFirebaseRef = function(mock) {
 
 util.escapeEmail = function(email) {
   return (email||'').replace('.', ',');
+};
+
+
+util.assertValidEvent = function(event) {
+  if( !util.contains(READ_EVENTS, event) ) {
+    throw new Error('Event must be one of ' + READ_EVENTS + ', but received ' + event);
+  }
 };
 
 /**

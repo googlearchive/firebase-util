@@ -153,7 +153,7 @@ exports.stubNormSnap = function(ref, data, pri) {
     function() { return _.cloneDeep(data) }
   );
   obj.hasChild.and.callFake(
-    function(key) { return _.has(data, key); }
+    function(key) { return _.has(data, key) && data[key] !== null; }
   );
   obj.forEach.and.callFake(
     function(callback, context) {
@@ -454,10 +454,17 @@ exports.stubSnap = function(fbRef, data, pri) {
 
 exports.mockRef = function(path) {
   var pathString = _.flatten(arguments).join('/');
+  var ref;
   if( pathString.match('://') ) {
-    return new MockFirebase(pathString);
+    ref = new MockFirebase(pathString);
   }
-  return new MockFirebase().child(pathString);
+  else {
+    ref = new MockFirebase();
+    if( pathString ) {
+      ref = ref.child(pathString);
+    }
+  }
+  return ref;
 };
 
 function pathString(paths) {

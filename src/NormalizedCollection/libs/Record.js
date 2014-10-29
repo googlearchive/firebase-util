@@ -37,12 +37,43 @@ util.inherits(Record, AbstractRecord, {
     return [child];
   },
 
-  //todo forEachKey
-  //todo
-  //todo
-  //todo
-  //todo
-  //todo
+  /**
+   * Given a list of snapshots to iterate, returns the valid keys
+   * which exist in both the snapshots and the field map, in the
+   * order they should be iterated.
+   *
+   * Calls iterator with a {string|number} key for the next field to
+   * iterate only.
+   *
+   * If iterator returns true, this method should abort and return true,
+   * otherwise it should return false (same as Snapshot.forEach).
+   *
+   * @param {Array} snaps
+   * @param {function} iterator
+   * @param {object} [context]
+   * @return {boolean} true if aborted
+   * @abstract
+   */
+  forEachKey: function(snaps, iterator, context) {
+    function shouldIterate(snap, fieldId) {
+      switch(fieldId) {
+        case '$key':
+          return true;
+        case '$value':
+          return snap && snap.val() !== null;
+        default:
+          return snap && snap.hasChild(fieldId);
+      }
+    }
+    var map = this.map;
+    return map.forEach(function(field) {
+      var snap = map.snapFor(snaps, field.alias);
+      if( shouldIterate(snap, field.id) ) {
+        return iterator.call(context, field.id, field.alias) === true;
+      }
+      return false;
+    });
+  },
 
   /**
    * Merge the data by iterating the snapshots in reverse order
@@ -54,9 +85,16 @@ util.inherits(Record, AbstractRecord, {
    */
   mergeData: function(snaps, isExport) {
     var map = this.map;
-    return util.extend.apply(null, util.map(snaps, function(ss) {
+    var data = util.extend.apply(null, util.map(snaps, function(ss) {
       return map.extractData(ss, isExport);
     }));
+    if( isExport && snaps.length > 0 && snaps[0].getPriority() !== null ) {
+      if( !util.isObject(data) ) {
+        data = {'.value': data};
+      }
+      data['.priority'] = snaps[0].getPriority();
+    }
+    return data;
   },
 
   _start: function(event) {
@@ -68,7 +106,7 @@ util.inherits(Record, AbstractRecord, {
   },
 
   _stop:   function(event) {
-    if( util.has(this._eventManagers, event) ) {
+    if (util.has(this._eventManagers, event)) {
       this._eventManagers[event].stop();
     }
   }
@@ -84,7 +122,7 @@ function ValueEventManager(rec) {
 ValueEventManager.prototype = {
   start: function() {
     if( !this.running ) {
-      this.running = false;
+      this.running = true;
       util.each(this.pm.getPathNames(), this._startPath, this);
     }
   },
@@ -111,7 +149,7 @@ ValueEventManager.prototype = {
     var path = self.pm.getPath(pathName);
     var fn = util.bind(self.update, self, pathName);
     if( path.hasDependency() ) {
-      var dyno = new Dyno(path, this.rec.getPathManager(), this.rec.getFieldMap(), 'value', fn);
+      var dyno = new Dyno(path, this.rec.getFieldMap(), 'value', fn);
       this.subs.push(dyno.dispose);
     }
     else {
@@ -135,6 +173,7 @@ function ChildEventManager(event, rec) {
   this.event = event;
   this.rec = rec;
   this.pm = rec.getPathManager();
+  this.subs = [];
 }
 
 ChildEventManager.prototype = {
@@ -164,7 +203,12 @@ ChildEventManager.prototype = {
   },
 
   update: function(snap) {
-    this.rec._trigger(this.event, [snap]);
+    //todo-dynamic-keys what do we do here? dynamic keys can change
+    //todo-dynamic-keys and our handling is not exactly correct
+    //todo-dynamic-keys and we also need to utilize the fieldmap somehow
+    if( snap !== null ) {
+      this.rec._trigger(this.event, [snap]);
+    }
   }
 };
 
@@ -193,6 +237,7 @@ function Dyno(path, fieldMap, event, updateFn) {
     if( ref && ref.name() !== snap.val() ) {
       // any time the id changes, remove the old listener
       ref.off(event, updateFn);
+      updateFn(null);
     }
     if( snap.val() !== null ) {
       // establish our listener at the correct dynamic id for values

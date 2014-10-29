@@ -69,8 +69,10 @@ describe('RecordField', function() {
       var data = {foo: 'fooval', bar: 'barval'};
       var keys = _.keys(data).reverse();
       var count = keys.length;
-      var spy = jasmine.createSpy('iterator').and.callFake(function(nextKey) {
-        expect(nextKey).toBe(keys.pop());
+      var spy = jasmine.createSpy('iterator').and.callFake(function(nextKey, nextAlias) {
+        var exp = keys.pop();
+        expect(nextKey).toBe(exp);
+        expect(nextAlias).toBe(exp);
       });
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
       rec.forEachKey(hp.snaps(data), spy);

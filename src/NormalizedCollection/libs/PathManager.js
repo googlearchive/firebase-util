@@ -23,7 +23,7 @@ PathManager.prototype = {
     }
     this._map(path);
     this.paths.push(path);
-    this.pathsByUrl[path.url()] = path.id();
+    this.pathsByUrl[path.url()] = path.name();
     this.pathNames.push(path.name());
   },
 
@@ -53,6 +53,7 @@ PathManager.prototype = {
     return this.pathNames.slice();
   },
 
+  //todo remove?
   getDependencyGraph: function() {
     var out = { names: [], deps: {} };
     util.each(this.paths, function(p) {

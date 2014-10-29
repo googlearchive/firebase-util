@@ -84,9 +84,6 @@ FieldMap.prototype = {
           }
       }
     });
-    if( isExport && snapshot.getPriority() !== null ) {
-      out['.priority'] = snapshot.getPriority();
-    }
     return out;
   },
 
@@ -152,6 +149,8 @@ function parseProps(propsRaw, pathMgr) {
     key: propsRaw.key,
     alias: propsRaw.alias || parts[1],
     path: path,
+    //todo-dynamic-keys this isn't correct for dynamic fields :(
+    //todo-dynamic-keys and probably not for $value and $key either
     url: path? path.url() + '/' + parts[1] : null
   };
 }
