@@ -55,7 +55,7 @@ NormalizedSnapshot.prototype = {
     while(res && parts.length) {
       var nextKey = parts.pop();
       res = rec.hasChild(nsnap._snaps, nextKey);
-      if( res ) {
+      if( res && parts.length ) {
         rec = rec.child(nextKey);
         nsnap = nsnap.child(nextKey);
       }

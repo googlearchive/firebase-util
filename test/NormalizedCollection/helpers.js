@@ -93,15 +93,14 @@ exports.stubPath = function(props) {
   if( typeof props === 'string' ) {
     props = PATHS[props];
   }
+  if( !props ) { throw new Error('Invalid path props'); }
   var p = jasmine.createSpyObj('PathStub', ['name', 'id', 'url', 'child', 'ref', 'reff', 'hasDependency', 'getDependency']);
   var ref = exports.stubRef(p);
   p.name.and.callFake(function() { return props.alias || null; });
   p.id.and.callFake(function() { return props.id || null; });
   p.url.and.callFake(function() { return props.url; });
   p.child.and.callFake(function(key) {
-    return denestChildKey(p, key, function(base, k) {
-      return exports.stubPath({id: k, alias: k, url: base.url() + '/' + k});
-    });
+    return exports.stubPath({id: key, alias: key, url: p.url() + '/' + key});
   });
   p.ref.and.callFake(function() { return ref; });
   p.reff.and.callFake(function() { return ref; });
@@ -285,10 +284,8 @@ exports.stubRec = function(pathList, fieldList) {
     return mgr;
   });
   rec.child.and.callFake(function(key) {
-    return denestChildKey(rec, key, function(nextParent, nextKey) {
-      var p = firstChild(nextParent.$$getPaths()).child(nextKey);
-      return exports.stubRec([p], [p.name() + '.' + nextKey]);
-    });
+    var p = firstChild(paths);
+    return exports.stubRec([p], [p.name() + ',' + key]);
   });
   rec.$$getPaths = function() { return paths; };
   rec.mergeData.and.callFake(function(snaps, isExport) {
@@ -327,7 +324,14 @@ exports.stubRec = function(pathList, fieldList) {
     return res;
   });
   rec.hasChild.and.callFake(function(snaps, key) {
-    return fieldMap.getField(key) !== null;
+    var f = fieldMap.getField(key);
+    if( f !== null ) {
+      return _.contains(snaps, function(snap) {
+        return snap.forEach(function(ss) {
+          return f.id === ss.name();
+        });
+      });
+    }
   });
   rec.getFieldMap.and.callFake(function() { return fieldMap; });
   return rec;

@@ -122,27 +122,37 @@ describe('NormalizedSnapshot', function() {
     it('should iterate dynamic fields that have data');
   });
 
-  describe('#hasChild', function() {
-    it('should return true if child exists in both snapshots and field list', function() {
-      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({f11: true}));
+  ddescribe('#hasChild', function() {
+    it('should invoke rec.hasChild', function() {
+      var ref = hp.stubNormRef();
+      var snaps = hp.snaps({f11: true});
+      var snap = new NormalizedSnapshot(ref, snaps);
+      ref._getRec().hasChild.calls.reset();
+      snap.hasChild('foo');
+      expect(ref._getRec().hasChild).toHaveBeenCalledWith(snaps, 'foo');
+    });
+
+    it('should return true if rec.hasChild returns true', function() {
+      var ref = hp.stubNormRef();
+      var snaps = hp.snaps({f11: true});
+      var snap = new NormalizedSnapshot(ref, snaps);
+      ref._getRec().hasChild.and.callFake(function(snaps, key) {
+        return key === 'foo';
+      });
       expect(snap.hasChild('foo')).toBe(true);
     });
 
-    it('should return false if child does not exist in field list', function() {
-      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({notakey: true}));
-      expect(snap.hasChild('notakey')).toBe(false);
-    });
-
-    it('should return false if child does not exist in snapshot data', function() {
-      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({notakey: true}));
+    it('should return false if rec.hasChild returns false', function() {
+      var ref = hp.stubNormRef();
+      var snaps = hp.snaps({f11: true});
+      var snap = new NormalizedSnapshot(ref, snaps);
+      ref._getRec().hasChild.and.returnValue(false);
       expect(snap.hasChild('foo')).toBe(false);
     });
 
-    it('should return false if value is a primitive', function() {
-      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps(9));
-      expect(snap.hasChild('f10')).toBe(false);
-    });
-
+    // current stubbed record's .child() method doesn't work well in this
+    // context (does not do nesting); need to replace that before we can make
+    // this work as expected
     it('should work for keys with / in path (nested children)');
   });
 
