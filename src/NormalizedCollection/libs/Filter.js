@@ -13,9 +13,9 @@ Filter.prototype = {
       new Condition(fn)
     );
   },
-  test: function(snapshot) {
+  test: function(recordData, key, priority) {
     return util.contains(this.criteria, function(cond) {
-      return !cond.test(snapshot);
+      return !cond.test(recordData, key, priority);
     }) === false;
   }
 };
@@ -24,8 +24,8 @@ function Condition(fn) {
   this.match = fn;
 }
 
-Condition.prototype.test = function(snapshot) {
-  return this.match(snapshot) === true;
+Condition.prototype.test = function(data, key, priority) {
+  return this.match(data, key, priority) === true;
 };
 
 module.exports = Filter;

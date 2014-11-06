@@ -270,7 +270,7 @@ exports.stubFieldMap = function(fields, paths) {
 
 /**
  * Creates a Rec stub.
- * @param {Array} [pathList] defaults to PATHS above
+ * @param {Array|object} [pathList] defaults to PATHS above
  * @param {Array|object} [fieldList] defaults to FIELDS above
  * @returns {*}
  */
@@ -299,35 +299,35 @@ exports.stubRec = function(pathList, fieldList) {
   });
   rec.getChildSnaps.and.callFake(function(snaps, fieldName) {
     var f = fieldMap.getField(fieldName);
-    var key = f? f.id : fieldName;
+    var key = f? f.alias : fieldName;
     return [(_.find(snaps, function(ss) {
       return !f || f.url === ss.ref().toString();
     })||snaps[0]).child(key)];
   });
-  rec.hasChild.and.callFake(function(url) {
-    return fieldMap.aliasFor(url) !== null;
-  });
   rec.forEachKey.and.callFake(function(snaps, iterator, context) {
-    var res = false;
-    _.each(fieldMap.fieldsByKey, function(f) {
-      var snap, key = f.id;
-      switch(key) {
+    function shouldIterate(f) {
+      switch(f.id) {
         case '$key':
+          return true;
         case '$value':
-          // do nothing; we don't include the $keys or $values in forEach
-          // because there is no appropriate snapshot or ref for them
           break;
         default:
-          snap = _.find(snaps, function(snap) {
-            return snap.hasChild(key) && snap.ref().toString() === f.path.url();
+          return !!_.find(snaps, function(snap) {
+            return snap.hasChild(f.id) && snap.ref().toString() === f.path.url();
           });
       }
-      if( snap ) {
-        res = iterator.call(context, f.alias) === true;
+    }
+    var res = false;
+    _.each(fieldMap.fieldsByKey, function(f) {
+      if( shouldIterate(f) ) {
+        res = iterator.call(context, f.id, f.alias) === true;
         return !res; // _.each takes false to abort, our forEach methods take true
       }
     });
     return res;
+  });
+  rec.hasChild.and.callFake(function(snaps, key) {
+    return fieldMap.getField(key) !== null;
   });
   rec.getFieldMap.and.callFake(function() { return fieldMap; });
   return rec;
@@ -465,6 +465,18 @@ exports.mockRef = function(path) {
     }
   }
   return ref;
+};
+
+exports.mergeUrl = function() {
+  var args = _.toArray(arguments);
+  var base = args.shift();
+  while(args.length) {
+    if( !/\/$/.test(base) ) {
+      base += '/';
+    }
+    base += args.shift();
+  }
+  return base;
 };
 
 function pathString(paths) {

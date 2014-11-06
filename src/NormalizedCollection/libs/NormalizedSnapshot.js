@@ -39,39 +39,42 @@ NormalizedSnapshot.prototype = {
   },
 
   forEach: function(cb, context) {
-    //todo-bug should probably work for $value
-    return this._rec.forEachKey(this._snaps, function(childKey) {
-      return cb.call(context, this.child(childKey));
+    return this._rec.forEachKey(this._snaps, function(childId, childAlias) {
+      //todo use this._rec.hasChild() here?
+      if( childId === '$value' || childId === '$key' ) { return false; }
+      return cb.call(context, this.child(childAlias));
     }, this);
   },
 
-  hasChild: function(fieldName) {
+  hasChild: function(key) {
     //todo optimize and/or memoize?
-    var snap;
-    var f = this._rec.getFieldMap().getField(fieldName);
-    if( f !== null ) {
-      switch(f.key) {
-        case '$key':
-          return true;
-        case '$value':
-          snap = snapFor(this._snaps, f.path.url());
-          return snap && snap.val() !== null;
-        default:
-          snap = snapFor(this._snaps, f.path.url());
-          return snap && snap.hasChild(f.id);
+    var parts = key.split('/').reverse();
+    var res = parts.length > 0;
+    var rec = this._rec;
+    var nsnap = this;
+    while(res && parts.length) {
+      var nextKey = parts.pop();
+      res = rec.hasChild(nsnap._snaps, nextKey);
+      if( res ) {
+        rec = rec.child(nextKey);
+        nsnap = nsnap.child(nextKey);
       }
     }
-    return false;
+    return res;
   },
 
+  /**
+   * Returns true if this snapshot has any child data. Does not return true for $key or $value
+   * fields.
+   *
+   * @returns {boolean}
+   */
   hasChildren: function() {
-    //todo-bug does not account for $value keys
-    var rec = this._rec;
-    return util.find(this._snaps, function(snap) {
-      return snap.forEach(function(ss) {
-        return rec.hasChild(ss.ref().toString());
-      });
-    }) !== util.undef;
+    // if there are any keys to iterate, and that key is not $key or $value
+    // then we have children
+    return this._rec.forEachKey(this._snaps, function(id) {
+      return id !== '$key' && id !== '$value';
+    });
   },
 
   name: function() {
@@ -80,15 +83,11 @@ NormalizedSnapshot.prototype = {
 
   numChildren: function() {
     //todo-bug does not account for nested aliases (they will change the count here)
-    var rec = this._rec;
-    return util.reduce(this._snaps, 0, function(accum, snap) {
-      snap.forEach(function(ss) {
-        if( rec.hasChild(ss.ref().toString()) ) {
-          accum++;
-        }
-      });
-      return accum;
+    var ct = 0;
+    this._rec.forEachKey(this._snaps, function(id) {
+      if( id !== '$key' && id !== '$value' ) { ct++; }
     });
+    return ct;
   },
 
   ref: function() { return this._ref.ref(); },

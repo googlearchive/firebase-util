@@ -44,18 +44,11 @@ FieldMap.prototype = {
     return f? f.path : this.pathMgr.first();
   },
 
+  //todo unused?
   fieldsFor: function(pathName) {
     return util.filter(util.toArray(this.fields), function(f) {
       return f.pathName === pathName;
     });
-  },
-
-  idFor: function(fieldName) {
-    var f = this.getField(fieldName);
-    if( f ) {
-      return f.id;
-    }
-    return fieldName;
   },
 
   aliasFor: function(url) {
@@ -80,10 +73,17 @@ FieldMap.prototype = {
    */
   extractData: function(snapshot, isExport) {
     var out = {};
+    //todo-dynamic-keys does not work for dynamic keys, most likely
+    //todo-dynamic-keys since their URL will be created on the fly
     var pathName = this.pathMgr.getPathName(snapshot.ref().toString());
+    if( pathName === null && snapshot.ref().parent() !== null ) {
+      var parentPath = this.pathMgr.getPathFor(snapshot.ref().parent().toString());
+      if( parentPath && parentPath.hasDependency() ) {
+        pathName = parentPath.name();
+      }
+    }
     var fx = isExport? 'exportVal' : 'val';
-    util.each(this.fields, function(f) {
-      if(f.pathName !== pathName ) { return; }
+    util.each(this.fieldsFor(pathName), function(f) {
       switch(f.id) {
         case '$key':
           putIn(out, f.alias, snapshot.name());
@@ -102,7 +102,8 @@ FieldMap.prototype = {
 
   /**
    * Given an array of snapshots and an aliased fieldName, this will return the appropriate
-   * snapshot containing the corresponding field. If no snapshot matches, it will return null.
+   * snapshot containing the corresponding field. If no snapshot matches a field in this map,
+   * it will return null.
    *
    * @param {Array} snaps a list of Firebase snapshots
    * @param {String} fieldName
@@ -131,11 +132,17 @@ FieldMap.fieldMap = function(map, fieldName) {
   return fm;
 };
 
-FieldMap.recordMap = function(map, fieldName) {
+/**
+ * Fetch a list of paths suitable for use in a Record.
+ *
+ * @param {FieldMap} map to be copied
+ * @param {string} recordId the push id for the record
+ * @returns {FieldMap} a copy of the field map with paths ajusted down to the child node
+ */
+FieldMap.recordMap = function(map, recordId) {
   var mgr = map.getPathManager();
-  var fieldId = map.idFor(fieldName);
   var paths = util.map(mgr.getPaths(), function(p) {
-    return p.child(fieldId);
+    return p.normChild(recordId);
   });
   var childMap = new FieldMap(new PathManager(paths));
   map.forEach(function(field) {

@@ -24,10 +24,11 @@ util.inherits(RecordField, AbstractRecord, {
     return new RecordField(fm);
   },
 
+  hasChild: function(snaps, key) {
+    return snaps[0].hasChild(key);
+  },
+
   getChildSnaps: function(snaps, fieldName) {
-    if( snaps.length !== 1 ) {
-      throw new Error('RecordField must have exactly one snapshot, but we got '+snaps.length);
-    }
     // there is exactly one snap and there are no aliases to deal with
     return [snaps[0].child(fieldName)];
   },
@@ -41,9 +42,6 @@ util.inherits(RecordField, AbstractRecord, {
    * @returns {Object}
    */
   mergeData: function(snaps, isExport) {
-    if( snaps.length !== 1 ) {
-      throw new Error('RecordField must have exactly one snapshot, but we got '+snaps.length);
-    }
     return isExport? snaps[0].exportVal() : snaps[0].val();
   },
 
@@ -63,9 +61,6 @@ util.inherits(RecordField, AbstractRecord, {
    * @abstract
    */
   forEachKey: function(snaps, iterator, context) {
-    if( snaps.length !== 1 ) {
-      throw new Error('RecordField must have exactly one snapshot, but we got '+snaps.length);
-    }
     var firstSnap = snaps[0];
     return firstSnap.forEach(function(ss) {
       iterator.call(context, ss.name(), ss.name());

@@ -56,7 +56,7 @@ describe('NormalizedSnapshot', function() {
       var ref = hp.stubNormRef();
       ref._getRec().forEachKey.and.callFake(function(snaps, callback, context) {
         for (var i = 0, len = expKeys.length; i < len; i++) {
-          callback.call(context, expKeys[i]);
+          callback.call(context, expKeys[i], expKeys[i]);
         }
       });
       var snap = new NormalizedSnapshot(ref, hp.snaps(true));
@@ -67,7 +67,7 @@ describe('NormalizedSnapshot', function() {
       expect(keys).toEqual(expKeys);
     });
 
-    it('should only include fields in the snapshot', function() {
+    it('should only include aliases in the snapshot', function() {
       var expKeys = ['f10', 'bar'];
       var ref = hp.stubNormRef();
       var snap = new NormalizedSnapshot(ref,
@@ -116,6 +116,10 @@ describe('NormalizedSnapshot', function() {
       snap.forEach(spy, ctx);
       expect(spy).toHaveBeenCalled();
     });
+
+    it('should iterate nested aliases exactly once');
+
+    it('should iterate dynamic fields that have data');
   });
 
   describe('#hasChild', function() {
@@ -138,6 +142,8 @@ describe('NormalizedSnapshot', function() {
       var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps(9));
       expect(snap.hasChild('f10')).toBe(false);
     });
+
+    it('should work for keys with / in path (nested children)');
   });
 
   describe('#hasChildren', function() {

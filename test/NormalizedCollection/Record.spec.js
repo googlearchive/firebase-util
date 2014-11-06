@@ -49,6 +49,10 @@ describe('Record', function() {
     it('should blow up if dynamic field is null?');
   });
 
+  describe('#hasChild', function() {
+    it('should have tests');
+  });
+
   describe('#getChildSnaps', function() {
     it('should return one snapshot', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
@@ -320,6 +324,46 @@ describe('Record', function() {
         expect(calls.argsFor(0)[0]).toBe('value');
         expect(calls.argsFor(1)[0]).toBe('child_removed');
       });
+    });
+
+    describe('value events', function() {
+      it('should return all snapshots');
+
+      it('should only return when all snapshots are present');
+
+      it('should fire appropriate observers');
+    });
+
+    describe('child_added events', function() {
+      it('should trigger with appropriate child snapshot');
+
+      it('should trigger from any path');
+
+      it('should fire appropriate observers');
+    });
+
+    describe('child_removed events', function() {
+      it('should trigger with appropriate child snapshot');
+
+      it('should trigger from any path');
+
+      it('should fire appropriate observers');
+    });
+
+    describe('child_changed events', function() {
+      it('should trigger with appropriate child snapshot');
+
+      it('should trigger from any path');
+
+      it('should fire appropriate observers');
+    });
+
+    describe('child_moved events', function() {
+      it('should trigger with appropriate child snapshot');
+
+      it('should trigger from any path');
+
+      it('should fire appropriate observers');
     });
   });
 

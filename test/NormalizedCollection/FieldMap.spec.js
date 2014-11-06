@@ -83,7 +83,7 @@ describe('FieldMap', function() {
     });
   });
 
-  describe('#get', function() {
+  describe('#getField', function() {
     it('should return a field by alias', function() {
       var map = new FieldMap(hp.stubPathMgr());
       map.add('p1.field1');
@@ -239,19 +239,17 @@ describe('FieldMap', function() {
     it('should have tests');
   });
 
-  describe('#fieldMap', function() {
-    it('should return exactly one field (the key specified)');
-
-    it('should use $value for the field id');
-
-    it('should return child of the appropriate parent path');
-
-    it('should return the first path if child not in any of the paths');
+  describe('#getPathManager', function() {
+    it('should have tests');
   });
 
-  describe('#recordMap', function() {
-    it('should return the same fields as the parent');
+  describe('::recordMap', function() {
+    it('should return a FieldMap');
 
-    it('should return children of all the paths');
+    it('should return same map keys as parent');
+
+    it('should return paths one level deeper than parent');
+
+    it('should return non-adjusted path for dynamic children');
   });
 });

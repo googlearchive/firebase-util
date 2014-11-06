@@ -16,6 +16,13 @@ util.inherits(Record, AbstractRecord, {
     return new RecordField(fm);
   },
 
+  hasChild: function(snaps, key) {
+    var field = this.map.getField(key);
+    if( !field ) { return false; }
+    var snap = this.map.snapFor(snaps, key);
+    return snap !== null && snap.hasChild(key);
+  },
+
   getChildSnaps: function(snaps, fieldName) {
     var child;
     var snap = this.map.snapFor(snaps, fieldName);

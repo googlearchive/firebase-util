@@ -14,22 +14,31 @@ describe('Filter', function() {
   });
 
   describe('#test', function() {
+    it('should iterate with data, key, and priority', function() {
+      var spy = jasmine.createSpy('filter callback');
+      var f = new Filter();
+      var dat = {};
+      f.add(spy);
+      f.test(dat, 'foo', 'bar');
+      expect(spy).toHaveBeenCalledWith(dat, 'foo', 'bar');
+    });
+
     it('should return true if fn returns true', function() {
       var f = new Filter();
       f.add(function() { return true; });
-      expect(f.test({})).toBe(true);
+      expect(f.test({}, 'foo', 'bar')).toBe(true);
     });
 
     it('should return false if fn returns false', function() {
       var f = new Filter();
       f.add(function() { return false; });
-      expect(f.test({})).toBe(false);
+      expect(f.test({}, 'foo', 'bar')).toBe(false);
     });
 
     it('should return false for anything else', function() {
       var f = new Filter();
       f.add(function() {});
-      expect(f.test({})).toBe(false);
+      expect(f.test({}, 'foo', 'bar')).toBe(false);
     });
   });
 });

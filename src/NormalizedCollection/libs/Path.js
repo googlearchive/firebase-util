@@ -14,12 +14,16 @@ Path.prototype = {
   ref: function() { return this._ref; },
   reff: function() { return this.ref().ref(); },
   child: function(key) {
-    //todo-dynamic-keys
     return new Path(this.reff().child(key), this);
   },
   normChild: function(key) {
-    //todo-dynamic-keys
-    return new Path([this.reff().child(key), this.name()], this);
+    var dep = this.getDependency();
+    if( dep !== null ) {
+      return new Path([this.reff(), this.name(), dep.path+'.'+dep.field], this);
+    }
+    else {
+      return new Path([this.reff().child(key), this.name()], this);
+    }
   },
   hasDependency: function() {
     return this._dep !== null;

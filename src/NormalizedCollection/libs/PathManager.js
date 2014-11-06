@@ -38,7 +38,12 @@ PathManager.prototype = {
   getPath: function(pathName) {
     return util.find(this.paths, function(p) {
       return p.name() === pathName;
-    });
+    })||null;
+  },
+
+  getPathFor: function(url) {
+    var n = this.getPathName(url);
+    return n? this.getPath(n) : null;
   },
 
   getPaths: function() {
@@ -55,15 +60,7 @@ PathManager.prototype = {
 
   //todo remove?
   getDependencyGraph: function() {
-    var out = { names: [], deps: {} };
-    util.each(this.paths, function(p) {
-      out.names.push(p.name());
-      out.deps[p.name()] = [];
-    });
-    util.each(this.deps, function(dep, pathName) {
-      out.deps[dep.path].push(pathName);
-    });
-    return out;
+    return util.extend(true, this.deps);
   },
 
   _map: function(path) {
@@ -83,7 +80,7 @@ PathManager.prototype = {
     while(util.isDefined(dep)) {
       var p = dep.path;
       if(util.contains(map, p)) {
-        map.push(p);
+        map.push(p); // adds it into the error message chain
         throw new Error('Circular dependencies in paths: ' + depChain(map, this.deps));
       }
       map.push(p);

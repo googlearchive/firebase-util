@@ -39,6 +39,10 @@ describe('RecordField', function() {
     });
   });
 
+  describe('#hasChild', function() {
+    it('should have tests');
+  });
+
   describe('#getChildSnaps', function() {
     it('should just return child of first snapshot', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
@@ -127,5 +131,25 @@ describe('RecordField', function() {
       var spy = rec.getPathManager().first().ref().off;
       expect(spy.calls.argsFor(0)[0]).toBe('value');
     });
+  });
+
+  describe('value events', function() {
+    it('should fire appropriate observers');
+  });
+
+  describe('child_added events', function() {
+    it('should fire appropriate observers');
+  });
+
+  describe('child_removed events', function() {
+    it('should fire appropriate observers');
+  });
+
+  describe('child_changed events', function() {
+    it('should fire appropriate observers');
+  });
+
+  describe('child_moved events', function() {
+    it('should fire appropriate observers');
   });
 });

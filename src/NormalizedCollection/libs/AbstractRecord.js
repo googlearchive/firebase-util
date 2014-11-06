@@ -55,15 +55,14 @@ AbstractRecord.prototype = {
   _stop:  abstract('_stop'),
 
   /**
-   * Should return true if the field map for this record includes
-   * the fieldName provided.
+   * Should return true if the snapshots provided contain the child key and if it
+   * exists in the fields for this record type.
    *
-   * @param {string} url
+   * @param {Array} snapshots
+   * @param {string} key
    * @abstract
    */
-  hasChild: function(url) {
-    return this.map.aliasFor(url) !== null;
-  },
+  hasChild: abstract('hasChild'),
 
   /**
    * Given a list of snapshots to iterate, returns the valid keys
