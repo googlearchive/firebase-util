@@ -21,7 +21,7 @@ function getBundle(debug, args) {
 
 function copyTemplate(ext, isSpec) {
   if( !argv.t || !argv.d || !argv.n ) {
-    throw new Error('Usage: gulp template -t type -d directory -n name');
+    throw new Error('Usage: gulp scaffold -t type -d directory -n name');
   }
 
   var baseDir = isSpec? 'test' : 'src';

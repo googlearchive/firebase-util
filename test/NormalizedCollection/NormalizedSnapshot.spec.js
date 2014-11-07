@@ -122,7 +122,7 @@ describe('NormalizedSnapshot', function() {
     it('should iterate dynamic fields that have data');
   });
 
-  ddescribe('#hasChild', function() {
+  describe('#hasChild', function() {
     it('should invoke rec.hasChild', function() {
       var ref = hp.stubNormRef();
       var snaps = hp.snaps({f11: true});

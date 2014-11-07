@@ -4,10 +4,12 @@ var Record = require('./Record');
 var AbstractRecord = require('./AbstractRecord');
 var util = require('../../common');
 var FieldMap = require('./FieldMap');
+var RecordSetEventManager = require('./RecordSetEventManager');
 
 function RecordSet(fieldMap, whereClause) {
   this._super(fieldMap);
   this.filters = whereClause;
+  this.monitor = new RecordSetEventManager(this);
 }
 
 util.inherits(RecordSet, AbstractRecord, {
@@ -72,6 +74,29 @@ util.inherits(RecordSet, AbstractRecord, {
   },
 
   /**
+   * Given a list of snapshots to iterate, returns the valid keys
+   * which exist in both the snapshots and the field map, in the
+   * order they should be iterated.
+   *
+   * Calls iterator with a {string|number} key for the next field to
+   * iterate only.
+   *
+   * If iterator returns true, this method should abort and return true,
+   * otherwise it should return false (same as Snapshot.forEach).
+   *
+   * @param {Array} snaps
+   * @param {function} iterator
+   * @param {object} [context]
+   * @return {boolean} true if aborted
+   * @abstract
+   */
+  forEachKey: function(snaps, iterator, context) {
+    snaps[0].forEach(function(snap) {
+      return iterator.call(context, snap.name(), snap.name());
+    });
+  },
+
+  /**
    * Return the correct child key for a snapshot by determining if its corresponding path
    * has dependencies. If so, we look up the id and return that child, otherwise, we just
    * return the child for the recordId.
@@ -104,8 +129,13 @@ util.inherits(RecordSet, AbstractRecord, {
     return key;
   },
 
-  _start: function() {}, //todo
-  _end:   function() {} //todo
+  _start: function(event) {
+    this.monitor.start(event);
+  },
+
+  _stop:   function(event) {
+    this.monitor.stop(event);
+  }
 });
 
 module.exports = RecordSet;

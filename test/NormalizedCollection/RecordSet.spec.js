@@ -72,7 +72,19 @@ describe('RecordSet', function() {
   });
 
   describe('#hasChild', function() {
-    it('should have tests');
+    it('should return true if key exists in master snapshot', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var recs = new RecordSet(fm, new Filter());
+      var snaps = createSnaps(fm);
+      expect(recs.hasChild(snaps, 'r1')).toBe(true);
+    });
+
+    it('should return false if key does not exist in master snapshot', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var recs = new RecordSet(fm, new Filter());
+      var snaps = createSnaps(fm);
+      expect(recs.hasChild(snaps, 'r5')).toBe(false);
+    });
   });
 
   describe('#getChildSnaps', function() {
@@ -187,11 +199,10 @@ describe('RecordSet', function() {
       expect(data['.priority']).toBe(99);
     });
 
-    it('should include nested priorities for isExport==true'/*, function() {
+    it('should include nested priorities for isExport==true', function() {
       var fm = makeFieldMap(makePathMgr());
       var recs = new RecordSet(fm, new Filter());
       var snaps = createSnaps(fm, null, function(snap) {
-        console.log('pri', snap.name(), snap.ref().toString()); //debug
         if( snap.name() === 'r41' ) { return 99; }
         else { return null; }
       });
@@ -202,18 +213,77 @@ describe('RecordSet', function() {
       expect(data && data.r1 && data.r1.nest && data.r1.nest.p4val).toHaveKey('.priority');
       expect(data && data.r1 && data.r1.nest && data.r1.nest.p4val).toEqual({
         '.value': 'p4r41', '.priority': 99
-      })
-    }*/);
+      });
+    });
 
-    it('should not include items filtered by where clause');
+    it('should not include items filtered by where clause', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var filter = new Filter();
+      filter.add(function(data, name) {
+        return name !== 'r2';
+      });
+      var recs = new RecordSet(fm, filter);
+      var snaps = createSnaps(fm);
+      var data = recs.mergeData(snaps, true);
+      expect(data).toHaveKey('r1');
+      expect(data).not.toHaveKey('r2');
+    });
   });
 
   describe('#forEachKey', function() {
-    it('should iterate record ids from first snapshot');
+    it('should iterate record ids from first snapshot', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var recs = new RecordSet(fm, new Filter());
+      var snaps = createSnaps(fm);
+      var keys = [];
+      var spy = jasmine.createSpy('iterator').and.callFake(function(key, alias) {
+        keys.push(alias);
+        expect(RECS.p1).toHaveKey(alias);
+      });
+      recs.forEachKey(snaps, spy);
+      expect(spy).toHaveCallCount(_.keys(RECS.p1).length);
+    });
 
-    it('should return the record id as key');
+    it('should return the record id as the alias', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var recs = new RecordSet(fm, new Filter());
+      var snaps = createSnaps(fm);
+      var spy = jasmine.createSpy('iterator').and.callFake(function(key, alias) {
+        expect(key).toBe(alias);
+      });
+      recs.forEachKey(snaps, spy);
+      expect(spy).toHaveBeenCalled();
+    });
 
-    it('should return the record id as the alias');
+    it('should evaluate in the correct context', function() {
+      var self = {};
+      var fm = makeFieldMap(makePathMgr());
+      var recs = new RecordSet(fm, new Filter());
+      var snaps = createSnaps(fm);
+      var spy = jasmine.createSpy('iterator').and.callFake(function(key, alias) {
+        expect(this).toBe(self);
+      });
+      recs.forEachKey(snaps, spy, self);
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should not iterate filtered keys', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var filter = new Filter();
+      filter.add(function(data, name) {
+        return name !== 'r2';
+      });
+      var recs = new RecordSet(fm, filter);
+      var snaps = createSnaps(fm);
+      var keys = _.map(RECS.p1, function(r, k) {
+        if( k !== 'p2' ) { return k; }
+      }).reverse();
+      var spy = jasmine.createSpy('iterator').and.callFake(function(key, alias) {
+        expect(key).toBe(keys.pop());
+      });
+      recs.forEachKey(snaps, spy);
+      expect(keys.length).toBe(0);
+    });
   });
 
   describe('#_start', function() {
@@ -222,53 +292,14 @@ describe('RecordSet', function() {
     it('should not invoke on() for other paths');
 
     it('should not invoke on() twice (even for multiple events)');
+
+    it('should invoke on() again if off() is called');
   });
 
   describe('#_stop', function() {
     it('should invoke off() for master path');
 
     it('should not call off() if on never called');
-  });
-
-
-  describe('value events', function() {
-    it('should return all snapshots');
-
-    it('should only return when all snapshots are present');
-
-    it('should fire appropriate observers');
-  });
-
-  describe('child_added events', function() {
-    it('should trigger with appropriate child snapshot');
-
-    it('should trigger from any path');
-
-    it('should fire appropriate observers');
-  });
-
-  describe('child_removed events', function() {
-    it('should trigger with appropriate child snapshot');
-
-    it('should trigger from any path');
-
-    it('should fire appropriate observers');
-  });
-
-  describe('child_changed events', function() {
-    it('should trigger with appropriate child snapshot');
-
-    it('should trigger from any path');
-
-    it('should fire appropriate observers');
-  });
-
-  describe('child_moved events', function() {
-    it('should trigger with appropriate child snapshot');
-
-    it('should trigger from any path');
-
-    it('should fire appropriate observers');
   });
 
   function makePathMgr() {
