@@ -1,5 +1,7 @@
 'use strict';
 
+var util = require('../../common');
+
 function RecordSetEventManager(parentRec) {
   var pm = parentRec.getPathManager();
   this.masterRef = pm.first().ref();

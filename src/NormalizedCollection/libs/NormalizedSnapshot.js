@@ -1,6 +1,6 @@
 'use strict';
 
-var util = require('../../common');
+//var util = require('../../common');
 
 function NormalizedSnapshot(ref, snaps) {
   this._ref = ref;
@@ -98,11 +98,5 @@ NormalizedSnapshot.prototype = {
     return this._rec.mergeData(this._snaps, true);
   }
 };
-
-function snapFor(snaps, url) {
-  return util.find(snaps, function(ss) {
-    return ss.ref().toString() === url;
-  });
-}
 
 module.exports = NormalizedSnapshot;

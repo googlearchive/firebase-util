@@ -113,9 +113,9 @@ util.inherits(RecordSet, AbstractRecord, {
     if( dep !== null ) {
       var path = this.map.getPath(dep.path);
       if( !path ) {
-        throw new Error('Invalid dependency path. ' + snap.ref.toString()
-        + ' depends on ' + dep.path
-        + ', but that alias does not exist in the paths provided.');
+        throw new Error('Invalid dependency path. ' + snap.ref.toString() +
+        ' depends on ' + dep.path +
+        ', but that alias does not exist in the paths provided.');
       }
       var depField = this.map.getField(dep.field);
       if( !depField ) {
