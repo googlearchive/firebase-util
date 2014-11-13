@@ -17,6 +17,7 @@ RecordSetEventManager.prototype = {
       this.masterRef.on('child_removed', this._remove, this);
       this.masterRef.on('child_moved',   this._move,   this);
     }
+    return this;
   },
 
   stop: function() {
@@ -27,6 +28,7 @@ RecordSetEventManager.prototype = {
       this.masterRef.off('child_moved',   this._move,   this);
       this.recList.removeAll();
     }
+    return this;
   },
 
   _add: function(snap, prevChild) {

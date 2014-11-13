@@ -95,7 +95,7 @@ exports.stubPath = function(props) {
   }
   if( !props ) { throw new Error('Invalid path props'); }
   var p = jasmine.createSpyObj('PathStub', ['name', 'id', 'url', 'child', 'ref', 'reff', 'hasDependency', 'getDependency']);
-  var ref = exports.stubRef(p);
+  var ref = exports.mockRef(props.url);
   p.name.and.callFake(function() { return props.alias || null; });
   p.id.and.callFake(function() { return props.id || null; });
   p.url.and.callFake(function() { return props.url; });
@@ -362,6 +362,9 @@ exports.snaps = function() {
   });
 };
 
+/**
+ * @deprecated use mockRef()
+ */
 exports.stubRef = function(path) {
   var obj = jasmine.createSpyObj('ref', ['name', 'child', 'ref', 'toString', 'on', 'once', 'off']);
   obj.child.and.callFake(function(key) {
@@ -456,11 +459,16 @@ exports.stubSnap = function(fbRef, data, pri) {
   return obj;
 };
 
-exports.mockRef = function(path) {
-  var pathString = _.flatten(arguments).join('/');
+exports.mockRef = function(pathString) {
   var ref;
-  if( pathString.match('://') ) {
-    ref = new MockFirebase(pathString);
+  var i = (pathString||'').indexOf('://');
+  if( i > 0 ) {
+    var base = pathString.substr(0, i+3);
+    var child = pathString.substr(i+3);
+    ref = new MockFirebase(base);
+    if( child ) {
+      ref = ref.child(child);
+    }
   }
   else {
     ref = new MockFirebase();

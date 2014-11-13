@@ -104,15 +104,15 @@ describe('RecordField', function() {
   describe('#_start', function() {
     it('should invoke on() for ref', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'on');
       rec._start('value');
-      var spy = rec.getPathManager().first().ref().on;
       expect(spy).toHaveBeenCalled();
     });
 
     it('should use correct event', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'on');
       rec._start('value');
-      var spy = rec.getPathManager().first().ref().on;
       expect(spy.calls.argsFor(0)[0]).toBe('value');
     });
   });
@@ -120,15 +120,15 @@ describe('RecordField', function() {
   describe('#_stop', function() {
     it('should invoke off() for ref', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'off');
       rec._stop('value');
-      var spy = rec.getPathManager().first().ref().off;
       expect(spy).toHaveBeenCalled();
     });
 
     it('should use correct event', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'off');
       rec._stop('value');
-      var spy = rec.getPathManager().first().ref().off;
       expect(spy.calls.argsFor(0)[0]).toBe('value');
     });
   });
