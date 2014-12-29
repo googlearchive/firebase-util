@@ -107,5 +107,5 @@ gulp.task('bundle', function() {
 });
 
 gulp.task('default', function() {
-  return seq('test', 'bundle', 'e2e');
+  return seq('bundle', 'test', 'e2e');
 });

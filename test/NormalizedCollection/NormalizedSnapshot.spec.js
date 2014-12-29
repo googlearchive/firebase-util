@@ -173,11 +173,11 @@ describe('NormalizedSnapshot', function() {
     });
   });
 
-  describe('#name', function() {
-    it('should equal ref.name', function() {
+  describe('#key', function() {
+    it('should equal ref\'s key', function() {
       var ref = hp.stubNormRef(['p1']);
       var snap = new NormalizedSnapshot(ref, hp.snaps(null));
-      expect(snap.name()).toBe('p1');
+      expect(snap.name()).toBe(snap.name());
     });
   });
 

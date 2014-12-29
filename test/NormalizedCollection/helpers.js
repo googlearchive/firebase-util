@@ -95,12 +95,12 @@ exports.stubPath = function(props) {
   }
   if( !props ) { throw new Error('Invalid path props'); }
   var p = jasmine.createSpyObj('PathStub', ['name', 'id', 'url', 'child', 'ref', 'reff', 'hasDependency', 'getDependency']);
-  var ref = exports.mockRef(props.url);
+  var ref = props.ref? props.ref : exports.mockRef(props.url);
   p.name.and.callFake(function() { return props.alias || null; });
   p.id.and.callFake(function() { return props.id || null; });
   p.url.and.callFake(function() { return props.url; });
   p.child.and.callFake(function(key) {
-    return exports.stubPath({id: key, alias: key, url: p.url() + '/' + key});
+    return exports.stubPath({id: key, alias: key, ref: ref.child(key), url: ref.child(key).toString()});
   });
   p.ref.and.callFake(function() { return ref; });
   p.reff.and.callFake(function() { return ref; });

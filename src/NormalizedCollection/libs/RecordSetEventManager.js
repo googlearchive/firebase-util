@@ -2,6 +2,15 @@
 
 var util = require('../../common');
 
+/**
+ * Monitors the references attached to a RecordSet and maintains a cache of
+ * current snapshots (inside RecordList below). Any time there is an update, this calls
+ * RecordSet._trigger() to invoke the correct event types (child_added, child_removed, value, et al)
+ * on the RecordSet object.
+ *
+ * @param parentRec
+ * @constructor
+ */
 function RecordSetEventManager(parentRec) {
   var pm = parentRec.getPathManager();
   this.masterRef = pm.first().ref();
@@ -16,6 +25,7 @@ RecordSetEventManager.prototype = {
       this.masterRef.on('child_added',   this._add,    this);
       this.masterRef.on('child_removed', this._remove, this);
       this.masterRef.on('child_moved',   this._move,   this);
+      this.masterRef.once('value', this.recList.loaded, this.recList);
     }
     return this;
   },
@@ -26,14 +36,14 @@ RecordSetEventManager.prototype = {
       this.masterRef.off('child_added',   this._add,    this);
       this.masterRef.off('child_removed', this._remove, this);
       this.masterRef.off('child_moved',   this._move,   this);
+      this.recList.unloaded();
       this.recList.removeAll();
     }
     return this;
   },
 
   _add: function(snap, prevChild) {
-    var child = this.recs.child(snap.name());
-    this.recList.add(snap.name(), child, prevChild);
+    this.recList.add(snap.name(), prevChild);
   },
 
   _remove: function(snap) {
@@ -54,20 +64,16 @@ function RecordList(observable) {
 }
 
 RecordList.prototype = {
-  add: function(key, rec, prevChild) {
+  add: function(key, prevChild) {
+    var rec = this.obs.child(key);
     this.loading[key] = {rec: rec, prev: prevChild};
     rec.watch('value', this._change, this);
   },
 
   remove: function(key) {
-    if(util.has(this.rec, key)) {
-      var snaps = this.snaps[key];
-      this.recs[key].unwatch('value', this._change, this);
-      delete this.recs[key];
-      delete this.snaps[key];
-      delete this.loading[key];
-      util.remove(this.recIds, key);
-      this._notify('child_removed', key, snaps);
+    var oldSnap = this._dropRecord(key);
+    if( oldSnap !== null ) {
+      this._notify('child_removed', key, oldSnap);
     }
   },
 
@@ -80,33 +86,72 @@ RecordList.prototype = {
     }
   },
 
-  _change: function(key, snaps) {
+  loaded: function() {
+    this.loadComplete = true;
+    this._notifyValue();
+  },
+
+  unloaded: function() { this.loadComplete = false; },
+
+  findKey: function(key) {
+    //todo cache these lookups in a weak map?
+    return util.indexOf(this.recIds, key);
+  },
+
+  removeAll: function() {
+    util.each(this.recs, function(rec, key) {
+      this.remove(key);
+    }, this);
+  },
+
+  _change: function(event, key, snaps) {
     this.snaps[key] = snaps;
     if(util.has(this.loading, key)) {
+      // newly added record
       var r = this.loading[key];
       this.recs[key] = r.rec;
-
+      this._putAfter(key, r.prev);
       this._notify('child_added', key);
     }
     else if(util.has(this.recs, key)) {
+      // a changed record
       this._notify('child_changed', key);
     }
     else {
-      console.info('orphan key ' + key + ' ignored');
+      util.log('orphan key ' + key + ' ignored');
     }
   },
 
   _notify: function(event, key) {
-    var prev;
+    var args = [event, key];
     // do not fetch prev child for other events as it costs an indexOf
-    if( event === 'child_added' || event === 'child_moved' ) {
-      prev = this._getPrevChild(key);
+    switch(event) {
+      case 'child_added':
+      case 'child_moved':
+        var prev = this._getPrevChild(key);
+        args.push(this.snaps[key], prev);
+        break;
+      case 'child_changed':
+        args.push(this.snaps[key]);
+        break;
+      case 'child_removed':
+        break;
+      default:
+        throw new Error('Invalid event type ' + event + ' for key ' + key);
     }
-    this.obs._trigger.call(this.obs, event, key, this.snaps[key], prev);
+    this.obs._trigger.apply(this.obs, args);
+    if( this.loadComplete ) {
+      this._notifyValue();
+    }
+  },
+
+  _notifyValue: function() {
+    this.obs._trigger.call(this.obs, 'value', util.toArray(this.snaps));
   },
 
   _getPrevChild: function(key) {
-    var pos = util.indexOf(this.recIds, key);
+    if( !this.recIds.length ) { return null; }
+    var pos = this.findKey(key);
     if( pos === -1 ) {
       return this.recIds[this.recIds.length-1];
     }
@@ -124,7 +169,7 @@ RecordList.prototype = {
       pos = 0;
     }
     else {
-      x = util.indexOf(this.recIds, prevKey);
+      x = this.findKey(prevKey);
       pos = x === -1? this.recIds.length : x+1;
     }
     return pos;
@@ -135,10 +180,17 @@ RecordList.prototype = {
     this.recIds.splice(newPos, 0, key);
   },
 
-  removeAll: function() {
-    util.each(this.recs, function(rec, key) {
-      this.remove(key);
-    }, this);
+  _dropRecord: function(key) {
+    if(util.has(this.recs, key)) {
+      var snap = this.snaps[key];
+      this.recs[key].unwatch('value', this._change, this);
+      delete this.recs[key];
+      delete this.snaps[key];
+      delete this.loading[key];
+      util.remove(this.recIds, key);
+      return snap;
+    }
+    return null;
   }
 };
 

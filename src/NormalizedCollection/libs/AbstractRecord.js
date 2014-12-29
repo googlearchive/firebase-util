@@ -2,11 +2,28 @@
 
 var util = require('../../common/');
 
+/**
+ * A Record represents a set of merged data. The hierarchy of a normalized Collection
+ * can be traversed as normal using parent() and child() calls:
+ *    - RecordSet: The root of a normalized collection; a set of merged Firebase paths
+ *    - Record: A child of RecordSet obtained by calling .child(recordId)
+ *    - RecordField: A child of Record or RecordField which represents a wrapped Firebase path (no longer normalized)
+ *
+ * We wrap all of these levels, including the RecordField's, so that the
+ * parent() and child() calls work as expected and return the normalized chain instead
+ * of reverting to the underlying Firebase instances.
+ *
+ * AbstractRecord provides common functionality around observables, event handling, and field maps
+ * used by all three implementations.
+ *
+ * @param fieldMap the field map applied to Record objects
+ * @constructor
+ */
 function AbstractRecord(fieldMap) {
   var self = this;
   self.map = fieldMap;
   self.obs = new util.Observable(
-    ['value', 'child_added', 'child_removed', 'child_moved', 'child_updated'],
+    ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
     {
       onAdd: function(event) {
         var count = self.obs.getObservers(event).length;

@@ -6,9 +6,32 @@ var util = require('../../common');
 var FieldMap = require('./FieldMap');
 var RecordSetEventManager = require('./RecordSetEventManager');
 
+/**
+ * A "Record" (see AbstractRecord) represents a merged set of data used by NormalizedRef.
+ * It is used by NormalizedRef to create snapshots and monitor Firebase for data changes.
+ *
+ * A RecordSet represents the root level of NormalizedCollection's output. It is a list of
+ * collections (from multiple paths in Firebase) to be joined together.
+ *
+ * This is, for the purposes of a NormalizedCollections, the root of the data. Calls to parent()
+ * from here should return null, just like they would from the root of a Firebase. This is because
+ * the parent of a normalized collection is ambiguous, so there is no higher level of data.
+ *
+ * @param fieldMap this is the field map to be applied to each Record created when calling child()
+ * @param whereClause this filters the output data and events
+ * @constructor
+ */
 function RecordSet(fieldMap, whereClause) {
+  // AbstractRecord makes this observable and abstracts some common impl details
+  // between RecordSet, Record, and RecordField
   this._super(fieldMap);
+
+  // Used to filter the merged data and determine which merged Records should trigger events and
+  // which ones should be ignored
   this.filters = whereClause;
+
+  // the RecordSetEventManager handles Firebase events and calls _trigger() on
+  // this RecordSet appropriately. See RecordSetEventManager for more details
   this.monitor = new RecordSetEventManager(this);
 }
 
