@@ -67,7 +67,7 @@ RecordList.prototype = {
   add: function(key, prevChild) {
     var rec = this.obs.child(key);
     this.loading[key] = {rec: rec, prev: prevChild};
-    rec.watch('value', this._change, this);
+    rec.watch('value', this._change.bind(this, key));
   },
 
   remove: function(key) {
@@ -83,10 +83,12 @@ RecordList.prototype = {
       var currPos = util.indexOf(this.recIds, key);
       this.recIds.splice(currPos, 1);
       this._putAfter(key, prevChild);
+      this._notify('child_moved', key);
     }
   },
 
   loaded: function() {
+    console.log('loaded'); //debug
     this.loadComplete = true;
     this._notifyValue();
   },
@@ -106,9 +108,11 @@ RecordList.prototype = {
 
   _change: function(event, key, snaps) {
     this.snaps[key] = snaps;
+    console.log('_change', event, key, util.has(this.loading, key), util.has(this.recs, key)); //debug
     if(util.has(this.loading, key)) {
       // newly added record
       var r = this.loading[key];
+      delete this.loading[key];
       this.recs[key] = r.rec;
       this._putAfter(key, r.prev);
       this._notify('child_added', key);
