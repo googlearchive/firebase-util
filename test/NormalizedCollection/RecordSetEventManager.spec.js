@@ -260,7 +260,7 @@ describe('RecordSetEventManager', function() {
       var stub = loadWithStub({foo: 'bar'});
       var rec = stub.rec;
       rec._trigger.calls.reset();
-      rec.child(stub.id)._trigger('value', {foo: 'bar'});
+      rec.child(stub.id)._trigger('value', {foo: 'baz'});
       expect(rec._trigger).toHaveBeenCalledWith('child_changed', stub.id, jasmine.any(Object));
     });
 

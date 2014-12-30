@@ -14,13 +14,15 @@ var util = require('../../common');
 function RecordSetEventManager(parentRec) {
   var pm = parentRec.getPathManager();
   this.masterRef = pm.first().ref();
-  this.recList = new RecordList(parentRec);
+  this.url = this.masterRef.toString();
+  this.recList = new RecordList(parentRec, this.url);
   this.running = false;
 }
 
 RecordSetEventManager.prototype = {
   start: function() {
     if( !this.running ) {
+      util.log.debug('Loading sets of normalized records from master list at %s', this.url);
       this.running = true;
       this.masterRef.on('child_added',   this._add,    this);
       this.masterRef.on('child_removed', this._remove, this);
@@ -55,8 +57,9 @@ RecordSetEventManager.prototype = {
   }
 };
 
-function RecordList(observable) {
+function RecordList(observable, url) {
   this.obs = observable;
+  this.url = url;
   this.recs = {};
   this.recIds = [];
   this.snaps = {};
@@ -65,9 +68,10 @@ function RecordList(observable) {
 
 RecordList.prototype = {
   add: function(key, prevChild) {
+    util.log.debug('RecordSetEventManager: Adding record %s after %s', key, prevChild);
     var rec = this.obs.child(key);
     this.loading[key] = {rec: rec, prev: prevChild};
-    rec.watch('value', this._change.bind(this, key));
+    rec.watch('value', util.bind(this._change, this, key));
   },
 
   remove: function(key) {
@@ -88,7 +92,7 @@ RecordList.prototype = {
   },
 
   loaded: function() {
-    console.log('loaded'); //debug
+    util.log.debug('RecordSetEventManager: Initial data has been loaded from master list at %s', this.url);
     this.loadComplete = true;
     this._notifyValue();
   },
@@ -106,9 +110,8 @@ RecordList.prototype = {
     }, this);
   },
 
-  _change: function(event, key, snaps) {
+  _change: function(key, event, snaps) {
     this.snaps[key] = snaps;
-    console.log('_change', event, key, util.has(this.loading, key), util.has(this.recs, key)); //debug
     if(util.has(this.loading, key)) {
       // newly added record
       var r = this.loading[key];
@@ -122,7 +125,8 @@ RecordList.prototype = {
       this._notify('child_changed', key);
     }
     else {
-      util.log('orphan key ' + key + ' ignored');
+      util.log('RecordSetEventManager: Orphan key ' + key + ' ignored. ' +
+          'Probably deleted locally and changed remotely at the same time.');
     }
   },
 
@@ -143,6 +147,7 @@ RecordList.prototype = {
       default:
         throw new Error('Invalid event type ' + event + ' for key ' + key);
     }
+    util.log.debug('RecordSetEventManager: %s %s', event, key);
     this.obs._trigger.apply(this.obs, args);
     if( this.loadComplete ) {
       this._notifyValue();
