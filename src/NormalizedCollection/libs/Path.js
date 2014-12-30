@@ -33,7 +33,7 @@ Path.prototype = {
   },
   url: function() { return this.reff().toString(); },
   name: function() { return this._alias; },
-  id: function() { return this.reff().name(); },
+  id: function() { return this.reff().key(); },
   parent: function() { return this._parent; }
 };
 
@@ -44,11 +44,14 @@ function parseProps(props) {
     alias = props[1];
     dep = props[2];
   }
+  else if( util.isFunction(props.ref) ) {
+    ref = props.ref();
+  }
   else {
     ref = props;
   }
   return {
-    ref: ref, alias: alias||ref.name(), dep: parseDep(dep)
+    ref: ref, alias: alias||ref.key(), dep: parseDep(dep)
   };
 }
 

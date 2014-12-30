@@ -63,7 +63,7 @@ describe('Record', function() {
     it('should be the snapshot for the correct child key', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
       var snaps = rec.getChildSnaps(createSnaps({f11: 'fooval'}, {f99: 'barval'}, true, false), 'foo');
-      expect(snaps[0].name()).toBe('f11');
+      expect(snaps[0].key()).toBe('f11');
       expect(snaps[0].val()).toBe('fooval');
     });
   });

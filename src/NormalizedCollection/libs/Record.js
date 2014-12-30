@@ -179,8 +179,10 @@ ValueEventManager.prototype = {
 function ChildEventManager(event, rec) {
   this.event = event;
   this.rec = rec;
+  this.map = rec.getFieldMap();
   this.pm = rec.getPathManager();
   this.subs = [];
+  this.dyno = null;
 }
 
 ChildEventManager.prototype = {
@@ -190,8 +192,8 @@ ChildEventManager.prototype = {
       var path = this.pm.getPath(pathName);
       var fn = util.bind(this.update, this);
       if( path.hasDependency() ) {
-        var dyno = new Dyno(path, this.rec.getFieldMap(), event, fn);
-        this.subs.push(dyno.dispose);
+        this.dyno = new Dyno(path, this.map, event, fn);
+        this.subs.push(this.dyno.dispose);
       }
       else {
         path.ref().on(event, fn);
@@ -210,11 +212,9 @@ ChildEventManager.prototype = {
   },
 
   update: function(snap) {
-    //todo-dynamic-keys what do we do here? dynamic keys can change
-    //todo-dynamic-keys and our handling is not exactly correct
-    //todo-dynamic-keys and we also need to utilize the fieldmap somehow
     if( snap !== null ) {
-      this.rec._trigger(this.event, [snap]);
+      var args = [this.event, snap.name(), snap];
+      this.rec._trigger.apply(this.rec, args);
     }
   }
 };
@@ -241,7 +241,7 @@ function Dyno(path, fieldMap, event, updateFn) {
 
   // establish our listener at the field which contains the id of our ref
   var depFn = depRef.on('value', function(snap) {
-    if( ref && ref.name() !== snap.val() ) {
+    if( ref && ref.key() !== snap.val() ) {
       // any time the id changes, remove the old listener
       ref.off(event, updateFn);
       updateFn(null);

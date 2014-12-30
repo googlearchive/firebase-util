@@ -219,7 +219,7 @@ describe('FieldMap', function() {
       map.add({key: 'p1.$key', alias: 'foo'});
       map.add({key: 'p1.field1', alias: 'bar.baz'});
       var snapshot = hp.stubSnap(hp.stubRef(hp.stubPath('p1')), {field1: 0}, function(snap) {
-        if (snap.name() === 'field1') {
+        if (snap.key() === 'field1') {
           return 100;
         }
         else {

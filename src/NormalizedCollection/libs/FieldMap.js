@@ -86,7 +86,7 @@ FieldMap.prototype = {
     util.each(this.fieldsFor(pathName), function(f) {
       switch(f.id) {
         case '$key':
-          putIn(out, f.alias, snapshot.name());
+          putIn(out, f.alias, snapshot.key());
           break;
         case '$value':
           putIn(out, f.alias, snapshot[fx]());

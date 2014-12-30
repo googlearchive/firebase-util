@@ -7,7 +7,7 @@ function NormalizedRef(record, parent) {
   this._super(this, record);
   var paths = record.getPathManager().getPaths();
   this._parent = parent||null;
-  this._name = _name(paths);
+  this._key = _key(paths);
   this._toString = _toString(paths);
 }
 
@@ -29,8 +29,14 @@ util.inherits(NormalizedRef, Query, {
     return p;
   },
 
+  /** @deprecated */
   'name': function() {
-    return this._name;
+    console.warn('The name() function has been deprecated. Use key() instead.');
+    return this.key();
+  },
+
+  'key': function() {
+    return this._key;
   },
 
   'toString': function() {
@@ -70,7 +76,7 @@ function notSupported(method) {
   };
 }
 
-function _name(paths) {
+function _key(paths) {
   if( paths.length > 1 ) {
     return '[' + util.map(paths, function(p) {
       return p.name();

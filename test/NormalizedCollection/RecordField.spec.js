@@ -3,6 +3,8 @@
 var AbstractRecord = require('../../src/NormalizedCollection/libs/AbstractRecord.js');
 var RecordField = require('../../src/NormalizedCollection/libs/RecordField.js');
 var NormalizedSnapshot = require('../../src/NormalizedCollection/libs/NormalizedSnapshot');
+var PathManager = require('../../src/NormalizedCollection/libs/PathManager');
+var Path = require('../../src/NormalizedCollection/libs/Path');
 var hp = require('./helpers');
 var _ = require('lodash');
 
@@ -49,7 +51,7 @@ describe('RecordField', function() {
       var res = rec.getChildSnaps(hp.snaps({foo: 'bar'}), 'foo');
       expect(res).toBeAn('array');
       expect(res.length).toBe(1);
-      expect(res[0].name()).toBe('foo');
+      expect(res[0].key()).toBe('foo');
       expect(res[0].val()).toBe('bar');
     });
   });

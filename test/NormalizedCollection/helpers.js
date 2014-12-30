@@ -126,10 +126,10 @@ exports.stubNormSnap = function(ref, data, pri) {
   if( arguments.length < 2 || _.isUndefined(data) ) { data = null; }
   if( arguments.length < 3 ) { pri = null; }
   var obj = jasmine.createSpyObj('SnapshotStub',
-    ['name', 'ref', 'val', 'forEach', 'child', 'hasChild', 'getPriority', 'exportVal']
+    ['key', 'ref', 'val', 'forEach', 'child', 'hasChild', 'getPriority', 'exportVal']
   );
-  obj.name.and.callFake(
-    function() { return ref.name(); }
+  obj.key.and.callFake(
+    function() { return ref.key(); }
   );
   obj.ref.and.callFake(
     function() { return ref; }
@@ -175,7 +175,7 @@ exports.stubNormSnap = function(ref, data, pri) {
         var out = {};
         if( pri !== null ) { out['.priority'] = pri; }
         obj.forEach(function(ss) {
-          out[ss.name()] = ss.exportVal();
+          out[ss.key()] = ss.exportVal();
         });
         return out;
       }
@@ -200,7 +200,7 @@ exports.stubNormSnap = function(ref, data, pri) {
 exports.stubNormRef = function(pathList, fieldList) {
   var paths = exports.stubPaths(pathList);
   var rec = exports.stubRec(paths, fieldList);
-  var obj = jasmine.createSpyObj('RefStub', ['name', 'child', 'ref', 'toString', '_getRec']);
+  var obj = jasmine.createSpyObj('RefStub', ['key', 'child', 'ref', 'toString', '_getRec']);
   obj.child.and.callFake(function(key) {
     var lastKey = obj.$$firstPath().name();
     return denestChildKey(obj, key, function(nextParent, nextKey) {
@@ -213,7 +213,7 @@ exports.stubNormRef = function(pathList, fieldList) {
     });
   });
   obj.ref.and.callFake(function() { return obj; });
-  obj.name.and.callFake(function() { return pathName(paths); });
+  obj.key.and.callFake(function() { return pathName(paths); });
   obj.toString.and.callFake(function() { return pathString(paths); });
   obj._getRec.and.callFake(function() { return rec; });
   obj.$$firstPath = function() { return firstChild(paths); };
@@ -366,14 +366,14 @@ exports.snaps = function() {
  * @deprecated use mockRef()
  */
 exports.stubRef = function(path) {
-  var obj = jasmine.createSpyObj('ref', ['name', 'child', 'ref', 'toString', 'on', 'once', 'off']);
+  var obj = jasmine.createSpyObj('ref', ['key', 'child', 'ref', 'toString', 'on', 'once', 'off']);
   obj.child.and.callFake(function(key) {
     return denestChildKey(obj, key, function(nextParent, nextKey) {
       return exports.stubRef(nextParent.$$getPath().child(nextKey));
     });
   });
   obj.ref.and.callFake(function() { return obj; });
-  obj.name.and.callFake(function() { return path.id(); });
+  obj.key.and.callFake(function() { return path.id(); });
   obj.toString.and.callFake(function() { return path.url(); });
   obj.$$getPath = function() { return path; };
   return obj;
@@ -391,10 +391,10 @@ exports.stubSnap = function(fbRef, data, pri) {
   if( arguments.length < 2 || _.isUndefined(data) ) { data = null; }
   if( arguments.length < 3 ) { pri = null; }
   var obj = jasmine.createSpyObj('snapshot',
-    ['name', 'ref', 'val', 'forEach', 'child', 'hasChild', 'hasChildren', 'numChildren', 'getPriority', 'exportVal']
+    ['key', 'ref', 'val', 'forEach', 'child', 'hasChild', 'hasChildren', 'numChildren', 'getPriority', 'exportVal']
   );
-  obj.name.and.callFake(
-    function() { return fbRef.name(); }
+  obj.key.and.callFake(
+    function() { return fbRef.key(); }
   );
   obj.ref.and.callFake(
     function() { return fbRef; }
@@ -444,7 +444,7 @@ exports.stubSnap = function(fbRef, data, pri) {
         out = {};
         if( pri !== null ) { out['.priority'] = pri; }
         obj.forEach(function(ss) {
-          out[ss.name()] = ss.exportVal();
+          out[ss.key()] = ss.exportVal();
         });
       }
       else if( pri !== null ) {

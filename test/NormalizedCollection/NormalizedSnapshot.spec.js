@@ -33,19 +33,19 @@ describe('NormalizedSnapshot', function() {
       var ref = hp.stubNormRef(['p1']);
       var cref = hp.stubNormRef(['p1']);
       ref.child.and.callFake(function(key){
-        cref.name.and.callFake(function() {
+        cref.key.and.callFake(function() {
           return key;
         });
         return cref;
       });
       var snap = new NormalizedSnapshot(ref, hp.snaps(true));
       var childSnap = snap.child('foo/bar');
-      expect(childSnap.name()).toBe('bar');
+      expect(childSnap.key()).toBe('bar');
     });
 
     it('should be null if child does not exist in data', function() {
       var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps({ foo: {bar: 'baz'} })).child('baz');
-      expect(snap.name()).toBe('baz');
+      expect(snap.key()).toBe('baz');
       expect(snap.val()).toBe(null);
     });
   });
@@ -62,7 +62,7 @@ describe('NormalizedSnapshot', function() {
       var snap = new NormalizedSnapshot(ref, hp.snaps(true));
       var keys = [];
       snap.forEach(function(ss) {
-        keys.push(ss.name());
+        keys.push(ss.key());
       });
       expect(keys).toEqual(expKeys);
     });
@@ -75,7 +75,7 @@ describe('NormalizedSnapshot', function() {
       );
       var keys = [];
       snap.forEach(function(ss) {
-        keys.push(ss.name());
+        keys.push(ss.key());
       });
       expect(keys).toEqual(expKeys);
     });
@@ -177,7 +177,7 @@ describe('NormalizedSnapshot', function() {
     it('should equal ref\'s key', function() {
       var ref = hp.stubNormRef(['p1']);
       var snap = new NormalizedSnapshot(ref, hp.snaps(null));
-      expect(snap.name()).toBe(snap.name());
+      expect(snap.key()).toBe(snap.key());
     });
   });
 

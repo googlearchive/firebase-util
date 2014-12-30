@@ -45,11 +45,11 @@ RecordSetEventManager.prototype = {
   },
 
   _add: function(snap, prevChild) {
-    this.recList.add(snap.name(), prevChild);
+    this.recList.add(snap.key(), prevChild);
   },
 
   _remove: function(snap) {
-    this.recList.remove(snap.name());
+    this.recList.remove(snap.key());
   },
 
   _move: function(snap, prevChild) {
@@ -82,7 +82,7 @@ RecordList.prototype = {
   },
 
   move: function(snap, prevChild) {
-    var key = snap.name();
+    var key = snap.key();
     if(util.has(this.recs, key)) {
       var currPos = util.indexOf(this.recIds, key);
       this.recIds.splice(currPos, 1);
@@ -111,6 +111,7 @@ RecordList.prototype = {
   },
 
   _change: function(key, event, snaps) {
+    console.log('_change', key, event, typeof snaps === 'string'? snaps : typeof snaps); //debug
     this.snaps[key] = snaps;
     if(util.has(this.loading, key)) {
       // newly added record

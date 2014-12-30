@@ -43,7 +43,7 @@ beforeEach(function() {
             type === 'object' &&
             typeof actual.val === 'function' &&
             typeof actual.ref === 'function' &&
-            typeof actual.name === 'function';
+            typeof actual.key === 'function';
           var notText = pass? ' not' : '';
           var msg = 'Expected ' + type + notText + ' to be a Firebase snapshot';
           return {pass: pass, message: msg};

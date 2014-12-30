@@ -34,7 +34,7 @@ describe('NormalizedRef', function() {
     it('should have tests'); //todo-test
   });
   
-  describe('name', function () {
+  describe('key', function () {
     it('should have tests'); //todo-test
   });
   

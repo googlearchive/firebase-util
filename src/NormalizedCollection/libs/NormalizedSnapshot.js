@@ -77,8 +77,14 @@ NormalizedSnapshot.prototype = {
     });
   },
 
+  /** @deprecated */
   name: function() {
-    return this._ref.name();
+    console.warn('name() has been deprecated. Use key() instead.');
+    return this.key();
+  },
+
+  key: function() {
+    return this._ref.key();
   },
 
   numChildren: function() {

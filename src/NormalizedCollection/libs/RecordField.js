@@ -63,7 +63,7 @@ util.inherits(RecordField, AbstractRecord, {
   forEachKey: function(snaps, iterator, context) {
     var firstSnap = snaps[0];
     return firstSnap.forEach(function(ss) {
-      iterator.call(context, ss.name(), ss.name());
+      iterator.call(context, ss.key(), ss.key());
     });
   },
 

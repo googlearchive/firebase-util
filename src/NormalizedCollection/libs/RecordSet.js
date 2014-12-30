@@ -79,15 +79,15 @@ util.inherits(RecordSet, AbstractRecord, {
     var firstSnap = snaps[0];
     // iterate each record and then merge the children
     firstSnap.forEach(function(ss) {
-      var childSnaps = self.getChildSnaps(snaps, ss.name());
-      var fm = FieldMap.recordMap(self.map, ss.name());
+      var childSnaps = self.getChildSnaps(snaps, ss.key());
+      var fm = FieldMap.recordMap(self.map, ss.key());
       var data = util.extend.apply(null, util.map(childSnaps, function(cs) {
         if( cs !== null ) {
           return fm.extractData(cs, isExport);
         }
       }));
-      if( self.filters.test(data, ss.name(), ss.getPriority()) ) {
-        out[ss.name()] = data;
+      if( self.filters.test(data, ss.key(), ss.getPriority()) ) {
+        out[ss.key()] = data;
       }
     });
     if( isExport && firstSnap.getPriority() !== null ) {
@@ -115,7 +115,7 @@ util.inherits(RecordSet, AbstractRecord, {
    */
   forEachKey: function(snaps, iterator, context) {
     snaps[0].forEach(function(snap) {
-      return iterator.call(context, snap.name(), snap.name());
+      return iterator.call(context, snap.key(), snap.key());
     });
   },
 

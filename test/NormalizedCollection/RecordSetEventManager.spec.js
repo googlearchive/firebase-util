@@ -79,8 +79,7 @@ describe('RecordSetEventManager', function() {
     it('should watch record for value events', function() {
       var stub = loadWithStub({foo: 'bar'});
       expect(stub.rec.child(stub.id).watch)
-        .toHaveBeenCalledWith('value',
-          jasmine.any(Function), jasmine.any(Object));
+        .toHaveBeenCalledWith('value', jasmine.any(Function));
     });
 
     it('should trigger a child_added event after the record\'s value event fires', function() {
@@ -116,9 +115,9 @@ describe('RecordSetEventManager', function() {
       ref.flush();
 
       // add a new record
-      var id = ref.push(data).name();
+      var id = ref.push(data).key();
       ref.flush();
-      rec.child(id)._trigger('value', id, hp.stubSnap(ref, data));
+      rec.child(id)._trigger('value', hp.stubSnap(ref, data));
       expect(rec._trigger).not.toHaveBeenCalledWith('value', [jasmine.any(Object)]);
     });
   });
@@ -159,9 +158,9 @@ describe('RecordSetEventManager', function() {
       cancelOnce(ref);
 
       // add a new record
-      var id = ref.push(data).name();
+      var id = ref.push(data).key();
       ref.flush();
-      rec.child(id)._trigger('value', id, hp.stubSnap(ref, data));
+      rec.child(id)._trigger('value', hp.stubSnap(ref, data));
       expect(rec._trigger).not.toHaveBeenCalledWith('value', [jasmine.any(Object)]);
 
       // remove the new record
@@ -176,7 +175,7 @@ describe('RecordSetEventManager', function() {
         ' has not returned a `value` event yet (i.e. record is not loaded)', function() {
       var stub = loadWithStub();
       var ref = stub.ref;
-      var id = ref.push(-99).name();
+      var id = ref.push(-99).key();
       ref.flush();
       // do not do rec.child(id)._trigger() here, to simulate value not being called yet
 
@@ -222,13 +221,13 @@ describe('RecordSetEventManager', function() {
       cancelOnce(ref);
 
       // add a new record
-      var a = ref.push(data).name();
+      var a = ref.push(data).key();
       ref.flush();
-      rec.child(a)._trigger('value', a, hp.stubSnap(ref, data));
+      rec.child(a)._trigger('value', hp.stubSnap(ref, data));
 
-      var b = ref.push(data).name();
+      var b = ref.push(data).key();
       ref.flush();
-      rec.child(b)._trigger('value', b, hp.stubSnap(ref, data));
+      rec.child(b)._trigger('value', hp.stubSnap(ref, data));
 
       rec._trigger.calls.reset();
 
@@ -251,11 +250,11 @@ describe('RecordSetEventManager', function() {
       ref.child(a).setPriority(99999);
       ref.flush();
 
-      expect(stub.rec._trigger).not.toHaveBeenCalledWith('child_moved', stub.id, jasmine.any(Object));
+      expect(stub.rec._trigger).not.toHaveBeenCalledWith('child_moved', stub.id, jasmine.any(Object), b);
     });
   });
 
-  ddescribe('value event on record', function() {
+  describe('value event on record', function() {
     it('should trigger child_changed event', function() {
       var stub = loadWithStub({foo: 'bar'});
       var rec = stub.rec;
@@ -280,7 +279,7 @@ describe('RecordSetEventManager', function() {
       cancelOnce(ref);
 
       // add a new record
-      var id = ref.push(99).name();
+      var id = ref.push(99).key();
       ref.flush();
       rec.child(id)._trigger('value', hp.stubSnap(ref,  99));
       rec.child(id)._trigger('value', hp.stubSnap(ref, 100));
@@ -307,9 +306,9 @@ describe('RecordSetEventManager', function() {
     var mgr = new RecordSetEventManager(rec).start();
 
     function addFn(data) {
-      var id = ref.push(data).name();
+      var id = ref.push(data).key();
       ref.flush();
-      rec.child(id)._trigger('value', id, hp.stubSnap(ref.child(id), data));
+      rec.child(id)._trigger('value', hp.stubSnap(ref.child(id), data));
       return id;
     }
 

@@ -100,7 +100,7 @@ describe('RecordSet', function() {
           var snap = childSnaps[i];
           var pref = snaps[i].ref();
           var cref = snap.ref();
-          expect(cref.toString()).toBe(hp.mergeUrl(pref.toString(), snap.name()));
+          expect(cref.toString()).toBe(hp.mergeUrl(pref.toString(), snap.key()));
         }
         i++;
       });
@@ -191,7 +191,7 @@ describe('RecordSet', function() {
       var fm = makeFieldMap(makePathMgr());
       var recs = new RecordSet(fm, new Filter());
       var snaps = createSnaps(fm, null, function(snap) {
-        if( snap.name() === 'path1' ) { return 99; }
+        if( snap.key() === 'path1' ) { return 99; }
         else { return null; }
       });
       var data = recs.mergeData(snaps, true);
@@ -203,7 +203,7 @@ describe('RecordSet', function() {
       var fm = makeFieldMap(makePathMgr());
       var recs = new RecordSet(fm, new Filter());
       var snaps = createSnaps(fm, null, function(snap) {
-        if( snap.name() === 'r41' ) { return 99; }
+        if( snap.key() === 'r41' ) { return 99; }
         else { return null; }
       });
       var data = recs.mergeData(snaps, true);
