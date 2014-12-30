@@ -2,6 +2,7 @@
 
 var util      = require('../../common');
 var Query     = require('./Query');
+var Path      = require('./Path');
 
 function NormalizedRef(record, parent) {
   this._super(this, record);
@@ -56,23 +57,56 @@ util.inherits(NormalizedRef, Query, {
   'setPriority': function() {}, //todo
 
   /****************************
+   * WRAPPER FUNCTIONS
+   ****************************/
+  'auth': wrapMaster('auth'),
+  'unauth': wrapMaster('unauth'),
+  'authWithCustomToken': wrapMaster('authWithCustomToken'),
+  'authAnonymously': wrapMaster('authAnonymously'),
+  'authWithPassword': wrapMaster('authWithPassword'),
+  'authWithOAuthPopup': wrapMaster('authWithOAuthPopup'),
+  'authWithOAuthRedirect': wrapMaster('authWithOAUthRedirect'),
+  'authWithOAuthToken': wrapMaster('authWithOAuthToken'),
+  'getAuth': wrapMaster('getAuth'),
+  'onAuth': wrapMaster('onAuth'),
+  'offAuth': wrapMaster('offAuth'),
+  'createUser': wrapMaster('createUser'),
+  'changePassword': wrapMaster('changePassword'),
+  'removeUser': wrapMaster('removeUser'),
+  'resetPassword': wrapMaster('resetPassword'),
+
+  'goOffline': wrapAll('goOffline'),
+  'goOnline': wrapAll('goOnline'),
+
+  /****************************
    * UNSUPPORTED FUNCTIONS
    ***************************/
-  'auth': notSupported('auth'),
-  'unauth': notSupported('unauth'),
-
-  //todo upgrade this to include 1.1.x API methods
-
-  'transaction': notSupported('transaction'),
-  'goOffline': notSupported('goOffline'),
-  'goOnline': notSupported('goOnline'),
-  'onDisconnect': notSupported('onDisconnect')
-
+  'transaction': notSupported('transaction'), //todo use field map to pick fields and apply to each
+  'onDisconnect': notSupported('onDisconnect') //todo use field map to pick fields and apply to each
 });
+
+function wrapAll(method) {
+  return function() {
+    var args = util.toArray(arguments);
+    util.each(this._getRec().getPathManager().getPaths(), function(p) {
+      var ref = p.ref();
+      ref[method].apply(ref, args);
+    });
+  }
+}
+
+function wrapMaster(method) {
+  return function() {
+    var args = util.toArray(arguments);
+    var ref = this._getRec().getPathManager().first().ref();
+    ref[method].apply(ref, args);
+  }
+}
 
 function notSupported(method) {
   return function() {
-    throw new Error(method + ' is not supported for NormalizedCollection references');
+    throw new Error(method + ' is not supported for NormalizedCollection references. ' +
+      'Try calling it on the original reference used to create the NormalizedCollection instead.');
   };
 }
 

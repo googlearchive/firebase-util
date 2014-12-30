@@ -15,6 +15,16 @@ Query.prototype = {
 
   'off': function() {}, //todo
 
+  'orderByChild': function() {}, //todo
+
+  'orderByKey': function() {}, //todo
+
+  'orderByPriority': function() {}, //todo
+
+  'limitToFirst': function() {}, //todo
+
+  'limitToLast': function() {}, //todo
+
   'limit': function() {}, //todo
 
   'startAt': function() {}, //todo
