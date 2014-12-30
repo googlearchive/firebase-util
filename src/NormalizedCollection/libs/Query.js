@@ -1,37 +1,71 @@
 'use strict';
 
 var util = require('../../common');
+var Transmogrifier = require('./Transmogrifier');
 
 function Query(ref, record) {
-  this._ref = ref;
-  // coupling: this is referenced directly by NormalizedSnapshot.js
-  this._rec = record;
+  var self = this;
+  self._ref = ref;
+  self._rec = record;
 }
 
 Query.prototype = {
-  'on': function() {}, //todo
+  'on': function(event, callback, cancel, context) {
+    this.$getRec().watch(event, callback, cancel, context);
+  },
 
-  'once': function() {}, //todo
+  'once': function(event, callback, cancel, context) {
+    function fn(snap) {
+      this.off(event, fn, this);
+      callback.call(context, snap);
+    }
+    this.on(event, fn, cancel, this);
+  },
 
-  'off': function() {}, //todo
+  'off': function(event, callback, context) {
+    this.$getRec().unwatch(event, callback, context);
+  },
 
-  'orderByChild': function() {}, //todo
+  /************************************
+   * Wrapped functions
+   ************************************/
 
-  'orderByKey': function() {}, //todo
+  'orderByChild': function() {
+    return this.$replicate('orderByChild', util.toArray(arguments));
+  },
 
-  'orderByPriority': function() {}, //todo
+  'orderByKey': function() {
+    return this.$replicate('orderByKey', util.toArray(arguments));
+  },
 
-  'limitToFirst': function() {}, //todo
+  'orderByPriority': function() {
+    return this.$replicate('orderByPriority', util.toArray(arguments));
+  },
 
-  'limitToLast': function() {}, //todo
+  'limitToFirst': function() {
+    return this.$replicate('limitToFirst', util.toArray(arguments));
+  },
 
-  'limit': function() {}, //todo
+  'limitToLast': function() {
+    return this.$replicate('limitToLast', util.toArray(arguments));
+  },
 
-  'startAt': function() {}, //todo
+  /** @deprecated */
+  'limit': function() {
+    return this.$replicate('limit', util.toArray(arguments));
+  },
 
-  'endAt': function() {}, //todo
+  'startAt': function() {
+    return this.$replicate('startAt', util.toArray(arguments));
+  },
 
-  'equalTo': function() {}, //todo
+  'endAt': function() {
+    return this.$replicate('endAt', util.toArray(arguments));
+  },
+
+  'equalTo': function() {
+    return this.$replicate('equalTo', util.toArray(arguments));
+  },
 
   'ref': function() { return this._ref; },
 
@@ -39,7 +73,14 @@ Query.prototype = {
    * PACKAGE FUNCTIONS (not API)
    ***************************/
 
-  '_getRec': function() { return this._rec; }
+  '$getRec': function() { return this._rec; },
+
+  '$replicate': function(method, args) {
+    var rec = this._rec;
+    var ref = rec.getPathManager().first().ref();
+    ref = ref[method].apply(ref, args);
+    return new Query(this._ref, Transmogrifier.replicate(rec, ref));
+  }
 };
 
 util.registerFirebaseWrapper(Query);

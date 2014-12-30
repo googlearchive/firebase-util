@@ -200,7 +200,7 @@ exports.stubNormSnap = function(ref, data, pri) {
 exports.stubNormRef = function(pathList, fieldList) {
   var paths = exports.stubPaths(pathList);
   var rec = exports.stubRec(paths, fieldList);
-  var obj = jasmine.createSpyObj('RefStub', ['key', 'child', 'ref', 'toString', '_getRec']);
+  var obj = jasmine.createSpyObj('RefStub', ['key', 'child', 'ref', 'toString', '$getRec']);
   obj.child.and.callFake(function(key) {
     var lastKey = obj.$$firstPath().name();
     return denestChildKey(obj, key, function(nextParent, nextKey) {
@@ -215,7 +215,7 @@ exports.stubNormRef = function(pathList, fieldList) {
   obj.ref.and.callFake(function() { return obj; });
   obj.key.and.callFake(function() { return pathName(paths); });
   obj.toString.and.callFake(function() { return pathString(paths); });
-  obj._getRec.and.callFake(function() { return rec; });
+  obj.$getRec.and.callFake(function() { return rec; });
   obj.$$firstPath = function() { return firstChild(paths); };
   return obj;
 };

@@ -67,6 +67,8 @@ util.inherits(RecordField, AbstractRecord, {
     });
   },
 
+  getClass: function() { return RecordField; },
+
   _start: function(event) {
     this.path.ref().on(event, this._handler(event), this._cancel, this);
   },

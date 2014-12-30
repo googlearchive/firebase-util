@@ -104,6 +104,8 @@ util.inherits(Record, AbstractRecord, {
     return data;
   },
 
+  getClass: function() { return Record; },
+
   _start: function(event) {
     if( !util.has(this._eventManagers, event) ) {
       this._eventManagers[event] = event === 'value'?

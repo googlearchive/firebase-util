@@ -111,7 +111,6 @@ RecordList.prototype = {
   },
 
   _change: function(key, event, snaps) {
-    console.log('_change', key, event, typeof snaps === 'string'? snaps : typeof snaps); //debug
     this.snaps[key] = snaps;
     if(util.has(this.loading, key)) {
       // newly added record

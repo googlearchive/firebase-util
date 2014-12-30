@@ -11,9 +11,9 @@ describe('NormalizedSnapshot', function() {
       var ref = hp.stubNormRef();
       var expVal = {foo: 'bar'};
       var snap = new NormalizedSnapshot(ref, snapList);
-      ref._getRec().mergeData.and.callFake(function() { return expVal; });
+      ref.$getRec().mergeData.and.callFake(function() { return expVal; });
       expect(snap.val()).toBe(expVal);
-      expect(ref._getRec().mergeData).toHaveBeenCalled();
+      expect(ref.$getRec().mergeData).toHaveBeenCalled();
     });
   });
 
@@ -54,7 +54,7 @@ describe('NormalizedSnapshot', function() {
     it('should iterate each key in rec.forEachKey', function() {
       var expKeys = ['a', 'b', 'c', 'e'];
       var ref = hp.stubNormRef();
-      ref._getRec().forEachKey.and.callFake(function(snaps, callback, context) {
+      ref.$getRec().forEachKey.and.callFake(function(snaps, callback, context) {
         for (var i = 0, len = expKeys.length; i < len; i++) {
           callback.call(context, expKeys[i], expKeys[i]);
         }
@@ -127,16 +127,16 @@ describe('NormalizedSnapshot', function() {
       var ref = hp.stubNormRef();
       var snaps = hp.snaps({f11: true});
       var snap = new NormalizedSnapshot(ref, snaps);
-      ref._getRec().hasChild.calls.reset();
+      ref.$getRec().hasChild.calls.reset();
       snap.hasChild('foo');
-      expect(ref._getRec().hasChild).toHaveBeenCalledWith(snaps, 'foo');
+      expect(ref.$getRec().hasChild).toHaveBeenCalledWith(snaps, 'foo');
     });
 
     it('should return true if rec.hasChild returns true', function() {
       var ref = hp.stubNormRef();
       var snaps = hp.snaps({f11: true});
       var snap = new NormalizedSnapshot(ref, snaps);
-      ref._getRec().hasChild.and.callFake(function(snaps, key) {
+      ref.$getRec().hasChild.and.callFake(function(snaps, key) {
         return key === 'foo';
       });
       expect(snap.hasChild('foo')).toBe(true);
@@ -146,7 +146,7 @@ describe('NormalizedSnapshot', function() {
       var ref = hp.stubNormRef();
       var snaps = hp.snaps({f11: true});
       var snap = new NormalizedSnapshot(ref, snaps);
-      ref._getRec().hasChild.and.returnValue(false);
+      ref.$getRec().hasChild.and.returnValue(false);
       expect(snap.hasChild('foo')).toBe(false);
     });
 

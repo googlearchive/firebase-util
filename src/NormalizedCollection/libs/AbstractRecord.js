@@ -128,6 +128,13 @@ AbstractRecord.prototype = {
   mergeData: abstract('mergeData'),
 
   /**
+   * Returns the specific implementing class for this instance.
+   *
+   * @returns {Function}
+   */
+  getClass: abstract('getClass'),
+
+  /**
    * @param {string} event
    * @param {function} callback
    * @param {function} [cancel]

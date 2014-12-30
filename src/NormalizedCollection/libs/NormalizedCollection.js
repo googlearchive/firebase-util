@@ -14,7 +14,7 @@ var RecordSet     = require('./RecordSet');
 function NormalizedCollection(path) { //jshint unused:vars
   assertPaths(arguments);
   this.pathMgr = new PathManager(arguments);
-  this.map = new FieldMap();
+  this.map = new FieldMap(this.pathMgr);
   this.filters = new Filter();
   this.finalized = false;
 }
@@ -23,7 +23,6 @@ NormalizedCollection.prototype = {
   select: function(fieldName) { //jshint unused:vars
     assertNotFinalized(this, 'select');
     var args = util.args('NormalizedCollection.select', arguments, 1);
-
     this.map.add(args.restAsList(0, ['string', 'object']));
   },
 

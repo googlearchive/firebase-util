@@ -119,6 +119,8 @@ util.inherits(RecordSet, AbstractRecord, {
     });
   },
 
+  getClass: function() { return RecordSet; },
+
   /**
    * Return the correct child key for a snapshot by determining if its corresponding path
    * has dependencies. If so, we look up the id and return that child, otherwise, we just

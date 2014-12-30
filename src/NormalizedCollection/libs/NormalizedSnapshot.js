@@ -5,7 +5,7 @@
 function NormalizedSnapshot(ref, snaps) {
   this._ref = ref;
   // coupling: uses the private _record from Ref
-  this._rec = ref._getRec();
+  this._rec = ref.$getRec();
   if( !snaps || !snaps.length ) {
     throw new Error('Must provide at least one valid snapshot to merge');
   }
