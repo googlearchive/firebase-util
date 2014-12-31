@@ -68,7 +68,7 @@ FieldMap.prototype = {
    * of each snapshot useful for merging snapshot data into a finalized value (see Record.mergeData)
    *
    * @param {object} snapshot a Firebase snapshot
-   * @param {boolean} isExport
+   * @param {boolean} [isExport]
    * @returns {object}
    */
   extractData: function(snapshot, isExport) {

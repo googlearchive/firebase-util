@@ -7,11 +7,14 @@ function Query(ref, record) {
   var self = this;
   self._ref = ref;
   self._rec = record;
+  // necessary because util.inherit() can only call classes with an empty constructor
+  // so we can't depend on the params existing for that call
+  if( record ) { record.setRef(self); }
 }
 
 Query.prototype = {
   'on': function(event, callback, cancel, context) {
-    this.$getRec().watch(event, callback, cancel, context);
+    this.$getRecord().watch(event, callback, cancel, context);
   },
 
   'once': function(event, callback, cancel, context) {
@@ -23,7 +26,7 @@ Query.prototype = {
   },
 
   'off': function(event, callback, context) {
-    this.$getRec().unwatch(event, callback, context);
+    this.$getRecord().unwatch(event, callback, context);
   },
 
   /************************************
@@ -73,10 +76,10 @@ Query.prototype = {
    * PACKAGE FUNCTIONS (not API)
    ***************************/
 
-  '$getRec': function() { return this._rec; },
+  '$getRecord': function() { return this._rec; },
 
   '$replicate': function(method, args) {
-    var rec = this._rec;
+    var rec = this._ref.$getRecord();
     var ref = rec.getPathManager().first().ref();
     ref = ref[method].apply(ref, args);
     return new Query(this._ref, Transmogrifier.replicate(rec, ref));

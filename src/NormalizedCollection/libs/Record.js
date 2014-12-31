@@ -1,9 +1,9 @@
 'use strict';
 
-var FieldMap = require('./FieldMap');
-var RecordField = require('./RecordField');
-var AbstractRecord = require('./AbstractRecord');
-var util = require('../../common');
+var FieldMap           = require('./FieldMap');
+var RecordField        = require('./RecordField');
+var AbstractRecord     = require('./AbstractRecord');
+var util               = require('../../common');
 
 function Record(fieldMap) {
   this._super(fieldMap);

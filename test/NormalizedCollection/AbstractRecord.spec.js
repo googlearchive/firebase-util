@@ -1,3 +1,4 @@
+
 'use strict';
 
 var AbstractRecord = require('../../src/NormalizedCollection/libs/AbstractRecord');
@@ -9,6 +10,7 @@ describe('AbstractRecord', function() {
   beforeEach(function() {
     Rec = function() {
       this._super(hp.stubFieldMap());
+      this.setRef(hp.stubNormRef());
     };
     util.inherits(Rec, AbstractRecord, {
       _start: jasmine.createSpy('_start'),
@@ -75,10 +77,12 @@ describe('AbstractRecord', function() {
 
     it('should invoke the callback when event is triggered', function() {
       var rec = new Rec();
-      var spy = jasmine.createSpy();
+      var spy = jasmine.createSpy('watch callback').and.callFake(function(snap) {
+        expect(snap.val()).toBe(99);
+      });
       rec.watch('value', spy);
-      rec._trigger('value', 99);
-      expect(spy).toHaveBeenCalledWith(99);
+      rec._trigger('value', [hp.stubSnap(hp.mockRef('p1'), 99)]);
+      expect(spy).toHaveBeenCalled();
     });
 
     it('should invoke the callback with correct context', function() {
@@ -88,7 +92,7 @@ describe('AbstractRecord', function() {
       });
       var rec = new Rec();
       rec.watch('value', spy, ctx);
-      rec._trigger('value', 99);
+      rec._trigger('value', hp.snaps(99));
       expect(spy).toHaveBeenCalled();
     });
   });
@@ -98,9 +102,9 @@ describe('AbstractRecord', function() {
       var rec = new Rec();
       var spy = jasmine.createSpy();
       rec.watch('value', spy);
-      rec._trigger('value', 99);
+      rec._trigger('value', hp.snaps(99));
       rec.unwatch('value', spy);
-      rec._trigger('value', 100);
+      rec._trigger('value', hp.snaps(100));
       expect(spy.calls.count()).toBe(1);
     });
 
@@ -110,9 +114,9 @@ describe('AbstractRecord', function() {
       var spy = jasmine.createSpy();
       rec.watch('value', spy, ctxA);
       rec.watch('value', spy, ctxB);
-      rec._trigger('value', 99);
+      rec._trigger('value', hp.snaps(99));
       rec.unwatch('value', spy, ctxA);
-      rec._trigger('value', 100);
+      rec._trigger('value', hp.snaps(100));
       expect(spy.calls.count()).toBe(3);
     });
 
@@ -122,7 +126,7 @@ describe('AbstractRecord', function() {
       rec.watch('value', spy);
       rec.watch('value', spy, {});
       rec.unwatch('value');
-      rec._trigger('value', 99);
+      rec._trigger('value', hp.snaps(99));
       expect(spy.calls.count()).toBe(0);
     });
 

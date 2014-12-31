@@ -88,7 +88,7 @@ util.inherits(NormalizedRef, Query, {
 function wrapAll(method) {
   return function() {
     var args = util.toArray(arguments);
-    util.each(this.$getRec().getPathManager().getPaths(), function(p) {
+    util.each(this.$getRecord().getPathManager().getPaths(), function(p) {
       var ref = p.ref();
       ref[method].apply(ref, args);
     });
@@ -98,7 +98,7 @@ function wrapAll(method) {
 function wrapMaster(method) {
   return function() {
     var args = util.toArray(arguments);
-    var ref = this.$getRec().getPathManager().first().ref();
+    var ref = this.$getRecord().getPathManager().first().ref();
     ref[method].apply(ref, args);
   }
 }

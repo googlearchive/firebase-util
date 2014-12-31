@@ -46,7 +46,7 @@ describe('Query', function() {
       it('contains the merged value'); //todo-test
     });
   });
-  
+
   describe('#once', function () {
     describe('value', function() {
       it('triggers when Record fires a value event'); //todo-test
@@ -99,7 +99,7 @@ describe('Query', function() {
       it('only occurs once'); //todo-test
     });
   });
-  
+
   describe('#off', function () {
     it('removes all listeners if only event is given'); //todo-test
 
@@ -153,7 +153,7 @@ describe('Query', function() {
 
     it('returns the last n results'); //todo-test
   });
-  
+
   describe('#startAt', function () {
     it('returns a Query'); //todo-test
 
@@ -161,7 +161,7 @@ describe('Query', function() {
 
     it('starts at the right record'); //todo-test
   });
-  
+
   describe('#endAt', function () {
     it('returns a Query'); //todo-test
 
@@ -169,7 +169,7 @@ describe('Query', function() {
 
     it('ends at the right record'); //todo-test
   });
-  
+
   describe('#equalTo', function () {
     it('returns a Query');
 
@@ -177,11 +177,12 @@ describe('Query', function() {
 
     it('only returns records with that field equal'); //todo-test
   });
-  
+
   describe('#ref', function () {
-    it('returns the same NormalizedRef used to create the Query', function() {
-      var ref = hp.mockRef();
-      var q = new Query(ref, hp.stubRec());
+    it('returns the same ref used to create the Query', function() {
+      var ref = {};
+      var rec = {setRef: function() {}};
+      var q = new Query(ref, rec);
       expect(q.ref()).toBe(ref);
     });
   });

@@ -45,7 +45,7 @@ exports.doAfterTest = (function() {
  */
 exports.stubPathMgr = function(pathList) {
   var paths = exports.stubPaths(pathList);
-  var mgr = jasmine.createSpyObj('PathManagerStub', ['getPath', 'first', 'getPathName', 'getPaths', 'getPathNames', 'count']);
+  var mgr = jasmine.createSpyObj('PathManagerStub', ['getPath', 'first', 'getPathName', 'getPaths', 'getPathNames', 'count', 'getPathFor']);
   mgr.getPath.and.callFake(function(fieldName) {
     return paths[fieldName] || null;
   });
@@ -64,6 +64,11 @@ exports.stubPathMgr = function(pathList) {
   });
   mgr.count.and.callFake(function() {
     return _.keys(paths).length;
+  });
+  mgr.getPathFor.and.callFake(function(url) {
+    return _.find(paths, function(p) {
+      return p.url() === url;
+    });
   });
   return mgr;
 };
@@ -200,7 +205,7 @@ exports.stubNormSnap = function(ref, data, pri) {
 exports.stubNormRef = function(pathList, fieldList) {
   var paths = exports.stubPaths(pathList);
   var rec = exports.stubRec(paths, fieldList);
-  var obj = jasmine.createSpyObj('RefStub', ['key', 'child', 'ref', 'toString', '$getRec']);
+  var obj = jasmine.createSpyObj('RefStub', ['key', 'child', 'ref', 'toString', '$getRecord']);
   obj.child.and.callFake(function(key) {
     var lastKey = obj.$$firstPath().name();
     return denestChildKey(obj, key, function(nextParent, nextKey) {
@@ -215,7 +220,7 @@ exports.stubNormRef = function(pathList, fieldList) {
   obj.ref.and.callFake(function() { return obj; });
   obj.key.and.callFake(function() { return pathName(paths); });
   obj.toString.and.callFake(function() { return pathString(paths); });
-  obj.$getRec.and.callFake(function() { return rec; });
+  obj.$getRecord.and.callFake(function() { return rec; });
   obj.$$firstPath = function() { return firstChild(paths); };
   return obj;
 };
@@ -274,10 +279,11 @@ exports.stubFieldMap = function(fields, paths) {
  * @returns {*}
  */
 exports.stubRec = function(pathList, fieldList) {
+  var ref = null;
   var paths = exports.stubPaths(pathList);
   var fieldMap = exports.stubFieldMap(fieldList);
   var rec = jasmine.createSpyObj('RecordStub',
-    ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap']
+    ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap', 'setRef']
   );
   var mgr = exports.stubPathMgr();
   rec.getPathManager.and.callFake(function() {
@@ -290,9 +296,11 @@ exports.stubRec = function(pathList, fieldList) {
   rec.$$getPaths = function() { return paths; };
   rec.mergeData.and.callFake(function(snaps, isExport) {
     var dat = exports.deepExtend.apply(null, _.map(snaps, function(snap) {
-      return isExport? snap.exportVal() : snap.val();
+      var val = isExport? snap.exportVal() : snap.val();
+      if( !_.isObject(val) ) { val = {'.value': val}; }
+      return val;
     }));
-    return _.isObject(dat) && _.isEmpty(dat)? null : dat;
+    return _.isObject(dat) && _.isEmpty(dat)? null : (!isExport && _.isEqual(_.keys(dat), ['.value'])? dat['.value'] : dat);
   });
   rec.getChildSnaps.and.callFake(function(snaps, fieldName) {
     var f = fieldMap.getField(fieldName);
@@ -314,6 +322,9 @@ exports.stubRec = function(pathList, fieldList) {
           });
       }
     }
+    rec.setRef.and.callFake(function(newRef) {
+      ref = newRef;
+    });
     var res = false;
     _.each(fieldMap.fieldsByKey, function(f) {
       if( shouldIterate(f) ) {
@@ -354,29 +365,13 @@ exports.snaps = function() {
   var i = 0;
   return _.map(_.flatten(arguments), function(snapData) {
     i++;
+    var path = PATHS['p'+i];
     return exports.stubSnap(
-      exports.stubRef(exports.stubPath('p' + i)),
+      exports.mockRef(path.url),
       snapData,
       i
     );
   });
-};
-
-/**
- * @deprecated use mockRef()
- */
-exports.stubRef = function(path) {
-  var obj = jasmine.createSpyObj('ref', ['key', 'child', 'ref', 'toString', 'on', 'once', 'off']);
-  obj.child.and.callFake(function(key) {
-    return denestChildKey(obj, key, function(nextParent, nextKey) {
-      return exports.stubRef(nextParent.$$getPath().child(nextKey));
-    });
-  });
-  obj.ref.and.callFake(function() { return obj; });
-  obj.key.and.callFake(function() { return path.id(); });
-  obj.toString.and.callFake(function() { return path.url(); });
-  obj.$$getPath = function() { return path; };
-  return obj;
 };
 
 /**
@@ -412,7 +407,7 @@ exports.stubSnap = function(fbRef, data, pri) {
     }
   );
   obj.val.and.callFake(
-    function() { return _.cloneDeep(data) }
+    function() { return _.isObject(data)? _.cloneDeep(data) : data }
   );
   obj.hasChild.and.callFake(
     function(key) { return _.has(data, key); }
@@ -471,7 +466,7 @@ exports.mockRef = function(pathString) {
     }
   }
   else {
-    ref = new MockFirebase();
+    ref = new MockFirebase('Mock1://');
     if( pathString ) {
       ref = ref.child(pathString);
     }

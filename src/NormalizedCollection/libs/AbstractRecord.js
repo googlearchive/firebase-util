@@ -1,5 +1,6 @@
 'use strict';
 
+var NormalizedSnapshot = require('./NormalizedSnapshot');
 var util = require('../../common/');
 
 /**
@@ -21,6 +22,7 @@ var util = require('../../common/');
  */
 function AbstractRecord(fieldMap) {
   var self = this;
+  self._ref = null;
   self.map = fieldMap;
   self.obs = new util.Observable(
     ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
@@ -161,8 +163,20 @@ AbstractRecord.prototype = {
     return this.map.getPathManager();
   },
 
-  _trigger: function() {
-    this.obs.triggerEvent.apply(this.obs, arguments);
+  setRef: function(ref) {
+    this._ref = ref;
+  },
+
+  _trigger: function(event, id, snaps) {
+    var ref;
+    if( event === 'value' ) {
+      snaps = id;
+      ref = this._ref;
+    }
+    else {
+      ref = this._ref.child(id);
+    }
+    this.obs.triggerEvent(event, new NormalizedSnapshot(ref, snaps));
   },
 
   /**

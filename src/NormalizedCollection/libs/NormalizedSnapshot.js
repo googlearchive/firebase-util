@@ -4,8 +4,6 @@
 
 function NormalizedSnapshot(ref, snaps) {
   this._ref = ref;
-  // coupling: uses the private _record from Ref
-  this._rec = ref.$getRec();
   if( !snaps || !snaps.length ) {
     throw new Error('Must provide at least one valid snapshot to merge');
   }
@@ -15,7 +13,7 @@ function NormalizedSnapshot(ref, snaps) {
 
 NormalizedSnapshot.prototype = {
   val: function() {
-    return this._rec.mergeData(this._snaps, false);
+    return this._ref.$getRecord().mergeData(this._snaps, false);
   },
 
   child: function(key) {
@@ -29,7 +27,7 @@ NormalizedSnapshot.prototype = {
     var firstChildName = childParts.pop();
     snap = new NormalizedSnapshot(
       this._ref.child(firstChildName),
-      this._rec.getChildSnaps(this._snaps, firstChildName)
+      this._ref.$getRecord().getChildSnaps(this._snaps, firstChildName)
     );
     // iterate any nested keys and keep calling child on them
     while(childParts.length) {
@@ -39,8 +37,7 @@ NormalizedSnapshot.prototype = {
   },
 
   forEach: function(cb, context) {
-    return this._rec.forEachKey(this._snaps, function(childId, childAlias) {
-      //todo use this._rec.hasChild() here?
+    return this._ref.$getRecord().forEachKey(this._snaps, function(childId, childAlias) {
       if( childId === '$value' || childId === '$key' ) { return false; }
       return cb.call(context, this.child(childAlias));
     }, this);
@@ -50,7 +47,7 @@ NormalizedSnapshot.prototype = {
     //todo optimize and/or memoize?
     var parts = key.split('/').reverse();
     var res = parts.length > 0;
-    var rec = this._rec;
+    var rec = this._ref.$getRecord();
     var nsnap = this;
     while(res && parts.length) {
       var nextKey = parts.pop();
@@ -72,7 +69,7 @@ NormalizedSnapshot.prototype = {
   hasChildren: function() {
     // if there are any keys to iterate, and that key is not $key or $value
     // then we have children
-    return this._rec.forEachKey(this._snaps, function(id) {
+    return this._ref.$getRecord().forEachKey(this._snaps, function(id) {
       return id !== '$key' && id !== '$value';
     });
   },
@@ -90,7 +87,7 @@ NormalizedSnapshot.prototype = {
   numChildren: function() {
     //todo-bug does not account for nested aliases (they will change the count here)
     var ct = 0;
-    this._rec.forEachKey(this._snaps, function(id) {
+    this._ref.$getRecord().forEachKey(this._snaps, function(id) {
       if( id !== '$key' && id !== '$value' ) { ct++; }
     });
     return ct;
@@ -101,7 +98,7 @@ NormalizedSnapshot.prototype = {
   getPriority: function() { return this._pri; },
 
   exportVal: function() {
-    return this._rec.mergeData(this._snaps, true);
+    return this._ref.$getRecord().mergeData(this._snaps, true);
   }
 };
 
