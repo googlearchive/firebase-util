@@ -13,7 +13,7 @@ function PathManager(paths) {
 
 PathManager.prototype = {
   add: function(pathProps) {
-    var path = pathProps instanceof Path? pathProps : new Path(pathProps);
+    var path = pathProps instanceof Path? pathProps.clone() : new Path(pathProps);
     if( !this.paths.length && path.hasDependency() ) {
       throw new Error('The master path (i.e. the first) may not declare a dependency.' +
         ' Perhaps you have put the wrong path first in the list?');

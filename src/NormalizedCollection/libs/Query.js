@@ -9,7 +9,7 @@ function Query(ref, record) {
   self._rec = record;
   // necessary because util.inherit() can only call classes with an empty constructor
   // so we can't depend on the params existing for that call
-  if( record ) { record.setRef(self); }
+  if( record ) { record.setRef(self); } //todo don't like this here, is awkward coupling
 }
 
 Query.prototype = {

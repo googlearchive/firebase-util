@@ -2,6 +2,8 @@
 var _ = require('lodash');
 var MockFirebase = require('mockfirebase').MockFirebase;
 
+addTwoDotOhStubs(MockFirebase);
+
 //todo the stubs in here are a bit of a mess; some of them are nearly as complex as
 //todo the objects they attempt to stub. Instead, those methods should be stubbed
 //todo to throw errors, and the test units should specify what they return using
@@ -82,7 +84,7 @@ exports.stubPathMgr = function(pathList) {
 exports.stubPaths = function(paths) {
   var out = {};
   _.each(paths||PATHS, function(p) {
-    var path = _.isObject(p) && typeof(p.reff) === 'function'? p : exports.stubPath(p);
+    var path = exports.stubPath(p);
     out[path.name()] = path;
   });
   return out;
@@ -95,12 +97,16 @@ exports.stubPaths = function(paths) {
  * @returns {object}
  */
 exports.stubPath = function(props) {
-  if( typeof props === 'string' ) {
+  if( _.isObject(props) && typeof(props.reff) === 'function' ) {
+    return props;
+  }
+  else if( typeof props === 'string' ) {
     props = PATHS[props];
   }
   if( !props ) { throw new Error('Invalid path props'); }
-  var p = jasmine.createSpyObj('PathStub', ['name', 'id', 'url', 'child', 'ref', 'reff', 'hasDependency', 'getDependency']);
+  var p = jasmine.createSpyObj('PathStub', ['name', 'id', 'url', 'child', 'ref', 'reff', 'hasDependency', 'getDependency', 'clone']);
   var ref = props.ref? props.ref : exports.mockRef(props.url);
+  if( !props.url ) { props.url = ref.toString(); }
   p.name.and.callFake(function() { return props.alias || null; });
   p.id.and.callFake(function() { return props.id || null; });
   p.url.and.callFake(function() { return props.url; });
@@ -114,6 +120,9 @@ exports.stubPath = function(props) {
   });
   p.getDependency.and.callFake(function() {
     return props.dep || null;
+  });
+  p.clone.and.callFake(function() {
+    return exports.stubPath(_.extend({}, props));
   });
   return p;
 };
@@ -249,7 +258,7 @@ exports.stubFieldMap = function(fields, paths) {
     field.pathName = parts[0];
     field.id = parts[1];
     field.alias = parts[2] || parts[1];
-    field.key = field.path + '.' + field.id;
+    field.key = field.pathName + '.' + field.id;
     field.path = exports.stubPath(PATHS[field.pathName]);
     field.url = field.path.url() + '/' + field.id;
     map.fieldsByKey[field.id] = field;
@@ -281,11 +290,11 @@ exports.stubFieldMap = function(fields, paths) {
 exports.stubRec = function(pathList, fieldList) {
   var ref = null;
   var paths = exports.stubPaths(pathList);
-  var fieldMap = exports.stubFieldMap(fieldList);
+  var fieldMap = exports.stubFieldMap(fieldList, paths);
   var rec = jasmine.createSpyObj('RecordStub',
-    ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap', 'setRef']
+    ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap', 'setRef', 'watch', 'unwatch', '_trigger', 'getClass']
   );
-  var mgr = exports.stubPathMgr();
+  var mgr = exports.stubPathMgr(paths);
   rec.getPathManager.and.callFake(function() {
     return mgr;
   });
@@ -345,6 +354,9 @@ exports.stubRec = function(pathList, fieldList) {
     }
   });
   rec.getFieldMap.and.callFake(function() { return fieldMap; });
+  rec.getClass.and.callFake(function() { return function() {
+    return exports.stubRec(pathList, fieldList);
+  }});
   return rec;
 };
 
@@ -515,6 +527,47 @@ function denestChildKey(base, childKey, iterator) {
     child = iterator(child, k);
   }
   return child;
+}
+
+function addTwoDotOhStubs(Firebase) {
+  _.extend(Firebase.prototype, {
+    'orderByChild': function() {
+      return this;
+    },
+
+    'orderByKey': function() {
+      return this;
+    },
+
+    'orderByPriority': function() {
+      return this;
+    },
+
+    'limitToFirst': function() {
+      return this;
+    },
+
+    'limitToLast': function() {
+      return this;
+    },
+
+    /** @deprecated */
+    'limit': function() {
+      return this;
+    },
+
+    'startAt': function() {
+      return this;
+    },
+
+    'endAt': function() {
+      return this;
+    },
+
+    'equalTo': function() {
+      return this;
+    }
+  });
 }
 
 return exports;

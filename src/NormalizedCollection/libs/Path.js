@@ -59,7 +59,10 @@ function parseProps(props) {
 }
 
 function parseDep(dep) {
-  if( dep ) {
+  if(util.isObject(dep) ) {
+    return dep;
+  }
+  else if( dep ) {
     var parts = dep.split('.');
     return { path: parts[0], field: parts[1] };
   }

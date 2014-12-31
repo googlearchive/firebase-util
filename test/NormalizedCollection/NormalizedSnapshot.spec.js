@@ -6,7 +6,7 @@ var hp = require('./helpers');
 
 describe('NormalizedSnapshot', function() {
   describe('#val', function() {
-    it('should call the mergeData method on the record and return than value', function() {
+    it('should call the mergeData method on the record and return that value', function() {
       var snapList = hp.snaps(true);
       var ref = hp.stubNormRef();
       var expVal = {foo: 'bar'};
@@ -117,9 +117,9 @@ describe('NormalizedSnapshot', function() {
       expect(spy).toHaveBeenCalled();
     });
 
-    it('should iterate nested aliases exactly once');
+    it('should iterate nested aliases exactly once'); //todo-test
 
-    it('should iterate dynamic fields that have data');
+    it('should iterate dynamic fields that have data'); //todo-test
   });
 
   describe('#hasChild', function() {
@@ -229,28 +229,28 @@ describe('NormalizedSnapshot', function() {
   });
 
   describe('#exportVal', function() {
-    it('should include the correct value');
+    it('should include the correct value'); //todo-test
 
-    it('should include .value for primitives');
+    it('should include .value for primitives'); //todo-test
 
-    it('should include .priority if it is not null');
+    it('should include .priority if it is not null'); //todo-test
 
-    it('should not include .priority if it is null');
+    it('should not include .priority if it is null'); //todo-test
 
-    it('should be null if no value');
+    it('should be null if no value'); //todo-test
 
-    it('should include nested children');
+    it('should include nested children'); //todo-test
 
-    it('should be a copy of the data with no original pointers');
+    it('should be a copy of the data with no original pointers'); //todo-test
 
-    it('should return a primitive if exactly one path');
+    it('should return a primitive if exactly one path'); //todo-test
 
-    it('should merge values from multiple paths');
+    it('should merge values from multiple paths'); //todo-test
 
-    it('should use value from first path over others if there is a conflict');
+    it('should use value from first path over others if there is a conflict'); //todo-test
 
-    it('should merge child records if this is the master');
+    it('should merge child records if this is the master'); //todo-test
 
-    it('should not merge deep children if this is the master');
+    it('should not merge deep children if this is the master'); //todo-test
   });
 });

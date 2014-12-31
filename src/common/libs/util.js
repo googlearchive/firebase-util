@@ -95,7 +95,7 @@ util.keys = function(vals) {
  *
  * @param vals
  * @param iterator
- * @param scope
+ * @param [scope]
  * @returns {*}
  */
 util.map = function(vals, iterator, scope) {
