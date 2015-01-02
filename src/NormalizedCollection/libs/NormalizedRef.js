@@ -14,8 +14,15 @@ function NormalizedRef(record, parent) {
 
 util.inherits(NormalizedRef, Query, {
   'child': function(fieldName) {
-    var record = this._rec.child(fieldName);
-    return new NormalizedRef(record, this);
+    var parts = fieldName.split('/').reverse(); // pop is faster than shift
+    var parent = this;
+    var ref = this;
+    while(parts.length) {
+      var key = parts.pop();
+      ref = new NormalizedRef(ref.$getRecord().child(key), parent);
+      parent = ref;
+    }
+    return ref;
   },
 
   'parent': function() {
@@ -44,17 +51,42 @@ util.inherits(NormalizedRef, Query, {
     return this._toString;
   },
 
-  'set': function() {}, //todo
+  //todo have set, update, push, remove attempt to revert any partial commits
+  //todo by running a transaction and, if the value is still the "new" partial
+  //todo value, then revert it to the old complete value
 
-  'update': function() {}, //todo
+  'set': function(data, callback, context) {
+    this.$getRecord().saveData(data, {callback: callback, context: context, isUpdate: false});
+  },
 
-  'remove': function() {}, //todo
+  'update': function(data, callback, context) {
+    this.$getRecord().saveData(data, {callback: callback, context: context, isUpdate: true});
+  },
 
-  'push': function() {}, //todo
+  'remove': function(callback, context) {
+    this.$getRecord().saveData(null, {callback: callback, context: context, isUpdate: false});
+  },
 
-  'setWithPriority': function() {}, //todo
+  'push': function(data, callback, context) {
+    var uid = this.$getMaster().push().name();
+    var child = this.child(uid);
+    if( data ) {
+      child.set.apply(child, arguments);
+    }
+    return child;
+  },
 
-  'setPriority': function() {}, //todo
+  'setWithPriority': function(data, priority, callback, context) {
+    this.$getRecord().saveData(data, {
+      callback: callback, context: context, isUpdate: false, priority: priority
+    });
+  },
+
+  'setPriority': function(priority, callback, context) {
+    this.$getRecord().saveData(null, {
+      callback: callback, context: context, isUpdate: true, priority: priority
+    });
+  },
 
   /****************************
    * WRAPPER FUNCTIONS
@@ -65,7 +97,7 @@ util.inherits(NormalizedRef, Query, {
   'authAnonymously': wrapMaster('authAnonymously'),
   'authWithPassword': wrapMaster('authWithPassword'),
   'authWithOAuthPopup': wrapMaster('authWithOAuthPopup'),
-  'authWithOAuthRedirect': wrapMaster('authWithOAUthRedirect'),
+  'authWithOAuthRedirect': wrapMaster('authWithOAuthRedirect'),
   'authWithOAuthToken': wrapMaster('authWithOAuthToken'),
   'getAuth': wrapMaster('getAuth'),
   'onAuth': wrapMaster('onAuth'),
@@ -74,6 +106,7 @@ util.inherits(NormalizedRef, Query, {
   'changePassword': wrapMaster('changePassword'),
   'removeUser': wrapMaster('removeUser'),
   'resetPassword': wrapMaster('resetPassword'),
+  'changeEmail': wrapMaster('changeEmail'),
 
   'goOffline': wrapAll('goOffline'),
   'goOnline': wrapAll('goOnline'),
@@ -88,7 +121,7 @@ util.inherits(NormalizedRef, Query, {
 function wrapAll(method) {
   return function() {
     var args = util.toArray(arguments);
-    util.each(this.$getRecord().getPathManager().getPaths(), function(p) {
+    util.each(this.$getPaths(), function(p) {
       var ref = p.ref();
       ref[method].apply(ref, args);
     });
@@ -98,8 +131,8 @@ function wrapAll(method) {
 function wrapMaster(method) {
   return function() {
     var args = util.toArray(arguments);
-    var ref = this.$getRecord().getPathManager().first().ref();
-    ref[method].apply(ref, args);
+    var ref = this.$getMaster();
+    return ref[method].apply(ref, args);
   }
 }
 

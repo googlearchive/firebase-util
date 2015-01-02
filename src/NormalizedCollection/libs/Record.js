@@ -106,6 +106,31 @@ util.inherits(Record, AbstractRecord, {
 
   getClass: function() { return Record; },
 
+  saveData: function(data, props) {
+    var map = this.getFieldMap();
+    var paths = this.getPathManager().getPaths();
+    if( data === null ) {
+      this.remove();
+    }
+    else if(util.isObject(data)) {
+      var q = util.queue();
+      util.eachByPath(map, data, function(path, dataToSave) {
+        if( !props.isUpdate ) {
+          addEmptyFields(map, path, dataToSave);
+        }
+        path.reff().update(dataToSave, q.getHandler());
+      });
+      q.handler(props.callback||util.noop, props.context);
+    }
+    else if( paths.length === 1 ) {
+      paths[0].ref().set(data, props.callback||util.noop, props.context);
+    }
+    else {
+      throw new Error('Cannot set multiple paths to a non-object value ' +
+      '(it has no child keys and I don\'t know which child to set)')
+    }
+  },
+
   _start: function(event) {
     if( !util.has(this._eventManagers, event) ) {
       this._eventManagers[event] = event === 'value'?
@@ -263,6 +288,14 @@ function Dyno(path, fieldMap, event, updateFn) {
       ref.off(event, updateFn);
     }
   };
+}
+
+function addEmptyFields(map, path, dataToSave) {
+  util.each(map.fieldsFor(path.name()), function(f) {
+    if( !dataToSave.hasOwnProperty(f.id) ) {
+      dataToSave[f.id] = null;
+    }
+  });
 }
 
 module.exports = Record;

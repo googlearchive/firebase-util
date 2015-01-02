@@ -137,6 +137,14 @@ AbstractRecord.prototype = {
   getClass: abstract('getClass'),
 
   /**
+   * Saves data back to the correct paths
+   *
+   * @param data
+   * @param {Object} props an object with callback[, context][, isUpdate]
+   */
+  saveData: abstract('saveData'),
+
+  /**
    * @param {string} event
    * @param {function} callback
    * @param {function} [cancel]

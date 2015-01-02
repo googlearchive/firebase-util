@@ -326,6 +326,32 @@ describe('Record', function() {
       });
     });
 
+    describe('saveData', function() {
+      it('calls set on the correct path for each field');
+
+      it('puts children not in the map into the first path');
+
+      it('deletes fields not in the set op');
+
+      it('triggers callback after all paths have returned');
+
+      it('returns an error if any path returns an error');
+
+      it('removes all paths if given null');
+
+      it('throws error if non-object passed with isUpdate === true');
+
+      it('sets a primitive if there is exactly one path');
+
+      it('throws an error if multiple paths are set to a primitive');
+
+      it('observes priority and calls setPriority if one is provided');
+
+      it('accepts .value');
+
+      it('accepts .priority');
+    });
+
     describe('value events', function() {
       it('should return all snapshots');
 

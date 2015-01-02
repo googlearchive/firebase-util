@@ -24,6 +24,26 @@ Queue.prototype = {
     return this;
   },
 
+  /**
+   * Returns a node-like callback to be invoked when an op is completed.
+   * @returns {function}
+   */
+  getHandler: function() {
+    var doneCallback, result;
+    this.addCriteria(function(done) {
+      if( result !== util.undef ) {
+        done(result);
+      }
+      else {
+        doneCallback = done;
+      }
+    });
+    return function(err) {
+      if( doneCallback ) { doneCallback(err); }
+      else { result = err; }
+    }
+  },
+
   ready: function() {
     return this.needs === this.met;
   },

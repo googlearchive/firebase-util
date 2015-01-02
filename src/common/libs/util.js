@@ -418,6 +418,22 @@ util.pick = function(obj, keys) {
   return out;
 };
 
+util.eachByPath = function(map, data, callback, context) {
+  var dataByPath = {};
+  util.each(data, function(v,k) {
+    var p = map.pathFor(k);
+    var f = map.getField(k);
+    if( !util.has(dataByPath, p.name()) ) {
+      dataByPath[p.name()] = { path: p, data: {} };
+    }
+    dataByPath[p.name()].data[f.id] = v;
+  });
+
+  util.each(dataByPath, function(collated) {
+    callback.call(context, collated.path, collated.data);
+  });
+};
+
 function format(v, type) {
   switch(type) {
     case '%d':

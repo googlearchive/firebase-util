@@ -51,7 +51,7 @@ exports.stubPathMgr = function(pathList) {
   mgr.getPath.and.callFake(function(fieldName) {
     return paths[fieldName] || null;
   });
-  mgr.first.and.callFake(function() { return firstChild(paths); });
+  mgr.first.and.callFake(function() { return firstFromCollection(paths); });
   mgr.getPathName.and.callFake(function(url) {
     var p = _.find(paths, function(p) {
       return p.url() === url;
@@ -214,7 +214,7 @@ exports.stubNormSnap = function(ref, data, pri) {
 exports.stubNormRef = function(pathList, fieldList) {
   var paths = exports.stubPaths(pathList);
   var rec = exports.stubRec(paths, fieldList);
-  var obj = jasmine.createSpyObj('RefStub', ['key', 'child', 'ref', 'toString', '$getRecord']);
+  var obj = jasmine.createSpyObj('RefStub', ['key', 'child', 'ref', 'toString', '$getRecord', '$getMaster', '$getPaths']);
   obj.child.and.callFake(function(key) {
     var lastKey = obj.$$firstPath().name();
     return denestChildKey(obj, key, function(nextParent, nextKey) {
@@ -230,21 +230,27 @@ exports.stubNormRef = function(pathList, fieldList) {
   obj.key.and.callFake(function() { return pathName(paths); });
   obj.toString.and.callFake(function() { return pathString(paths); });
   obj.$getRecord.and.callFake(function() { return rec; });
-  obj.$$firstPath = function() { return firstChild(paths); };
+  obj.$$firstPath = function() { return firstFromCollection(paths); };
+  obj.$getMaster.and.callFake(function() { return rec.getPathManager().first().ref(); });
+  obj.$getPaths.and.callFake(function() { return rec.getPathManager().getPaths(); });
   return obj;
 };
 
 /**
  * Generates a FieldMap stub.
  *
- * @param {Array} [fields] defaults to FIELDS above
+ * @param {Array} [fields] defaults to FIELDS above, or an object containing id, path[, alias]
  * @param {Array|object} [paths] the field manager stub or an array of fields to create it with
  * @returns {*}
  */
 exports.stubFieldMap = function(fields, paths) {
   var mgr;
-  if( !paths || _.isArray(paths) ) { mgr = exports.stubPathMgr(paths); }
-  else { mgr = paths; }
+  if(_.isObject(paths) && typeof paths.getPathFor === 'function' ) {
+    mgr = paths;
+  }
+  else {
+    mgr = exports.stubPathMgr(paths);
+  }
   var map = jasmine.createSpyObj('FieldMapStub', [
     'extractData', 'aliasFor', 'fieldsFor', 'pathFor',
     'getField', 'add', 'forEach', 'getPath', 'getPathManager'
@@ -253,13 +259,20 @@ exports.stubFieldMap = function(fields, paths) {
   map.fieldsByAlias = {};
   map.length = (fields||FIELDS).length;
   _.each(fields || FIELDS, function(f) {
-    var parts = f.split(',');
-    var field = {};
-    field.pathName = parts[0];
-    field.id = parts[1];
-    field.alias = parts[2] || parts[1];
+    if(_.isObject(f)) {
+      field = _.extend({}, f);
+      field.pathName = f.path.name();
+      field.alias = field.alias || field.id;
+    }
+    else {
+      var parts = f.split(',');
+      var field = {};
+      field.pathName = parts[0];
+      field.id = parts[1];
+      field.alias = parts[2] || parts[1];
+      field.path = exports.stubPath(PATHS[field.pathName]);
+    }
     field.key = field.pathName + '.' + field.id;
-    field.path = exports.stubPath(PATHS[field.pathName]);
     field.url = field.path.url() + '/' + field.id;
     map.fieldsByKey[field.id] = field;
     map.fieldsByAlias[field.alias] = field;
@@ -288,19 +301,23 @@ exports.stubFieldMap = function(fields, paths) {
  * @returns {*}
  */
 exports.stubRec = function(pathList, fieldList) {
+  var children = {};
   var ref = null;
   var paths = exports.stubPaths(pathList);
-  var fieldMap = exports.stubFieldMap(fieldList, paths);
-  var rec = jasmine.createSpyObj('RecordStub',
-    ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap', 'setRef', 'watch', 'unwatch', '_trigger', 'getClass']
-  );
   var mgr = exports.stubPathMgr(paths);
+  var fieldMap = exports.stubFieldMap(fieldList, mgr);
+  var rec = jasmine.createSpyObj('RecordStub',
+    ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey', 'getFieldMap', 'setRef', 'watch', 'unwatch', '_trigger', 'getClass', 'saveData']
+  );
   rec.getPathManager.and.callFake(function() {
     return mgr;
   });
   rec.child.and.callFake(function(key) {
-    var p = firstChild(paths);
-    return exports.stubRec([p], [p.name() + ',' + key]);
+    if( !children[key] ) {
+      var p = firstFromCollection(paths);
+      children[key] = exports.stubRec([p.child(key)], [{path: p, id: key}]);
+    }
+    return children[key];
   });
   rec.$$getPaths = function() { return paths; };
   rec.mergeData.and.callFake(function(snaps, isExport) {
@@ -501,7 +518,7 @@ exports.mergeUrl = function() {
 function pathString(paths) {
   switch(_.size(paths)) {
     case 0: return null;
-    case 1: return firstChild(paths).url();
+    case 1: return firstFromCollection(paths).url();
     default: return '[' + _.map(paths, function(p) { return p.url(); }).join('][') + ']';
   }
 }
@@ -509,12 +526,12 @@ function pathString(paths) {
 function pathName(paths) {
   switch(_.size(paths)) {
     case 0: return null;
-    case 1: return firstChild(paths).name();
+    case 1: return firstFromCollection(paths).name();
     default: return '[' + _.map(paths, function(p) { return p.name(); }).join('][') + ']';
   }
 }
 
-function firstChild(collection) {
+function firstFromCollection(collection) {
   var x = _.isArray(collection)? 0 : _.keys(collection)[0];
   return collection[x];
 }
@@ -566,7 +583,15 @@ function addTwoDotOhStubs(Firebase) {
 
     'equalTo': function() {
       return this;
-    }
+    },
+
+    'changeEmail': function() {},
+
+    'goOffline': function() {},
+
+    'goOnline': function() {},
+
+    'onDisconnect': function() {}
   });
 }
 

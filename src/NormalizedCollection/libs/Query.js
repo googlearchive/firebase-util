@@ -78,9 +78,13 @@ Query.prototype = {
 
   '$getRecord': function() { return this._rec; },
 
+  '$getMaster': function() { return this._rec.getPathManager().first().ref(); },
+
+  '$getPaths': function() { return this._rec.getPathManager().getPaths(); },
+
   '$replicate': function(method, args) {
-    var rec = this._ref.$getRecord();
-    var ref = rec.getPathManager().first().ref();
+    var rec = this.$getRecord();
+    var ref = this.$getMaster();
     ref = ref[method].apply(ref, args);
     return new Query(this._ref, Transmogrifier.replicate(rec, ref));
   }

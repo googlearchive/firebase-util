@@ -6,6 +6,15 @@ var hp             = require('./helpers');
 var _              = require('lodash');
 
 describe('Query', function() {
+  describe('<constructor>', function() {
+    it('calls setRef on the record', function() {
+      var ref = hp.stubNormRef();
+      var rec = ref.$getRecord();
+      var q = new Query(ref, rec);
+      expect(rec.setRef).toHaveBeenCalledWith(q);
+    });
+  });
+
   describe('#on', function () {
     it('calls Record.watch with the correct arguments', function() {
       var ref = hp.stubNormRef();
@@ -74,7 +83,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'orderByChild').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.orderByChild('foo');
@@ -104,7 +113,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'orderByKey').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.orderByKey();
@@ -131,7 +140,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'orderByPriority').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.orderByPriority();
@@ -161,7 +170,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'limitToFirst').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.limitToFirst();
@@ -191,7 +200,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'limitToLast').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.limitToLast();
@@ -221,7 +230,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'limit').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.limit();
@@ -251,7 +260,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'startAt').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.startAt();
@@ -281,7 +290,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'endAt').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.endAt();
@@ -311,7 +320,7 @@ describe('Query', function() {
         return new Path([p.ref(), p.name(), p.getDependency()]);
       });
       var nref = hp.stubNormRef(paths);
-      var masterRef = nref.$getRecord().getPathManager().first().ref();
+      var masterRef = nref.$getMaster();
       spyOn(masterRef, 'equalTo').and.callThrough();
       var q = new Query(nref, nref.$getRecord());
       q.equalTo();
