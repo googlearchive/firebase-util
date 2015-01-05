@@ -423,10 +423,11 @@ util.eachByPath = function(map, data, callback, context) {
   util.each(data, function(v,k) {
     var p = map.pathFor(k);
     var f = map.getField(k);
+    var key = f? f.id : k;
     if( !util.has(dataByPath, p.name()) ) {
       dataByPath[p.name()] = { path: p, data: {} };
     }
-    dataByPath[p.name()].data[f.id] = v;
+    dataByPath[p.name()].data[key] = v;
   });
 
   util.each(dataByPath, function(collated) {

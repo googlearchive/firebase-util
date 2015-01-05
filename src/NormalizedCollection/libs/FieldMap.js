@@ -61,7 +61,7 @@ FieldMap.prototype = {
   /**
    * Pulls data out of a snapshot aliased by the field map. Only keys in the field map
    * will be returned. Always returns an object. Does not return a priority at the root
-   * level but will return priorties for all children. If the snapshot contains a primitive,
+   * level but will return priorities for all children. If the snapshot contains a primitive,
    * an empty object will be returned.
    *
    * This is not intended to provide finalized values but instead to provide an object representation
@@ -73,8 +73,6 @@ FieldMap.prototype = {
    */
   extractData: function(snapshot, isExport) {
     var out = {};
-    //todo-dynamic-keys does not work for dynamic keys, most likely
-    //todo-dynamic-keys since their URL will be created on the fly
     var pathName = this.pathMgr.getPathName(snapshot.ref().toString());
     if( pathName === null && snapshot.ref().parent() !== null ) {
       var parentPath = this.pathMgr.getPathFor(snapshot.ref().parent().toString());
@@ -114,6 +112,34 @@ FieldMap.prototype = {
     return util.find(snaps, function(snap) {
       return snap.ref().toString() === url;
     }) || null;
+  },
+
+  /**
+   * Since data can be nested under child keys, this method returns a map of fields->data which
+   * is flattened for each key.
+   *
+   * @param {object} data
+   * @returns {object} an array containing [ [Path, Object]... ] where each object is a key/value store
+   */
+  denest: function(data) {
+    var out = {};
+    util.each(this.getPathManager().getPaths(), function(p) {
+      out[p.name()] = { path: p, data: {} };
+    });
+
+    this.forEach(function(field) {
+      var val = getOut(data, field.alias);
+      if( val !== util.undef ) {
+        out[field.pathName].data[field.id] = val;
+      }
+    });
+    return out;
+  },
+
+  idFor: function(fieldName) {
+    var f = this.getField(fieldName);
+    if( !f ) { return fieldName; }
+    return f.id;
   }
 };
 
@@ -193,6 +219,21 @@ function putIn(data, alias, val) {
     alias = parts.pop();
   }
   data[alias] = val;
+}
+
+function getOut(data, alias) {
+  var key = alias;
+  if( !util.isObject(data) ) { return util.undef; }
+  var val = data[alias];
+  if( alias.indexOf('.') > 0 ) {
+    var parts = alias.split('.').reverse();
+    val = data;
+    while(parts.length) {
+      key = parts.pop();
+      val = util.isObject(val) && val.hasOwnProperty(key)? val[key] : util.undef;
+    }
+  }
+  return val;
 }
 
 module.exports = FieldMap;

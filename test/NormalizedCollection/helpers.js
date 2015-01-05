@@ -253,7 +253,8 @@ exports.stubFieldMap = function(fields, paths) {
   }
   var map = jasmine.createSpyObj('FieldMapStub', [
     'extractData', 'aliasFor', 'fieldsFor', 'pathFor',
-    'getField', 'add', 'forEach', 'getPath', 'getPathManager'
+    'getField', 'add', 'forEach', 'getPath', 'getPathManager',
+    'idFor'
   ]);
   map.fieldsByKey = {};
   map.fieldsByAlias = {};
@@ -291,6 +292,11 @@ exports.stubFieldMap = function(fields, paths) {
   };
   map.getPathManager.and.callFake(function() { return mgr; });
   map.getPath.and.callFake(function(pathName) { return mgr.getPath(pathName); });
+  map.idFor.and.callFake(function(fieldName) {
+    var f = map.getField(fieldName);
+    if( !f ) { return fieldName; }
+    return f.id;
+  });
   return map;
 };
 

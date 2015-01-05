@@ -103,6 +103,32 @@ describe('RecordField', function() {
     });
   });
 
+  describe('saveData', function() { //todo-test
+    it('calls set on the correct path for each field');
+
+    it('puts children not in the map into the first path');
+
+    it('deletes fields not in the set op');
+
+    it('triggers callback after all paths have returned');
+
+    it('returns an error if any path returns an error');
+
+    it('removes all paths if given null');
+
+    it('throws error if non-object passed with isUpdate === true');
+
+    it('sets a primitive if there is exactly one path');
+
+    it('throws an error if multiple paths are set to a primitive');
+
+    it('observes priority and calls setPriority if one is provided');
+
+    it('accepts .value');
+
+    it('accepts .priority');
+  });
+
   describe('#_start', function() {
     it('should invoke on() for ref', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
@@ -135,23 +161,23 @@ describe('RecordField', function() {
     });
   });
 
-  describe('value events', function() {
+  describe('value events', function() { //todo-test
     it('should fire appropriate observers');
   });
 
-  describe('child_added events', function() {
+  describe('child_added events', function() { //todo-test
     it('should fire appropriate observers');
   });
 
-  describe('child_removed events', function() {
+  describe('child_removed events', function() { //todo-test
     it('should fire appropriate observers');
   });
 
-  describe('child_changed events', function() {
+  describe('child_changed events', function() { //todo-test
     it('should fire appropriate observers');
   });
 
-  describe('child_moved events', function() {
+  describe('child_moved events', function() { //todo-test
     it('should fire appropriate observers');
   });
 });

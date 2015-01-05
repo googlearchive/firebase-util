@@ -41,7 +41,7 @@ Queue.prototype = {
     return function(err) {
       if( doneCallback ) { doneCallback(err); }
       else { result = err; }
-    }
+    };
   },
 
   ready: function() {

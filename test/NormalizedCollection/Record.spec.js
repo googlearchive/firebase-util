@@ -9,7 +9,6 @@ var FieldMap            = require('../../src/NormalizedCollection/libs/FieldMap'
 var Path                = require('../../src/NormalizedCollection/libs/Path');
 var hp                  = require('./helpers');
 var _                   = require('lodash');
-var RECID               = 'foobar123';
 
 describe('Record', function() {
   describe('#constructor', function() {
@@ -56,13 +55,13 @@ describe('Record', function() {
   describe('#getChildSnaps', function() {
     it('should return one snapshot', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps({f11: 'foo'}, {f99: 'bar'}, true, false);
+      var snaps = createSnaps(defaultIdFn, {f11: 'foo'}, {f99: 'bar'}, true, false);
       expect(rec.getChildSnaps(snaps, 'foo').length).toBe(1);
     });
 
     it('should be the snapshot for the correct child key', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = rec.getChildSnaps(createSnaps({f11: 'fooval'}, {f99: 'barval'}, true, false), 'foo');
+      var snaps = rec.getChildSnaps(createSnaps(defaultIdFn, {f11: 'fooval'}, {f99: 'barval'}, true, false), 'foo');
       expect(snaps[0].key()).toBe('f11');
       expect(snaps[0].val()).toBe('fooval');
     });
@@ -71,7 +70,7 @@ describe('Record', function() {
   describe('#mergeData', function() {
     it('should contain intersection of all snaps and fields', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f10: 'p1.f10val', f99: 'p1.f99val'},
         {f99: 'p2.f99val'},
         333,
@@ -81,7 +80,8 @@ describe('Record', function() {
       expect(data).toEqual({
         f10: 'p1.f10val', f99: 'p1.f99val',
         bar: 'p2.f99val',
-        p3key: RECID, p3val: 333,
+        p3key: 'record1',
+        p3val: 333,
         nest: {
           p4val: false
         }
@@ -90,14 +90,15 @@ describe('Record', function() {
 
     it('should include $value for correct path', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(true, 850, 999, null);
+      var snaps = createSnaps(defaultIdFn, true, 850, 999, null);
       var data = rec.mergeData(snaps, false);
-      expect(data).toEqual({ p3key: 'foobar123', p3val: 999 });
+      expect(data).toEqual({ p3key: 'record1', p3val: 999 });
     });
 
     it('should include $key for correct path', function() {
       function idFn(pathName) {
-        return pathName === 'p3'? 'zed1' : RECID;
+        // simulate a dynamic key
+        return pathName === 'p3'? 'zed1' : pathName;
       }
       var rec = new Record(makeFieldMap(makePathMgr(idFn)));
       var snaps = createSnaps(idFn, true, 850, 999, null);
@@ -107,7 +108,7 @@ describe('Record', function() {
 
     it('should use priority from first record when export === true', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f10: 'p1.f10val', f99: 'p1.f99val', $priority: 111},
         {f99: 'p2.f99val', $priority: 222},
         33,
@@ -119,7 +120,7 @@ describe('Record', function() {
 
     it('should include nested priorities if export === true', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f10: 'p1.f10val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
         33,
@@ -132,7 +133,7 @@ describe('Record', function() {
 
     it('should include .value if export == true and value has a priority', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         null, null, {$value: 0, $priority: 1}, null
       );
       var data = rec.mergeData(snaps, true);
@@ -151,7 +152,7 @@ describe('Record', function() {
       var aliases = [];
       var expKeys = ['f11', 'f99', 'f99', '$key', '$value', '$value'];
       var expAliases = ['foo', 'f99', 'bar', 'p3key', 'p3val', 'nest.p4val'];
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
         33,
@@ -168,7 +169,7 @@ describe('Record', function() {
     it('should include $key fields if path exists in snapshots', function() {
       var spy = jasmine.createSpy('iterator');
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
         33,
@@ -181,7 +182,7 @@ describe('Record', function() {
     it('should include $value fields if snapshot value is not null', function() {
       var spy = jasmine.createSpy('iterator');
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
         33,
@@ -194,7 +195,7 @@ describe('Record', function() {
     it('should not include $value field if snapshot value is null', function() {
       var spy = jasmine.createSpy('iterator');
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
         33,
@@ -207,7 +208,7 @@ describe('Record', function() {
     it('should not include $value field if snapshot does not exist', function() {
       var spy = jasmine.createSpy('iterator');
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'}
       );
       rec.forEachKey(snaps, spy);
@@ -220,7 +221,7 @@ describe('Record', function() {
         expect(this).toBe(ctx);
       });
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var snaps = createSnaps(
+      var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'}
       );
       rec.forEachKey(snaps, spy, ctx);
@@ -327,7 +328,65 @@ describe('Record', function() {
     });
 
     describe('saveData', function() {
-      it('calls set on the correct path for each field');
+      //var PATHS = {
+      //  p1: {id: 'path1', alias: 'p1', url: 'Mock1://path1'},
+      //  p2: {id: 'path2', alias: 'p2', url: 'Mock1://p2parent/path2'},
+      //  p3: {id: null,    alias: 'p3', url: 'Mock2://'},
+      //  p4: {id: 'path4', alias: 'p4', url: 'Mock1://path4', dep: 'p3.$value'}
+      //};
+      //
+      //var FIELDS = [
+      //  'p1,f10', 'p1,f11,foo', 'p1,f99',
+      //  'p2,f20', 'p2,f99,bar',
+      //  'p3,$key,p3key', 'p3,$value,p3val',
+      //  'p4,$value,nest.p4val'
+      //];
+      //
+      it('calls update() on the correct path for each field', function() {
+        var rec = new Record(makeFieldMap(makePathMgr()));
+        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
+          var ref = p.ref();
+          spyOn(ref, 'update');
+          return ref;
+        });
+        expect(refs.length).toBe(4);
+        rec.saveData({
+          f10: 'f10.value', foo: 'foo.value', // p1
+          bar: 'bar.value', // p2
+          p3val: 'p3val.value',  // p3
+          nest: { p4val: 'p4val.value' } // p4
+        }, {isUpdate: false});
+        _.each(refs, function(ref) {
+          switch(ref.parent().key()) {
+            case 'path1':
+              expect(ref.update).toHaveBeenCalledWith(
+                { f10: 'f10.value', f11: 'foo.value', f99: null },
+                jasmine.any(Function)
+              );
+              break;
+            case 'path2':
+              expect(ref.update).toHaveBeenCalledWith(
+                { f20: null, f99: 'bar.value' },
+                jasmine.any(Function)
+              );
+              break;
+            case null:
+              expect(ref.update).toHaveBeenCalledWith(
+                { '.value': 'p3val.value' },
+                jasmine.any(Function)
+              );
+              break;
+            case 'path4':
+              expect(ref.update).toHaveBeenCalledWith(
+                { '.value': 'p4val.value' },
+                jasmine.any(Function)
+              );
+              break;
+            default:
+              throw new Error('Unexpected path: ' + ref.name());
+          }
+        });
+      });
 
       it('puts children not in the map into the first path');
 
@@ -352,7 +411,7 @@ describe('Record', function() {
       it('accepts .priority');
     });
 
-    describe('value events', function() {
+    describe('value events', function() { //todo-test
       it('should return all snapshots');
 
       it('should only return when all snapshots are present');
@@ -360,7 +419,7 @@ describe('Record', function() {
       it('should fire appropriate observers');
     });
 
-    describe('child_added events', function() {
+    describe('child_added events', function() { //todo-test
       it('should trigger with appropriate child snapshot');
 
       it('should trigger from any path');
@@ -368,7 +427,7 @@ describe('Record', function() {
       it('should fire appropriate observers');
     });
 
-    describe('child_removed events', function() {
+    describe('child_removed events', function() { //todo-test
       it('should trigger with appropriate child snapshot');
 
       it('should trigger from any path');
@@ -376,7 +435,7 @@ describe('Record', function() {
       it('should fire appropriate observers');
     });
 
-    describe('child_changed events', function() {
+    describe('child_changed events', function() { //todo-test
       it('should trigger with appropriate child snapshot');
 
       it('should trigger from any path');
@@ -384,7 +443,7 @@ describe('Record', function() {
       it('should fire appropriate observers');
     });
 
-    describe('child_moved events', function() {
+    describe('child_moved events', function() { //todo-test
       it('should trigger with appropriate child snapshot');
 
       it('should trigger from any path');
@@ -394,13 +453,10 @@ describe('Record', function() {
   });
 
   function makePathMgr(idFn) {
-    return new PathManager(makePaths(idFn));
+    return new PathManager(makePaths(idFn||defaultIdFn));
   }
 
   function makePaths(idFn) {
-    if( !idFn ) {
-      idFn = function(/*pathName*/) { return RECID; };
-    }
     var paths = [];
     _.each(PATHS, function(p) {
       var ref = hp.mockRef(p.url);
@@ -427,13 +483,11 @@ describe('Record', function() {
     return props;
   }
 
-  function createSnaps() {
-    var args = _.toArray(arguments);
-    var idFn = typeof args[0] === 'function'?
-      args.shift() : function(/*pathName*/) { return RECID; };
+  function createSnaps(idFn) {
+    var recData = _.toArray(arguments).slice(1);
     var snaps = [];
     var keys = _.keys(PATHS).reverse();
-    _.each(args, function(dat) {
+    _.each(recData, function(dat) {
       var pathName = keys.pop(), pri = null;
       if(_.isObject(dat) && _.has(dat, '$priority')) {
         pri = dat.$priority;
@@ -462,5 +516,9 @@ describe('Record', function() {
     'p3,$key,p3key', 'p3,$value,p3val',
     'p4,$value,nest.p4val'
   ];
+
+  function defaultIdFn(pathName) {
+    return 'record1';
+  }
 
 });

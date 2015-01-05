@@ -19,7 +19,7 @@ Query.prototype = {
 
   'once': function(event, callback, cancel, context) {
     function fn(snap) {
-      this.off(event, fn, this);
+      this.off(event, fn, this); // jshint validatethis:false
       callback.call(context, snap);
     }
     this.on(event, fn, cancel, this);

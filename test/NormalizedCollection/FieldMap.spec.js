@@ -2,6 +2,7 @@
 
 var FieldMap = require('../../src/NormalizedCollection/libs/FieldMap');
 var hp = require('./helpers');
+var _ = require('lodash');
 
 describe('FieldMap', function() {
   describe('#add', function() {
@@ -228,6 +229,44 @@ describe('FieldMap', function() {
       });
       var res = map.extractData(snapshot, true);
       expect(res).toEqual({foo: 'path1', bar: {baz: {'.value': 0, '.priority': 100}}});
+    });
+  });
+
+  describe('#denest', function() {
+    it('sets the paths correctly, even if they have no data', function() {
+      var pm = hp.stubPathMgr();
+      var map = new FieldMap(pm);
+      var denested = map.denest({});
+      expect(_.keys(denested)).toEqual(['p1', 'p2', 'p3', 'p4']);
+      expect(denested.p1.path.name()).toBe('p1');
+      expect(denested.p2.path.name()).toBe('p2');
+      expect(denested.p3.path.name()).toBe('p3');
+      expect(denested.p4.path.name()).toBe('p4');
+    });
+
+    it('returns a flattened map of fields', function() {
+      var data = {
+        f10: 'f10.value',
+        foo: 'foo.value',
+        bar: { baz: 'baz.value' },
+        p3val: 0,
+        baz: {p4val: 'p4val.value', foo: {bar: {bazbaz: 'bazbaz.value' } } }
+      };
+      var pm = hp.stubPathMgr();
+      var map = new FieldMap(pm);
+      map.add({key: 'p1.f10'});
+      map.add({key: 'p1.f11', alias: 'foo'});
+      map.add({key: 'p2.f20'});
+      map.add({key: 'p2.f99', alias: 'bar'});
+      map.add({key: 'p2.f300', alias: 'baz.foo.bar.bazbaz'});
+      map.add({key: 'p3.$value', alias: 'p3val'});
+      map.add({key: 'p3.$key', alias: 'p3key'});
+      map.add({key: 'p4.$value', alias: 'baz.p4val'});
+      var denested = map.denest(data);
+      expect(denested.p1.data).toEqual({ f10: 'f10.value', f11: 'foo.value' });
+      expect(denested.p2.data).toEqual({ f99: { baz: 'baz.value' }, f300: 'bazbaz.value' });
+      expect(denested.p3.data).toEqual({ '$value': 0 });
+      expect(denested.p4.data).toEqual({ '$value': 'p4val.value' });
     });
   });
 

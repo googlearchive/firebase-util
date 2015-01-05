@@ -127,7 +127,7 @@ util.inherits(Record, AbstractRecord, {
     }
     else {
       throw new Error('Cannot set multiple paths to a non-object value ' +
-      '(it has no child keys and I don\'t know which child to set)')
+      '(it has no child keys and I don\'t know which child to set)');
     }
   },
 

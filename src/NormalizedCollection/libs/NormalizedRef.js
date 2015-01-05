@@ -2,7 +2,6 @@
 
 var util      = require('../../common');
 var Query     = require('./Query');
-var Path      = require('./Path');
 
 function NormalizedRef(record, parent) {
   this._super(this, record);
@@ -67,7 +66,7 @@ util.inherits(NormalizedRef, Query, {
     this.$getRecord().saveData(null, {callback: callback, context: context, isUpdate: false});
   },
 
-  'push': function(data, callback, context) {
+  'push': function(data, callback, context) { // jshint unused:false
     var uid = this.$getMaster().push().name();
     var child = this.child(uid);
     if( data ) {
@@ -125,7 +124,7 @@ function wrapAll(method) {
       var ref = p.ref();
       ref[method].apply(ref, args);
     });
-  }
+  };
 }
 
 function wrapMaster(method) {
@@ -133,7 +132,7 @@ function wrapMaster(method) {
     var args = util.toArray(arguments);
     var ref = this.$getMaster();
     return ref[method].apply(ref, args);
-  }
+  };
 }
 
 function notSupported(method) {
