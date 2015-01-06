@@ -130,7 +130,16 @@ FieldMap.prototype = {
     this.forEach(function(field) {
       var val = getOut(data, field.alias);
       if( val !== util.undef ) {
-        out[field.pathName].data[field.id] = val;
+        switch(field.id) {
+          case '$value':
+            out[field.pathName].data = val;
+            break;
+          case '$key':
+            // do nothing
+            break;
+          default:
+            out[field.pathName].data[field.id] = val;
+        }
       }
     });
     return out;

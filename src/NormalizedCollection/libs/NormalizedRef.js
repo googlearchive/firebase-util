@@ -82,9 +82,7 @@ util.inherits(NormalizedRef, Query, {
   },
 
   'setPriority': function(priority, callback, context) {
-    this.$getRecord().saveData(null, {
-      callback: callback, context: context, isUpdate: true, priority: priority
-    });
+    this.$getMaster().setPriority(priority, callback, context);
   },
 
   /****************************

@@ -204,16 +204,18 @@ describe('NormalizedRef', function() {
   });
   
   describe('setPriority', function () {
-    it('should call saveData with correct priority and isUpdate = true', function() {
-      var dat = {foo: 'bar'};
+    it('should call setPriority on the master', function() {
       var cb = function() {};
       var ctx = {};
       var pri = -9999;
       var rec = hp.stubRec();
-      new NormalizedRef(rec).setPriority(pri, cb, ctx);
-      expect(rec.saveData).toHaveBeenCalledWith(null, {
-        callback: cb, context: ctx, isUpdate: true, priority: pri
-      });
+      var ref = new NormalizedRef(rec);
+      var master = ref.$getMaster();
+      spyOn(master, 'setPriority');
+      ref.setPriority(pri, cb, ctx);
+      expect(master.setPriority).toHaveBeenCalledWith(
+        pri, cb, ctx
+      );
     });
   });
   

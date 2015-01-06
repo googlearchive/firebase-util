@@ -107,28 +107,50 @@ util.inherits(Record, AbstractRecord, {
   getClass: function() { return Record; },
 
   saveData: function(data, props) {
+    var q = util.queue();
     var map = this.getFieldMap();
     var paths = this.getPathManager().getPaths();
+    if( props.isUpdate && !util.isObject(data) ) {
+      throw new Error('First argument to update() command must be an object');
+    }
     if( data === null ) {
-      this.remove();
+      util.each(paths, function(p) {
+        p.reff(). remove(q.getHandler());
+      });
     }
     else if(util.isObject(data)) {
-      var q = util.queue();
-      util.eachByPath(map, data, function(path, dataToSave) {
+      var denestedData = map.denest(data);
+      util.each(denestedData, function(parts) {
+        var path = parts.path;
+        var dataForPath = parts.data;
         if( !props.isUpdate ) {
-          addEmptyFields(map, path, dataToSave);
+          addEmptyFields(map, path, dataForPath);
         }
-        path.reff().update(dataToSave, q.getHandler());
+        if( !util.isEmpty(dataForPath) ) {
+          if( util.isDefined(props.priority) ) {
+            if( !util.isObject(dataForPath) ) {
+              dataForPath = {'.value': dataForPath};
+            }
+            dataForPath['.priority'] = props.priority;
+          }
+          path.reff().update(dataForPath, q.getHandler());
+        }
       });
-      q.handler(props.callback||util.noop, props.context);
     }
     else if( paths.length === 1 ) {
-      paths[0].ref().set(data, props.callback||util.noop, props.context);
+      if( util.isDefined(props.priority) ) {
+        paths[0].ref().setWithPriority(data, props.priority, q.getHandler());
+      }
+      else {
+        paths[0].ref().set(data, q.getHandler());
+      }
     }
     else {
-      throw new Error('Cannot set multiple paths to a non-object value ' +
-      '(it has no child keys and I don\'t know which child to set)');
+      throw new Error('Cannot set multiple paths to a non-object value. ' +
+        'Since this is a NormalizedCollection, the data will be split between the paths. ' +
+        'But I can\'t split a primitive value');
     }
+    q.handler(props.callback||util.noop, props.context);
   },
 
   _start: function(event) {

@@ -249,6 +249,7 @@ describe('FieldMap', function() {
         f10: 'f10.value',
         foo: 'foo.value',
         bar: { baz: 'baz.value' },
+        p3key: 'record1',
         p3val: 0,
         baz: {p4val: 'p4val.value', foo: {bar: {bazbaz: 'bazbaz.value' } } }
       };
@@ -265,8 +266,8 @@ describe('FieldMap', function() {
       var denested = map.denest(data);
       expect(denested.p1.data).toEqual({ f10: 'f10.value', f11: 'foo.value' });
       expect(denested.p2.data).toEqual({ f99: { baz: 'baz.value' }, f300: 'bazbaz.value' });
-      expect(denested.p3.data).toEqual({ '$value': 0 });
-      expect(denested.p4.data).toEqual({ '$value': 'p4val.value' });
+      expect(denested.p3.data).toEqual(0);
+      expect(denested.p4.data).toEqual('p4val.value');
     });
   });
 
