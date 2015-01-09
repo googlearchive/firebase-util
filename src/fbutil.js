@@ -11,3 +11,13 @@ util.extend(exports,
   require('./common/exports.js'),
   require('./NormalizedCollection/exports.js')
 );
+
+/*global window */
+if( typeof window !== 'undefined' ) {
+  if( !window.hasOwnProperty('Firebase') ) {
+    console.warn('Firebase not found on the global window instance. Cannot add Firebase.util namespace.');
+  }
+  else {
+    window.Firebase.util = util;
+  }
+}
