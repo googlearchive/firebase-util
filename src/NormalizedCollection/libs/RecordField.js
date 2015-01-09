@@ -67,6 +67,25 @@ util.inherits(RecordField, AbstractRecord, {
     });
   },
 
+  saveData: function(data, opts) {
+    var ref = this.path.ref();
+    if( opts.isUpdate ) {
+      if( !util.isObject(data) ) {
+        throw new Error('When using update(), the data must be an object.');
+      }
+      if( util.has(opts, 'priority') ) {
+        data['.priority'] = opts.priority;
+      }
+      ref.update(data, wrapCallback(opts));
+    }
+    else if( util.has(opts, 'priority') ) {
+      ref.setWithPriority(data, opts.priority, wrapCallback(opts));
+    }
+    else {
+      ref.set(data, wrapCallback(opts));
+    }
+  },
+
   getClass: function() { return RecordField; },
 
   _start: function(event) {
@@ -77,5 +96,16 @@ util.inherits(RecordField, AbstractRecord, {
     this.path.ref().off(event, this._handler(event), this);
   }
 });
+
+function wrapCallback(opts) {
+  if( opts.callback ) {
+    return function() {
+      opts.callback.apply(opts.context, arguments);
+    }
+  }
+  else {
+    return util.noop;
+  }
+}
 
 module.exports = RecordField;

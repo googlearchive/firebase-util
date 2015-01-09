@@ -103,30 +103,90 @@ describe('RecordField', function() {
     });
   });
 
-  describe('saveData', function() { //todo-test
-    it('calls set on the correct path for each field');
+  describe('saveData', function() {
+    it('calls update on the master ref if isUpdate is true', function() {
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'update');
+      rec.saveData({foo: 'bar'}, {isUpdate: true});
+      expect(spy).toHaveBeenCalledWith({foo: 'bar'}, jasmine.any(Function));
+    });
 
-    it('puts children not in the map into the first path');
+    it('calls set on the master ref if isUpdate is false', function() {
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'set');
+      rec.saveData({foo: 'bar'}, {isUpdate: false});
+      expect(spy).toHaveBeenCalledWith({foo: 'bar'}, jasmine.any(Function));
+    });
 
-    it('deletes fields not in the set op');
+    it('uses setWithPriority if priority is given and isUpdate === false', function() {
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'setWithPriority');
+      rec.saveData({foo: 'bar'}, {isUpdate: false, priority: null});
+      expect(spy).toHaveBeenCalledWith({foo: 'bar'}, null, jasmine.any(Function));
+    });
 
-    it('triggers callback after all paths have returned');
+    it('uses .priority if priority is given and isUpdate === true', function() {
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'update');
+      rec.saveData({foo: 'bar'}, {isUpdate: true, priority: 0});
+      expect(spy).toHaveBeenCalledWith({foo: 'bar', '.priority': 0}, jasmine.any(Function));
+    });
 
-    it('returns an error if any path returns an error');
+    it('throws an error if update() is called with a non-object', function() {
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      expect(function() {
+        rec.saveData(true, {isUpdate: true});
+      }).toThrowError(Error);
+    });
 
-    it('removes all paths if given null');
+    it('saves primitives with isUpdate === false', function() {
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      var spy = spyOn(rec.getPathManager().first().ref(), 'set');
+      rec.saveData(false, {isUpdate: false});
+      expect(spy).toHaveBeenCalledWith(false, jasmine.any(Function));
+    });
 
-    it('throws error if non-object passed with isUpdate === true');
+    it('triggers the callback after set', function() {
+      var spy = jasmine.createSpy('set callback');
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      rec.saveData(false, {isUpdate: false, callback: spy});
+      rec.getPathManager().first().ref().flush();
+      expect(spy).toHaveBeenCalledWith(null);
+    });
 
-    it('sets a primitive if there is exactly one path');
+    it('triggers callback with correct context after set', function() {
+      var called = false;
+      var ctx = {};
+      function fn() {
+        called = true;
+        expect(this).toBe(ctx);
+      }
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      rec.saveData({foo: 'bar'}, {isUpdate: false, callback: fn, context: ctx});
+      rec.getPathManager().first().ref().flush();
+      expect(called).toBe(true);
+    });
 
-    it('throws an error if multiple paths are set to a primitive');
+    it('triggers the callback after update', function() {
+      var spy = jasmine.createSpy('update callback');
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      rec.saveData({foo: 'bar'}, {isUpdate: true, callback: spy});
+      rec.getPathManager().first().ref().flush();
+      expect(spy).toHaveBeenCalledWith(null);
+    });
 
-    it('observes priority and calls setPriority if one is provided');
-
-    it('accepts .value');
-
-    it('accepts .priority');
+    it('triggers callback with correct context after update', function() {
+      var called = false;
+      var ctx = {};
+      function fn() {
+        called = true;
+        expect(this).toBe(ctx);
+      }
+      var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
+      rec.saveData({foo: 'bar'}, {isUpdate: true, callback: fn, context: ctx});
+      rec.getPathManager().first().ref().flush();
+      expect(called).toBe(true);
+    });
   });
 
   describe('#_start', function() {
