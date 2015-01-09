@@ -101,7 +101,7 @@ function wrapCallback(opts) {
   if( opts.callback ) {
     return function() {
       opts.callback.apply(opts.context, arguments);
-    }
+    };
   }
   else {
     return util.noop;

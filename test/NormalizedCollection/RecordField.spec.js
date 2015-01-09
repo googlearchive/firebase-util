@@ -158,6 +158,7 @@ describe('RecordField', function() {
       var called = false;
       var ctx = {};
       function fn() {
+        /*jshint validthis:true */
         called = true;
         expect(this).toBe(ctx);
       }
@@ -179,6 +180,7 @@ describe('RecordField', function() {
       var called = false;
       var ctx = {};
       function fn() {
+        // jshint validthis:true
         called = true;
         expect(this).toBe(ctx);
       }

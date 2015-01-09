@@ -121,7 +121,7 @@ FieldMap.prototype = {
       var depField = getDepField(this.fields, dep);
       var depSnap = this.snapFor(snaps, depField.alias);
       if( depSnap ) {
-        if (dep.field == '$key') {
+        if (dep.field === '$key') {
           url = path.child(depSnap.key()).url();
         }
         else if (dep.field === '$value') {
