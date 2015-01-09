@@ -99,6 +99,10 @@ NormalizedSnapshot.prototype = {
 
   exportVal: function() {
     return this._ref.$getRecord().mergeData(this._snaps, true);
+  },
+
+  exists: function() {
+    return this.val() !== null;
   }
 };
 
