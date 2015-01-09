@@ -21,6 +21,11 @@ PathManager.prototype = {
     if( util.has(this.pathsByUrl, path.url()) ) {
       throw new Error('Duplicate path: ' + path.url());
     }
+    if( util.contains(this.pathNames, path.name()) ) {
+      throw new Error('Duplicate path name. The .key() value for each path must be unique, or you ' +
+          'can give each a path an alias by using [firebaseRef, alias] in the constructor. The aliases ' +
+          'must also be unique.');
+    }
     this._map(path);
     this.paths.push(path);
     this.pathsByUrl[path.url()] = path.name();
