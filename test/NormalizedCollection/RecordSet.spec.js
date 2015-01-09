@@ -112,18 +112,10 @@ describe('RecordSet', function() {
       var recs = new RecordSet(fm, new Filter());
       var snaps = createSnaps(fm);
       var childSnaps = recs.getChildSnaps(snaps, 'r1');
-      var found = false;
       expect(childSnaps.length).toBe(snaps.length);
-      var i = 0;
-      _.each(RECS, function(expData, pathName) {
-        if( pathName === 'p4' ) { // skip the dynamic path
-          found = true;
-          var snap = childSnaps[i];
-          expect(snap && snap.ref().toString()).toBe(PATHS.p4.url+'/'+RECS.p3.r1.p4key);
-        }
-        i++;
-      });
-      expect(found).toBe(true);
+      var snap = childSnaps[3];
+      expect(snap.ref().toString()).toBe(PATHS.p4.url+'/'+RECS.p3.r1.p4key);
+      expect(snap.val()).toBe(RECS.p4.r41);
     });
 
     it('should return null for dependent path if dependency is null');
@@ -141,8 +133,7 @@ describe('RecordSet', function() {
       expect(data.r1).toEqual({
         s1: 'p1r1', foo: 'p1r1foo',
         s2: 'p2r1', bar: 'p2r1bar',
-        p3key: 'r1', p3val: { s: 'p3r1', b: 'p3r1baz', p4key: 'r41' },
-        s3: 'p3r1', baz: 'p3r1baz',
+        p3key: 'r1', link: 'r41',
         nest: {
           p4val: 'p4r41'
         }
@@ -171,8 +162,9 @@ describe('RecordSet', function() {
       var recs = new RecordSet(fm, new Filter());
       var snaps = createSnaps(fm);
       var data = recs.mergeData(snaps, false);
-      expect(data.r1).toHaveKey('p3val');
-      expect(data.r1 && data.r1.p3val).toEqual({s: 'p3r1', b: 'p3r1baz', p4key: 'r41'});
+      expect(data.r1).toHaveKey('nest');
+      expect(data.r1.nest).toHaveKey('p4val');
+      expect(data.r1.nest.p4val).toEqual('p4r41');
     });
 
     it('should observe nested aliases', function() {
@@ -286,30 +278,68 @@ describe('RecordSet', function() {
     });
   });
 
-  describe('saveData', function() { //todo-test
-    it('calls set on the correct path for each field');
+  describe('saveData', function() {
+    it('calls remove() on all paths if given null', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var rs = new RecordSet(fm);
+      var refs = _.map(rs.getPathManager().getPaths(), function(p) {
+        var ref = p.ref();
+        spyOn(ref, 'remove');
+        return ref;
+      });
+      rs.saveData(null, {isUpdate: false});
+      _.each(refs, function(ref) {
+        expect(ref.remove).toHaveBeenCalled();
+      });
+    });
 
-    it('puts children not in the map into the first path');
+    it('calls update() on child paths', function() {
+      var recIds = ['rec1', 'rec2', 'rec3'];
+      var data = {};
+      _.each(recIds, function(key, i) {
+        data[key] = {
+          foo: 'foo.value'+i,              // p1
+          bar: 'bar.value'+i,              // p2
+          p3val: 'p3val.value'+i,          // p3
+          nest: { p4val: 'p4val.value'+i } // p4
+        };
+      });
+      var fm = makeFieldMap(makePathMgr());
+      var rs = new RecordSet(fm);
+      var spies = [];
+      _.each(rs.getPathManager().getPaths(), function(p) {
+        if(p.name() !== 'p3' && p.name() !== 'p4') {
+          var ref = p.ref().child('rec2');
+          spies.push([ref.toString(), spyOn(ref, 'update')]);
+        }
+      });
+      rs.saveData(data, {isUpdate: false});
+      _.each(spies, function(spy) {
+        if( spy[1].calls.count() !== 1 ) {
+          throw new Error('Expected update() to have been called on ' + spy[0]);
+        }
+      });
+    });
 
-    it('deletes fields not in the set op');
-
-    it('triggers callback after all paths have returned');
-
-    it('returns an error if any path returns an error');
-
-    it('removes all paths if given null');
-
-    it('throws error if non-object passed with isUpdate === true');
-
-    it('sets a primitive if there is exactly one path');
-
-    it('throws an error if multiple paths are set to a primitive');
-
-    it('observes priority and calls setPriority if one is provided');
-
-    it('accepts .value');
-
-    it('accepts .priority');
+    it('skips child paths with no data when using isUpdate === true', function() {
+      var recIds = ['rec1', 'rec2', 'rec3'];
+      var data = {};
+      _.each(recIds, function(key, i) {
+        var x = i+1;
+        data[key] = {
+          foo: 'foo.value'+x,              // p1
+          nest: { p4val: 'p4val.value'+x } // p4
+        };
+      });
+      var fm = makeFieldMap(makePathMgr());
+      var rs = new RecordSet(fm);
+      var pm = rs.getPathManager();
+      var spy2 = spyOn(pm.getPath('p2').ref().child('rec2'), 'update');
+      var spy3 = spyOn(pm.getPath('p3').ref().child('rec3'), 'set');
+      rs.saveData(data, {isUpdate: true});
+      expect(spy2).not.toHaveBeenCalled();
+      expect(spy3).not.toHaveBeenCalled();
+    });
   });
 
   describe('#_start', function() {
@@ -371,17 +401,6 @@ describe('RecordSet', function() {
     return snaps;
   }
 
-  function loadDynamicData(p3data, p4data) {
-    if( !p3data ) { return null; }
-    var data = {};
-    _.each(p3data, function(recData, recId) {
-      if(_.has(recData, 'p4key') ) {
-        data[recId] = p4data[recData.p4key];
-      }
-    });
-    return data;
-  }
-
   var RECS = {
     p1: {
       r1: { s: 'p1r1', f: 'p1r1foo' },
@@ -416,7 +435,7 @@ describe('RecordSet', function() {
   var FIELDS = [
     'p1,s,s1', 'p1,f,foo', 'p1,f99',
     'p2,s,s2', 'p2,n', 'p2,b,bar',
-    'p3,$key,p3key', 'p3,$value,p3val', 'p3,s,s3', 'p3,b,baz',
+    'p3,$key,p3key', 'p3,p4key,link',
     'p4,$value,nest.p4val'
   ];
 });

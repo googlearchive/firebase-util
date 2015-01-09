@@ -234,8 +234,7 @@ describe('FieldMap', function() {
 
   describe('#denest', function() {
     it('sets the paths correctly, even if they have no data', function() {
-      var pm = hp.stubPathMgr();
-      var map = new FieldMap(pm);
+      var map = new FieldMap(hp.stubPathMgr());
       var denested = map.denest({});
       expect(_.keys(denested)).toEqual(['p1', 'p2', 'p3', 'p4']);
       expect(denested.p1.path.name()).toBe('p1');
@@ -253,8 +252,7 @@ describe('FieldMap', function() {
         p3val: 0,
         baz: {p4val: 'p4val.value', foo: {bar: {bazbaz: 'bazbaz.value' } } }
       };
-      var pm = hp.stubPathMgr();
-      var map = new FieldMap(pm);
+      var map = new FieldMap(hp.stubPathMgr());
       map.add({key: 'p1.f10'});
       map.add({key: 'p1.f11', alias: 'foo'});
       map.add({key: 'p2.f20'});
@@ -276,7 +274,41 @@ describe('FieldMap', function() {
   });
 
   describe('#snapFor', function() {
-    it('should have tests');
+    it('returns snapshot for correct path, based on field', function() {
+      var map = new FieldMap(hp.stubPathMgr());
+      map.add({key: 'p1.f10', alias: 'foo'});
+      map.add({key: 'p2.f20', alias: 'bar'});
+      var snaps = hp.snaps(
+        {f10: 'bar'},
+        {f20: 'foo'}
+      );
+      var res = map.snapFor(snaps, 'bar');
+      expect(res.ref().toString()).toBe(map.getPath('p2').url());
+    });
+
+    it('returns correct snapshot for dynamic path, based on field', function() {
+      var map = new FieldMap(hp.stubPathMgr());
+      map.add({key: 'p1.f10', alias: 'foo'});
+      map.add({key: 'p2.f20', alias: 'bar'});
+      map.add({key: 'p3.$value', alias: 'baz'});
+      map.add({key: 'p4.$value', alias: 'boo'});
+      var snaps = hp.snaps(
+        function(pathName) {
+          var path = map.getPath(pathName);
+          if( path.name() === 'p4' ) {
+            return path.ref().child('hello');
+          }
+          return path.ref();
+        },
+        {f10: 'bar'},
+        {f20: 'foo'},
+        'hello',
+        'world'
+      );
+      var res = map.snapFor(snaps, 'boo');
+      expect(res).toBeAn('object');
+      expect(res.ref().toString()).toBe(map.getPath('p4').url()+'/hello');
+    });
   });
 
   describe('#getPathManager', function() {

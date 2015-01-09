@@ -119,6 +119,10 @@ exports.stubPath = function(props) {
     return _.has(props, 'dep');
   });
   p.getDependency.and.callFake(function() {
+    if( typeof props.dep === 'string' ) {
+      var parts = props.dep.split('.');
+      return {path: parts[0], field: parts[1]};
+    }
     return props.dep || null;
   });
   p.clone.and.callFake(function() {
@@ -398,11 +402,20 @@ exports.deepExtend = function() {
 
 exports.snaps = function() {
   var i = 0;
-  return _.map(_.flatten(arguments), function(snapData) {
+  var args = _.flatten(arguments);
+  var refFn = function(pathName) {
+    var path = PATHS[pathName];
+    return exports.mockRef(path.url);
+  };
+  if( typeof args[0] === 'function' ) {
+    refFn = args.shift();
+  }
+  return _.map(args, function(snapData) {
     i++;
-    var path = PATHS['p'+i];
+    var pathName = 'p'+i;
+    var ref = refFn(pathName);
     return exports.stubSnap(
-      exports.mockRef(path.url),
+      ref,
       snapData,
       i
     );

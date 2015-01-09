@@ -19,6 +19,12 @@ FieldMap.prototype = {
       throw new Error('Invalid path specified for field ' + f.key + '; it was not in the paths ' +
         'provided, which are : ' + this.pathMgr.getPathNames().join(','));
     }
+    var dep = f.path.getDependency();
+    if(dep !== null && getDepField(this.fields, dep) === null) {
+      throw new Error('Dynamic paths must reference a field declared in the map. Please add ' +
+        FieldMap.key(dep.path, dep.field) + ' to the select() criteria before using it in a ' +
+        'dynamic field');
+    }
     this.fields[f.alias] = f;
     this.length++;
   },
@@ -44,7 +50,6 @@ FieldMap.prototype = {
     return f? f.path : this.pathMgr.first();
   },
 
-  //todo unused?
   fieldsFor: function(pathName) {
     return util.filter(util.toArray(this.fields), function(f) {
       return f.pathName === pathName;
@@ -108,10 +113,36 @@ FieldMap.prototype = {
    * @returns {object|null}
    */
   snapFor: function(snaps, fieldName) {
-    var url = this.pathFor(fieldName).url();
-    return util.find(snaps, function(snap) {
-      return snap.ref().toString() === url;
-    }) || null;
+    var url;
+    var path = this.pathFor(fieldName);
+    if( !path ) { return null; }
+    var dep = path.getDependency();
+    if( dep !== null ) {
+      var depField = getDepField(this.fields, dep);
+      var depSnap = this.snapFor(snaps, depField.alias);
+      if( depSnap ) {
+        if (dep.field == '$key') {
+          url = path.child(depSnap.key()).url();
+        }
+        else if (dep.field === '$value') {
+          url = path.child(depSnap.val()).url();
+        }
+        else {
+          url = path.child(depSnap.child(dep.field).val()).url();
+        }
+      }
+    }
+    else {
+      url = path.url();
+    }
+    if( url ) {
+      return util.find(snaps, function (snap) {
+          return snap.ref().toString() === url;
+        }) || null;
+    }
+    else {
+      return null;
+    }
   },
 
   /**
@@ -185,6 +216,12 @@ FieldMap.recordMap = function(map, recordId) {
   });
   return childMap;
 };
+
+function getDepField(fields, dep) {
+  return util.find(fields, function(field) {
+    return field.pathName === dep.path && field.id === dep.field;
+  }) || null;
+}
 
 function Field(props) {
   // these properties are considered public and accessed directly by other classes

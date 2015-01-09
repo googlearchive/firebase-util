@@ -115,7 +115,9 @@ util.inherits(Record, AbstractRecord, {
     }
     if( data === null ) {
       util.each(paths, function(p) {
-        p.reff(). remove(q.getHandler());
+        if( !p.hasDependency() ) {
+          p.reff().remove(q.getHandler());
+        }
       });
     }
     else if(util.isObject(data)) {
@@ -123,19 +125,30 @@ util.inherits(Record, AbstractRecord, {
       util.each(denestedData, function(parts) {
         var path = parts.path;
         var dataForPath = parts.data;
-        if( !props.isUpdate ) {
-          addEmptyFields(map, path, dataForPath);
-        }
-        if( !util.isEmpty(dataForPath) ) {
-          if( util.isDefined(props.priority) ) {
+        var ref = this._writeRef(denestedData, path);
+        if( ref !== null ) {
+          if( !util.isEmpty(dataForPath) || !props.isUpdate ) {
             if( !util.isObject(dataForPath) ) {
               dataForPath = {'.value': dataForPath};
             }
-            dataForPath['.priority'] = props.priority;
+            if( !props.isUpdate ) {
+              addEmptyFields(map, path, dataForPath);
+            }
+            if( util.isDefined(props.priority) ) {
+              dataForPath['.priority'] = props.priority;
+            }
+            if( util.has(dataForPath, '.value') ) {
+              ref.set(dataForPath, q.getHandler());
+            }
+            else {
+              ref.update(dataForPath, q.getHandler());
+            }
           }
-          path.reff().update(dataForPath, q.getHandler());
         }
-      });
+        else {
+          util.log('No dynamic key found for master', paths[0].ref().toString(), 'with dynamic path', path.ref().toString());
+        }
+      }, this);
     }
     else if( paths.length === 1 ) {
       if( util.isDefined(props.priority) ) {
@@ -165,6 +178,40 @@ util.inherits(Record, AbstractRecord, {
     if (util.has(this._eventManagers, event)) {
       this._eventManagers[event].stop();
     }
+  },
+
+  _writeRef: function(denestedData, path) {
+    var ref = path.reff();
+    var dep = path.getDependency();
+    if( dep !== null ) {
+      var depPath = this.getPathManager().getPath(dep.path);
+      var key = this._depKey(denestedData, depPath, dep.field);
+      ref = key === null? null : ref.child(key);
+    }
+    return ref;
+  },
+
+  _depKey: function(denestedData, path, fieldId) {
+    var key;
+    var dat = denestedData[path.name()].data;
+    switch(fieldId) {
+      case '$key':
+        key = path.id();
+        break;
+      case '$value':
+        key = util.has(dat, '.value')? dat['.value'] : util.isEmpty(dat)? null : dat;
+        break;
+      default:
+        key = util.has(dat, fieldId)? dat[fieldId] : null;
+    }
+    var type = typeof key;
+    if( key !== null && type !== 'string' ) {
+      throw new Error(
+          'Dynamic key values must be a string. Type was ' +
+          type + ' for ' + path.ref().toString() + '->' + fieldId
+      );
+    }
+    return key;
   }
 });
 
@@ -283,8 +330,11 @@ function Dyno(path, fieldMap, event, updateFn) {
   var dep = path.getDependency();
   var depPath = fieldMap.getPath(dep.path);
   var depRef = depPath.ref();
+  if( dep.field === '$key' ) {
+    throw new Error('Dynamic paths do not support $key (you should probably just join on this path)');
+  }
   if( dep.field !== '$value' ) {
-    depRef = depRef.child(fieldMap.getField(dep.field).id);
+    depRef = depRef.child(dep.field);
   }
   var ref;
 
@@ -314,8 +364,19 @@ function Dyno(path, fieldMap, event, updateFn) {
 
 function addEmptyFields(map, path, dataToSave) {
   util.each(map.fieldsFor(path.name()), function(f) {
-    if( !dataToSave.hasOwnProperty(f.id) ) {
-      dataToSave[f.id] = null;
+    switch(f.id) {
+      case '$key':
+        // ignore key
+        break;
+      case '$value':
+        if( !util.has(dataToSave, '.value') ) {
+          dataToSave['.value'] = null;
+        }
+        break;
+      default:
+        if( !util.has(dataToSave, f.id) ) {
+          dataToSave[f.id] = null;
+        }
     }
   });
 }

@@ -33,6 +33,9 @@ function RecordSet(fieldMap, whereClause) {
   // the RecordSetEventManager handles Firebase events and calls _trigger() on
   // this RecordSet appropriately. See RecordSetEventManager for more details
   this.monitor = new RecordSetEventManager(this);
+
+  // cache of child records
+  this.children = {};
 }
 
 util.inherits(RecordSet, AbstractRecord, {
@@ -122,6 +125,41 @@ util.inherits(RecordSet, AbstractRecord, {
   getClass: function() { return RecordSet; },
 
   /**
+   * Saving a record set is done by grabbing each child record and calling save against that.
+   * This is the easiest approach since we must distribute fields to each appropriate path.
+   * It might be more efficient to bulk these into a single write op, and perhaps we should
+   * explore that if this proves to be slow.
+   *
+   * @param data
+   * @param {Object} opts
+   */
+  saveData: function(data, opts) {
+    var q = util.queue();
+    if( data === null ) {
+      util.each(this.getPathManager().getPaths(), function(path) {
+        path.ref().remove(q.getHandler());
+      });
+    }
+    else if( !util.isObject(data) ) {
+      throw new Error('Calls to set() or update() on a NormalizedCollection must pass either ' +
+          'null or an object value. There is no way to split a primitive value between the paths');
+    }
+    else {
+      util.each(data, function(v, k) {
+        if( k === '.value' || k === '.priority' ) {
+          throw new Error('Cannot use .priority or .value on the root path of a NormalizedCollection. ' +
+              'You probably meant to sort the records anyway (i.e. one level lower).');
+        }
+        this.child(k).saveData(v, {isUpdate: opts.isUpdate, callback: q.getHandler()});
+      }, this);
+      if( opts.priority ) {
+        this.getPathManager().first().ref().setPriority(opts.priority, q.getHandler());
+      }
+    }
+    q.handler(opts.callback||util.noop, opts.context);
+  },
+
+  /**
    * Return the correct child key for a snapshot by determining if its corresponding path
    * has dependencies. If so, we look up the id and return that child, otherwise, we just
    * return the child for the recordId.
@@ -133,23 +171,29 @@ util.inherits(RecordSet, AbstractRecord, {
    */
   _getChildKey: function(snap, snapsArray, recordId) {
     var key = recordId;
-    var dep = this.map.getPathManager().getPathFor(snap.ref().toString()).getDependency();
+    var path = this.map.getPathManager().getPathFor(snap.ref().toString());
     // resolve any dependencies to determine the child key's value
-    if( dep !== null ) {
-      var path = this.map.getPath(dep.path);
-      if( !path ) {
+    if( path.hasDependency() ) {
+      var dep = path.getDependency();
+      var depPath = this.map.getPath(dep.path);
+      if( !depPath ) {
         throw new Error('Invalid dependency path. ' + snap.ref.toString() +
         ' depends on ' + dep.path +
         ', but that alias does not exist in the paths provided.');
       }
-      var depField = this.map.getField(dep.field);
-      if( !depField ) {
-        depField = {id: dep.field, alias: dep.field};
-      }
       var depSnap = util.find(snapsArray, function(snap) {
-        return snap.ref().toString() === path.url();
-      }).child(recordId).child(depField.id);
-      key = depSnap.val();
+        return snap.ref().toString() === depPath.url();
+      });
+      if( depSnap ) {
+        depSnap = depSnap.child(recordId);
+        if( dep.field !== '$value' ) {
+          depSnap = depSnap.child(dep.field);
+        }
+        key = depSnap.val();
+      }
+      else {
+        key = null;
+      }
     }
     return key;
   },

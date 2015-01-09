@@ -42,10 +42,6 @@ describe('Record', function() {
       expect(child.getPathManager().count()).toBe(1);
       expect(child.getPathManager().first().parent().name()).toBe('p1');
     });
-
-    it('should return correct child for a dynamic field');
-
-    it('should blow up if dynamic field is null?');
   });
 
   describe('#hasChild', function() {
@@ -111,7 +107,7 @@ describe('Record', function() {
       var snaps = createSnaps(defaultIdFn,
         {f10: 'p1.f10val', f99: 'p1.f99val', $priority: 111},
         {f99: 'p2.f99val', $priority: 222},
-        33,
+        '33',
         {$value: false, $priority: 444}
       );
       var data = rec.mergeData(snaps, true);
@@ -123,7 +119,7 @@ describe('Record', function() {
       var snaps = createSnaps(defaultIdFn,
         {f10: 'p1.f10val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
-        33,
+        '33',
         {$value: false, $priority: 444}
       );
       var data = rec.mergeData(snaps, true);
@@ -155,7 +151,7 @@ describe('Record', function() {
       var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
-        33,
+        '33',
         {$value: false, $priority: 444}
       );
       rec.forEachKey(snaps, function(key, alias) {
@@ -172,7 +168,7 @@ describe('Record', function() {
       var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
-        33,
+        '33',
         {$value: false, $priority: 444}
       );
       rec.forEachKey(snaps, spy);
@@ -185,7 +181,7 @@ describe('Record', function() {
       var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
-        33,
+        '33',
         {$value: false, $priority: 444}
       );
       rec.forEachKey(snaps, spy);
@@ -198,7 +194,7 @@ describe('Record', function() {
       var snaps = createSnaps(defaultIdFn,
         {f11: 'p1.f11val', f99: 'p1.f99val'},
         {f99: 'p2.f99val', $priority: 222},
-        33,
+        '33',
         null
       );
       rec.forEachKey(snaps, spy);
@@ -232,34 +228,31 @@ describe('Record', function() {
   });
 
   describe('#_start', function() {
-    it('should invoke on() for all refs/paths', function() {
+    it('should invoke on() for refs', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
       var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-        var ref = p.ref();
-        spyOn(ref, 'on');
-        return ref;
+        if( !p.hasDependency() ) {
+          var ref = p.ref();
+          spyOn(ref, 'on').and.callThrough();
+          return ref;
+        }
       });
       expect(refs.length).toBeGreaterThan(0);
       rec._start('value');
       _.each(refs, function(ref) {
+        if( !ref ) { return; }
         expect(ref.on).toHaveBeenCalled();
       });
     });
 
     it('should not invoke on() twice for same event', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-        var ref = p.ref();
-        spyOn(ref, 'on');
-        return ref;
-      });
-      expect(refs.length).toBeGreaterThan(0);
+      var ref = rec.getPathManager().getPath('p1').ref();
+      spyOn(ref, 'on');
       rec._start('value');
       rec._start('value');
       rec._start('value');
-      _.each(refs, function(ref) {
-        expect(ref.on).toHaveCallCount(1);
-      });
+      expect(ref.on).toHaveCallCount(1);
     });
 
     it('should invoke on() for multiple events', function() {
@@ -275,339 +268,310 @@ describe('Record', function() {
       expect(calls.argsFor(1)[0]).toBe('child_added');
       expect(calls.argsFor(2)[0]).toBe('child_moved');
     });
+
+    it('should listen to dynamic paths', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var depRef = rec.getPathManager().getPath('p3').ref();
+      var dynRef = rec.getPathManager().getPath('p4').ref().child('hello');
+      spyOn(depRef, 'on').and.callThrough();
+      spyOn(dynRef, 'on').and.callThrough();
+      rec._start('value');
+      depRef.flush();
+      depRef.set('hello');
+      depRef.flush();
+      expect(depRef.on).toHaveBeenCalled();
+      expect(depRef.on.calls.argsFor(0)[0]).toBe('value');
+      expect(dynRef.on).toHaveBeenCalled();
+      expect(dynRef.on.calls.argsFor(0)[0]).toBe('value');
+    });
   });
 
   describe('#_stop', function() {
-    it('should not call off() if on() never called', function() {
+    it('should not call off() if on() never called', function () {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var refs = _.map(rec.getPathManager().getPaths(), function(p) {
+      var refs = _.map(rec.getPathManager().getPaths(), function (p) {
         var ref = p.ref();
         spyOn(ref, 'off');
         return ref;
       });
       expect(refs.length).toBeGreaterThan(0);
       rec._stop('value');
-      _.each(refs, function(ref) {
+      _.each(refs, function (ref) {
         expect(ref.off).not.toHaveBeenCalled();
       });
     });
 
-    it('should invoke off() for all refs/paths', function() {
+    it('should invoke off() for all refs/paths', function () {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-        var ref = p.ref();
-        spyOn(ref, 'off');
-        return ref;
+      var refs = _.map(rec.getPathManager().getPaths(), function (p) {
+        if( !p.hasDependency() ) {
+          var ref = p.ref();
+          spyOn(ref, 'off');
+          return ref;
+        }
       });
       expect(refs.length).toBeGreaterThan(0);
       rec._start('value');
       rec._stop('value');
-      _.each(refs, function(ref) {
-        expect(ref.off).toHaveBeenCalled();
+      _.each(refs, function (ref) {
+        if( ref ) {
+          expect(ref.off).toHaveBeenCalled();
+        }
       });
     });
 
-    it('should invoke off() for multiple events', function() {
+    it('should invoke off() for multiple events', function () {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-        var ref = p.ref();
-        spyOn(ref, 'off');
-        return ref;
-      });
-      expect(refs.length).toBeGreaterThan(0);
+      var ref = rec.getPathManager().getPath('p2').ref();
+      spyOn(ref, 'off');
       rec._start('value');
       rec._start('child_removed');
       rec._stop('value');
       rec._stop('child_removed');
+      expect(ref.off).toHaveCallCount(2);
+      expect(ref.off.calls.argsFor(0)[0]).toBe('value');
+      expect(ref.off.calls.argsFor(1)[0]).toBe('child_removed');
+    });
+  });
+
+  describe('saveData', function() {
+    it('calls update() on the correct path for each field', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var spies = [];
+      var pm = rec.getPathManager();
+      var spy1 = spyOn(pm.getPath('p1').ref(), 'update');
+      var spy2 = spyOn(pm.getPath('p2').ref(), 'update');
+      var spy3 = spyOn(pm.getPath('p3').ref(), 'set');
+      var spy4 = spyOn(pm.getPath('p4').ref().child('p3val.value'), 'set');
+      rec.saveData({
+        f10: 'f10.value', foo: 'foo.value', // p1
+        bar: 'bar.value', // p2
+        p3val: 'p3val.value',  // p3
+        nest: { p4val: 'p4val.value' } // p4
+      }, {isUpdate: false});
+      expect(spy1).toHaveBeenCalledWith(
+        { f10: 'f10.value', f11: 'foo.value', f99: null },
+        jasmine.any(Function)
+      );
+      expect(spy2).toHaveBeenCalledWith(
+        { f20: null, f99: 'bar.value' },
+        jasmine.any(Function)
+      );
+      expect(spy3).toHaveBeenCalledWith(
+        {'.value': 'p3val.value'},
+        jasmine.any(Function)
+      );
+      expect(spy4).toHaveBeenCalledWith(
+        {'.value': 'p4val.value'},
+        jasmine.any(Function)
+      );
+    });
+
+    it('discards children not in the map', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var ref1 = rec.getPathManager().getPath('p1').ref();
+      var ref2 = rec.getPathManager().getPath('p2').ref();
+      spyOn(ref1, 'update');
+      spyOn(ref2, 'update');
+      rec.saveData({
+        f10: 'f10.value', fez: 'should be ignored', // p1
+        bar: 'bar.value', // p2
+        p3val: 'p3val.value',  // p3
+        nest: { p4val: 'p4val.value', fezz: 'should be ignored, too' } // p4
+      }, {isUpdate: false});
+      _.each([ref1, ref2], function(ref) {
+        var data = ref.update.calls.argsFor(0)[0];
+        expect(data).not.toHaveKey('fez');
+        expect(data).not.toHaveKey('fezz');
+      });
+    });
+
+    it('deletes fields in the map but not the data', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var ref = rec.getPathManager().first().ref();
+      spyOn(ref, 'update');
+      rec.saveData({
+        f10: 'f10.value'
+      }, {isUpdate: false});
+      expect(ref.update.calls.argsFor(0)[0].f11).toBe(null);
+    });
+
+    it('triggers callback after all paths have returned', function() {
+      var spy = jasmine.createSpy('update callback');
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var refs = _.map(rec.getPathManager().getPaths(), function(p) {
+        return p.ref();
+      });
+      rec.saveData({
+        f10: 'f10.value', bar: 'bar', p3val: 'p3value', nest: { p4val: 'p4value' }
+      }, {isUpdate: false, callback: spy});
+      _.each(refs, function(ref, i) {
+        ref.flush();
+        if( i < refs.length - 1 ) {
+          expect(spy).not.toHaveBeenCalled();
+        }
+      });
+      expect(spy).toHaveBeenCalledWith();
+    });
+
+    it('triggers callback with correct context', function() {
+      var ctx = {};
+      var spy = jasmine.createSpy('update callback').and.callFake(function() {
+        expect(this).toBe(ctx);
+      });
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var refs = _.map(rec.getPathManager().getPaths(), function(p) {
+        return p.ref();
+      });
+      rec.saveData({
+        f10: 'f10.value'
+      }, {isUpdate: false, callback: spy, context: ctx});
       _.each(refs, function(ref) {
-        var calls = ref.off.calls;
-        expect(ref.off).toHaveCallCount(2);
-        expect(calls.argsFor(0)[0]).toBe('value');
-        expect(calls.argsFor(1)[0]).toBe('child_removed');
+        try { ref.flush(); } catch(e) {}
+      });
+      expect(spy).toHaveBeenCalledWith();
+    });
+
+    it('returns an error if any path returns an error', function() {
+      var err = new Error('YOLO?');
+      var spy = jasmine.createSpy('update callback');
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var refs = _.map(rec.getPathManager().getPaths(), function(p) {
+        return p.ref().autoFlush();
+      });
+      refs[1].failNext('update', err);
+      rec.saveData({foo: 'bar'}, {isUpdate: false, callback: spy});
+      expect(spy).toHaveBeenCalledWith(err);
+    });
+
+    it('removes all paths if given null', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var spies = [];
+      _.each(rec.getPathManager().getPaths(), function(p) {
+        if( !p.hasDependency() ) {
+          spies.push(spyOn(p.ref(), 'remove'));
+        }
+      });
+      rec.saveData(null, {isUpdate: false});
+      _.each(spies, function(spy) {
+        expect(spy).toHaveBeenCalled();
       });
     });
 
-    describe('saveData', function() {
-      it('calls update() on the correct path for each field', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-          var ref = p.ref();
-          spyOn(ref, 'update');
-          return ref;
-        });
-        expect(refs.length).toBe(4);
-        rec.saveData({
-          f10: 'f10.value', foo: 'foo.value', // p1
-          bar: 'bar.value', // p2
-          p3val: 'p3val.value',  // p3
-          nest: { p4val: 'p4val.value' } // p4
-        }, {isUpdate: false});
-        _.each(refs, function(ref) {
-          switch(ref.parent().key()) {
-            case 'path1':
-              expect(ref.update).toHaveBeenCalledWith(
-                { f10: 'f10.value', f11: 'foo.value', f99: null },
-                jasmine.any(Function)
-              );
-              break;
-            case 'path2':
-              expect(ref.update).toHaveBeenCalledWith(
-                { f20: null, f99: 'bar.value' },
-                jasmine.any(Function)
-              );
-              break;
-            case null:
-              expect(ref.update).toHaveBeenCalledWith(
-                'p3val.value',
-                jasmine.any(Function)
-              );
-              break;
-            case 'path4':
-              expect(ref.update).toHaveBeenCalledWith(
-                'p4val.value',
-                jasmine.any(Function)
-              );
-              break;
-            default:
-              throw new Error('Unexpected path: ' + ref.name());
-          }
-        });
-      });
+    it('only updates fields provided if isUpdate === true', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var ref = rec.getPathManager().getPath('p1').ref();
+      spyOn(ref, 'update');
+      rec.saveData({
+        f10: 'f10.value', foo: 'foo.value', // p1
+        p3val: 'p3val.value',  // p3
+        nest: { p4val: 'p4val.value' } // p4
+      }, {isUpdate: true});
+      expect(ref.update).toHaveBeenCalledWith(
+        { f10: 'f10.value', f11: 'foo.value' },
+        jasmine.any(Function)
+      );
+    });
 
-      it('discards children not in the map', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-          var ref = p.ref().autoFlush();
-          spyOn(ref, 'update');
-          return ref;
-        });
-        expect(refs.length).toBe(4);
-        rec.saveData({
-          f10: 'f10.value', fez: 'should be ignored', // p1
-          bar: 'bar.value', // p2
-          p3val: 'p3val.value',  // p3
-          nest: { p4val: 'p4val.value', fezz: 'should be ignored, too' } // p4
-        }, {isUpdate: false});
-        _.each(refs, function(ref) {
-          expect(ref.update).toHaveBeenCalled();
-          var data = ref.update.calls.argsFor(0)[0];
-          expect(data).not.toHaveKey('fez');
-          expect(data).not.toHaveKey('fezz');
-        });
-      });
+    it('throws error if non-object passed with isUpdate === true', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      expect(function() {
+        rec.saveData(null, {isUpdate: true});
+      }).toThrowError(Error);
+    });
 
-      it('deletes fields in the map but not the data', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var ref = rec.getPathManager().first().ref();
-        spyOn(ref, 'update');
-        rec.saveData({
-          f10: 'f10.value'
-        }, {isUpdate: false});
-        expect(ref.update.calls.argsFor(0)[0].f11).toBe(null);
-      });
+    it('calls set with a primitive if there is exactly one path', function() {
+      var mgr = new PathManager([
+        new Path([hp.mockRef(PATHS.p1.url), PATHS.p1.alias])
+      ]);
+      var rec = new Record(makeFieldMap(mgr));
+      var ref = rec.getPathManager().first().ref();
+      spyOn(ref, 'set');
+      rec.saveData(false, {isUpdate: false});
+      expect(ref.set).toHaveBeenCalledWith(false, jasmine.any(Function));
+    });
 
-      it('triggers callback after all paths have returned', function() {
-        var spy = jasmine.createSpy('update callback');
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-          return p.ref();
-        });
-        rec.saveData({
-          f10: 'f10.value'
-        }, {isUpdate: false, callback: spy});
-        _.each(refs, function(ref, i) {
-          ref.flush();
-          if( i < refs.length - 1 ) {
-            expect(spy).not.toHaveBeenCalled();
-          }
-        });
-        expect(spy).toHaveBeenCalledWith();
-      });
-
-      it('triggers callback with correct context', function() {
-        var ctx = {};
-        var spy = jasmine.createSpy('update callback').and.callFake(function() {
-          expect(this).toBe(ctx);
-        });
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-          return p.ref();
-        });
-        rec.saveData({
-          f10: 'f10.value'
-        }, {isUpdate: false, callback: spy, context: ctx});
-        _.each(refs, function(ref) {
-          ref.flush();
-        });
-        expect(spy).toHaveBeenCalledWith();
-      });
-
-      it('returns an error if any path returns an error', function() {
-        var err = new Error('YOLO?');
-        var spy = jasmine.createSpy('update callback');
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-          return p.ref().autoFlush();
-        });
-        refs[1].failNext('update', err);
-        rec.saveData({foo: 'bar'}, {isUpdate: false, callback: spy});
-        expect(spy).toHaveBeenCalledWith(err);
-      });
-
-      it('removes all paths if given null', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-          spyOn(p.ref(), 'remove');
-          return p.ref();
-        });
-        rec.saveData(null, {isUpdate: false});
-        _.each(refs, function(ref, i) {
-          expect(ref.remove).toHaveBeenCalled();
-        });
-      });
-
-      it('only updates fields provided if isUpdate === true', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var refs = _.map(rec.getPathManager().getPaths(), function(p) {
-          var ref = p.ref();
-          spyOn(ref, 'update');
-          return ref;
-        });
-        expect(refs.length).toBe(4);
-        rec.saveData({
-          f10: 'f10.value', foo: 'foo.value', // p1
-          p3val: 'p3val.value',  // p3
-          nest: { p4val: 'p4val.value' } // p4
-        }, {isUpdate: true});
-        _.each(refs, function(ref) {
-          switch(ref.parent().key()) {
-            case 'path1':
-              expect(ref.update).toHaveBeenCalledWith(
-                { f10: 'f10.value', f11: 'foo.value' },
-                jasmine.any(Function)
-              );
-              break;
-            case 'path2':
-              expect(ref.update).not.toHaveBeenCalled();
-              break;
-            case null:
-              expect(ref.update).toHaveBeenCalledWith(
-                'p3val.value',
-                jasmine.any(Function)
-              );
-              break;
-            case 'path4':
-              expect(ref.update).toHaveBeenCalledWith(
-                'p4val.value',
-                jasmine.any(Function)
-              );
-              break;
-            default:
-              throw new Error('Unexpected path: ' + ref.name());
-          }
-        });
-      });
-
-      it('throws error if non-object passed with isUpdate === true', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        expect(function() {
-          rec.saveData(null, {isUpdate: true});
-        }).toThrowError(Error);
-      });
-
-      it('calls set with a primitive if there is exactly one path', function() {
-        var mgr = new PathManager([
-          new Path([hp.mockRef(PATHS.p1.url), PATHS.p1.alias])
-        ]);
-        var rec = new Record(makeFieldMap(mgr));
-        var ref = rec.getPathManager().first().ref();
-        spyOn(ref, 'set');
+    it('throws an error if multiple paths are set to a primitive', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      expect(function() {
         rec.saveData(false, {isUpdate: false});
-        expect(ref.set).toHaveBeenCalledWith(false, jasmine.any(Function));
-      });
-
-      it('throws an error if multiple paths are set to a primitive', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        expect(function() {
-          rec.saveData(false, {isUpdate: false});
-        }).toThrowError(Error);
-      });
-
-      it('observes priority and adds .priority to the master path', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var ref = rec.getPathManager().first().ref();
-        spyOn(ref, 'update');
-        rec.saveData({foo: 'bar'}, {isUpdate: true, priority: 0});
-        expect(ref.update).toHaveBeenCalledWith({f11: 'bar', '.priority': 0}, jasmine.any(Function));
-      });
-
-      it('calls setWithPriority if a primitive and a priority are given with exactly one path', function() {
-        var mgr = new PathManager([
-          new Path([hp.mockRef(PATHS.p1.url), PATHS.p1.alias])
-        ]);
-        var rec = new Record(makeFieldMap(mgr));
-        var ref = rec.getPathManager().first().ref();
-        spyOn(ref, 'setWithPriority');
-        rec.saveData('foo', {isUpdate: false, priority: 'apples'});
-        expect(ref.setWithPriority).toHaveBeenCalledWith('foo', 'apples', jasmine.any(Function));
-      });
-
-      it('accepts .value', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var ref = rec.getPathManager().first().ref();
-        spyOn(ref, 'update');
-        rec.saveData({foo: {'.value': 'bar'}}, {isUpdate: true});
-        expect(ref.update).toHaveBeenCalledWith({f11: {'.value': 'bar'}}, jasmine.any(Function));
-      });
-
-      it('accepts .priority', function() {
-        var rec = new Record(makeFieldMap(makePathMgr()));
-        var ref = rec.getPathManager().first().ref();
-        spyOn(ref, 'update');
-        rec.saveData({foo: {'.value': 'bar', '.priority': 0}}, {isUpdate: true});
-        expect(ref.update).toHaveBeenCalledWith({f11: {'.value': 'bar', '.priority': 0}}, jasmine.any(Function));
-      });
+      }).toThrowError(Error);
     });
 
-    describe('value events', function() { //todo-test
-      it('should return all snapshots');
-
-      it('should only return when all snapshots are present');
-
-      it('should fire appropriate observers');
+    it('observes priority and adds .priority to the master path', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var ref = rec.getPathManager().first().ref();
+      spyOn(ref, 'update');
+      rec.saveData({foo: 'bar'}, {isUpdate: true, priority: 0});
+      expect(ref.update).toHaveBeenCalledWith({f11: 'bar', '.priority': 0}, jasmine.any(Function));
     });
 
-    describe('child_added events', function() { //todo-test
-      it('should trigger with appropriate child snapshot');
-
-      it('should trigger from any path');
-
-      it('should fire appropriate observers');
+    it('calls setWithPriority if a primitive and a priority are given with exactly one path', function() {
+      var mgr = new PathManager([
+        new Path([hp.mockRef(PATHS.p1.url), PATHS.p1.alias])
+      ]);
+      var rec = new Record(makeFieldMap(mgr));
+      var ref = rec.getPathManager().first().ref();
+      spyOn(ref, 'setWithPriority');
+      rec.saveData('foo', {isUpdate: false, priority: 'apples'});
+      expect(ref.setWithPriority).toHaveBeenCalledWith('foo', 'apples', jasmine.any(Function));
     });
 
-    describe('child_removed events', function() { //todo-test
-      it('should trigger with appropriate child snapshot');
-
-      it('should trigger from any path');
-
-      it('should fire appropriate observers');
+    it('accepts .value', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var ref = rec.getPathManager().first().ref();
+      spyOn(ref, 'update');
+      rec.saveData({foo: {'.value': 'bar'}}, {isUpdate: true});
+      expect(ref.update).toHaveBeenCalledWith({f11: {'.value': 'bar'}}, jasmine.any(Function));
     });
 
-    describe('child_changed events', function() { //todo-test
-      it('should trigger with appropriate child snapshot');
-
-      it('should trigger from any path');
-
-      it('should fire appropriate observers');
+    it('accepts .priority', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var ref = rec.getPathManager().first().ref();
+      spyOn(ref, 'update');
+      rec.saveData({foo: {'.value': 'bar', '.priority': 0}}, {isUpdate: true});
+      expect(ref.update).toHaveBeenCalledWith({f11: {'.value': 'bar', '.priority': 0}}, jasmine.any(Function));
     });
+  });
 
-    describe('child_moved events', function() { //todo-test
-      it('should trigger with appropriate child snapshot');
+  describe('value events', function() { //todo-test
+    it('should return all snapshots');
 
-      it('should trigger from any path');
+    it('should only return when all snapshots are present');
 
-      it('should fire appropriate observers');
-    });
+    it('should fire appropriate observers');
+  });
+
+  describe('child_added events', function() { //todo-test
+    it('should trigger with appropriate child snapshot');
+
+    it('should trigger from any path');
+
+    it('should fire appropriate observers');
+  });
+
+  describe('child_removed events', function() { //todo-test
+    it('should trigger with appropriate child snapshot');
+
+    it('should trigger from any path');
+
+    it('should fire appropriate observers');
+  });
+
+  describe('child_changed events', function() { //todo-test
+    it('should trigger with appropriate child snapshot');
+
+    it('should trigger from any path');
+
+    it('should fire appropriate observers');
+  });
+
+  describe('child_moved events', function() { //todo-test
+    it('should trigger with appropriate child snapshot');
+
+    it('should trigger from any path');
+
+    it('should fire appropriate observers');
   });
 
   function makePathMgr(idFn) {
@@ -618,7 +582,7 @@ describe('Record', function() {
     var paths = [];
     _.each(PATHS, function(p) {
       var ref = hp.mockRef(p.url);
-      var path = new Path([ref, p.alias]).normChild(idFn(p.alias));
+      var path = new Path([ref, p.alias, p.dep]).normChild(idFn(p.alias));
       paths.push(path);
     });
     return paths;
@@ -680,7 +644,7 @@ describe('Record', function() {
   };
 
   function defaultIdFn(pathName) {
-    return 'record1';
+    return pathName === 'p4'? '33' : 'record1';
   }
 
 });
