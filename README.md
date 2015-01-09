@@ -12,6 +12,9 @@ This is a collection of power toys (mostly experimental) and utilities for use i
    Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use most of your favorite
    Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
    during set/update/remove ops. [View Docs and API](src/join/README.md)
+
+ - **Firebase.util.Paginate**
+   Coming soon.
    
 ## Setup
 
