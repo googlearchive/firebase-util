@@ -21,7 +21,8 @@ function getBundle(debug, args) {
 
 function copyTemplate(ext, isSpec) {
   if( !argv.t || !argv.d || !argv.n ) {
-    throw new Error('Usage: gulp scaffold -t type -d directory -n name');
+    gutil.log(gutil.colors.red('Usage: gulp scaffold -t type -d directory -n name'));
+    return;
   }
 
   var baseDir = isSpec? 'test' : 'src';
@@ -36,8 +37,10 @@ function copyTemplate(ext, isSpec) {
   };
 
   if( fs.existsSync(dest) ) {
-    throw new Error('File exists: '+dest);
+    gutil.log(gutil.colors.red('File exists: '+dest));
+    return;
   }
+
   gutil.log('Creating ', gutil.colors.magenta(dest));
   return gulp.src(src)
     .pipe(plugins.template({ name: argv.n }))
@@ -53,7 +56,8 @@ gulp.task('build', function(){
     .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
       pkg: require('./package.json')
     }))
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest('dist'))
+    .pipe(plugins.livereload());
 });
 
 gulp.task('watch', function() {
@@ -77,7 +81,8 @@ gulp.task('minify', function() {
     .pipe(buffer())
     .pipe(plugins.uglify())
     .pipe(plugins.size())
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest('dist'))
+    .pipe(plugins.livereload());
 });
 
 gulp.task('lint', function () {
@@ -97,7 +102,8 @@ gulp.task('scaffold-test', function() {
 });
 
 gulp.task('e2e', function() {
-  //todo
+  plugins.livereload.listen();
+  return gulp.watch(['./src/**/*.js', './test/e2e/**/*'], ['bundle']);
 });
 
 gulp.task('scaffold', ['scaffold-file', 'scaffold-test']);
@@ -107,5 +113,5 @@ gulp.task('bundle', function() {
 });
 
 gulp.task('default', function() {
-  return seq('bundle', 'test', 'e2e');
+  return seq('bundle', 'test');
 });

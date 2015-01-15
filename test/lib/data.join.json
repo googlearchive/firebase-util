@@ -1,121 +1,49 @@
 {
-   "users": {
-      "account": {
-         "bruce": {
-            "email": "bruce@lee.com",
-            "name": "bruce"
+   "examples": {
+      "chatfu": {
+         "feeds": {
+           "The Dojo": {
+              "members": {
+                 "bruce": true,
+                 "chuck": true
+              }
+           }
          },
-         "kato": {
-            "email": "wulf@firebase.com",
-            "name": "kato"
-         }
-      },
 
-      "profile": {
-         "bruce": {
-            "name": "Bruce Lee",
-            "nick": "Little Phoenix",
-            "style": "Jeet Kune Do"
+         "users": {
+            "bruce": {
+               "name": "Bruce Lee",
+               "style": "Jeet Kune Do"
+            },
+            "chuck": {
+               "name": "Carlos Ray Norris",
+               "style": "Chuck Kuk Do"
+            }
          },
-         "kato": {
-            "name": "Michael Wulf",
-            "nick": "Kato",
-            "style": "Kung Fu"
-         }
-      },
 
-      "styles": {
-         "Kung Fu": {
-            "description": "Chinese system based on physical exercises involving animal mimicry"
+         "nicknames": {
+            "bruce": "Little Phoenix",
+            "chuck": "Chuck"
          },
-         "Jeet Kune Do": {
-            "description": "Eclectic/hybrid style of no style and philosophy of life founded by martial artist Bruce Lee with direct, non-classical, and straightforward movements."
+
+         "styles": {
+            "Jeet Kune Do": "An eclectic, hybrid fighting style emphasizing minimal movements for maximum effect.",
+            "Chuck Kuk Do": "A Korean-based, American hybrid style, combining elements from several different fighting styles."
+         },
+
+         "messages": {
+            "The Dojo": {
+               "message1": {
+                  "user": "bruce",
+                  "text": "There is no mystery about my style. My movements are simple, direct and non-classical. The extraordinary part of it lies in its simplicity."
+               },
+               "message2": {
+                  "user": "chuck",
+                  "text": "Men are like steel. When they lose their temper, they lose their worth."
+               }
+            }
          }
       }
-   },
-
-   "union_index": {
-      "a_": { "fruit":  "a", "legume": "a" },
-      "b_": { "fruit":  "b", "legume": "b", "veggie": "b" },
-      "c_": { "fruit":  "c" },
-      "d_": { "veggie": "d" }
-   },
-
-   "unions": {
-      "fruit": {
-         "a": "apple",
-         "b": "banana"
-      },
-      "legume": {
-         "b": "baked beans",
-         "c": "chickpeas",
-         "d": "dry-roasted peanuts",
-         "e": "egyptian lentil"
-      },
-      "veggie": {
-         "b": "broccoli",
-         "d": "daikon raddish",
-         "e": "elephant garlic",
-         "f": "fluted pumpkin"
-      }
-   },
-
-   "ordered": {
-      "set1": {
-         "one":   { ".value": 1, ".priority": 1 },
-         "two":   { ".value": 2, ".priority": 2 },
-         "three": { ".value": 3, ".priority": 3 },
-         "four":  { ".value": 4, ".priority": 4 },
-         "five":  { ".value": 5, ".priority": 5 }
-      },
-      "set2": {
-         "one":   { ".value": 11, ".priority": 11 },
-         "two":   { ".value": 22, ".priority": 22 },
-         "three": { ".value": 33, ".priority": 33 },
-         "four":  { ".value": 44, ".priority": 44 },
-         "five":  { ".value": 0,  ".priority": 0 }
-      }
-   },
-
-   "secured": {
-      "foo": {
-         "one": 1,
-         "two": 2
-      },
-      "bar": {
-         "one": 1,
-         "three": 3
-      }
-   },
-
-   "secured_read_allowed": true,
-   "secured_write_allowed": true,
-
-   "arrays": {
-      "english": [
-         "zero",
-         "one",
-         "two",
-         "three",
-         "four",
-         "five"
-      ],
-      "spanish": [
-         {"numero": "cero"},
-         {"numero": "uno"},
-         {"numero": "dos"},
-         {"numero": "tres"},
-         {"numero": "cuatro"},
-         {"numero": "cinco"}
-      ],
-      "french": [
-         {".value": "zéro",   ".priority": 0},
-         {".value": "un",     ".priority": 1},
-         {".value": "deux",   ".priority": 2},
-         {".value": "trois",  ".priority": 3},
-         {".value": "quatre", ".priority": 4},
-         {".value": "cinq",   ".priority": 5}
-      ]
    }
 
 }

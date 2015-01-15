@@ -243,7 +243,7 @@ ValueEventManager.prototype = {
   update: function(pathName, snap) {
     this.snaps[pathName] = snap;
     if( !util.contains(this.snaps, null) ) {
-      this.rec._trigger('value', this.snaps);
+      this.rec.handler('value')(this.snaps);
     }
   },
 
@@ -309,8 +309,8 @@ ChildEventManager.prototype = {
 
   update: function(snap) {
     if( snap !== null ) {
-      var args = [this.event, snap.name(), snap];
-      this.rec._trigger.apply(this.rec, args);
+      var args = [snap.name(), snap];
+      this.rec.handler(this.event).apply(args);
     }
   }
 };

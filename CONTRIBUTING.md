@@ -16,15 +16,6 @@ bower install
 gulp
 ```
 
-Declare environment variables for end-to-end tests. In Mac/Linux:
-
-```bash
-FIREBASE_TEST_URL="https://INSTANCE.firebaseio.com"
-FIREBASE_TEST_SECRET="xxoXaABB28..."
-```
-
-(For DOS use `set VAR=value`, for PowerShell, use `$env:VAR=value`)
-
 Build, lint, minify, run all tests including end-to-end, and generally wreak havoc.
 
 ```bash
@@ -42,7 +33,6 @@ gulp scaffold -d DIRECTORY_UNDER_SRC -t class -n NameOfFile
 ## Testing
 
 Add test cases to cover any new code you create. Make sure all test cases pass before committing changes.
-You must declare `FIREBASE_TEST_URL` and `FIREBASE_TEST_SECRET` first. (see setup).
 
 You can run all test units at any time using `grunt test` or automagically after changes by using `grunt watch`.
 
@@ -54,7 +44,7 @@ Read the [README.md under test/](test/README.md) for details about test standard
 
 Your package should be placed in src/`mypackage`/ and should contain the following structure:
 
-    src/package/libs/*.js  (dependencies and libs used by exports.js)
+    src/package/libs/*.js  (the meat and classes of the new package)
     src/package/exports.js (functions to be put into the Firebase.util public scope belong here)
     src/package/README.md  (documentation and instructions for your package)
 

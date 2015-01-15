@@ -184,6 +184,9 @@ AbstractRecord.prototype = {
     else {
       ref = this._ref.child(id);
     }
+    if( util.isObject(snaps) && !util.isArray(snaps) && typeof snaps.val === 'function' ) {
+      snaps = [snaps];
+    }
     this.obs.triggerEvent(event, new NormalizedSnapshot(ref, snaps));
   },
 
@@ -191,7 +194,7 @@ AbstractRecord.prototype = {
    * @param {string} event
    * @returns {function}
    */
-  _handler: function(event) {
+  handler: function(event) {
     return this.eventHandlers[event];
   },
 

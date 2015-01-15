@@ -23,7 +23,10 @@ NormalizedCollection.prototype = {
   select: function(fieldName) { //jshint unused:vars
     assertNotFinalized(this, 'select');
     var args = util.args('NormalizedCollection.select', arguments, 1);
-    this.map.add(args.restAsList(0, ['string', 'object']));
+    util.each(args.restAsList(0, ['string', 'object']), function(f) {
+      this.map.add(f);
+    }, this);
+    return this;
   },
 
   filter: function(matchFn) { //jshint unused:vars
@@ -32,6 +35,7 @@ NormalizedCollection.prototype = {
     this.filters.add(
       args.nextReq('function')
     );
+    return this;
   },
 
   ref: function() {

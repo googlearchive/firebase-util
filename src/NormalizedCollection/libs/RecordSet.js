@@ -30,7 +30,7 @@ function RecordSet(fieldMap, whereClause) {
   // which ones should be ignored
   this.filters = whereClause;
 
-  // the RecordSetEventManager handles Firebase events and calls _trigger() on
+  // the RecordSetEventManager handles Firebase events and calls event handlers on
   // this RecordSet appropriately. See RecordSetEventManager for more details
   this.monitor = new RecordSetEventManager(this);
 

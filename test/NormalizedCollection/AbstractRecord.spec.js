@@ -81,7 +81,7 @@ describe('AbstractRecord', function() {
         expect(snap.val()).toBe(99);
       });
       rec.watch('value', spy);
-      rec._trigger('value', [hp.stubSnap(hp.mockRef('p1'), 99)]);
+      rec.handler('value')([hp.stubSnap(hp.mockRef('p1'), 99)]);
       expect(spy).toHaveBeenCalled();
     });
 
@@ -92,7 +92,7 @@ describe('AbstractRecord', function() {
       });
       var rec = new Rec();
       rec.watch('value', spy, ctx);
-      rec._trigger('value', hp.snaps(99));
+      rec.handler('value')(hp.snaps(99));
       expect(spy).toHaveBeenCalled();
     });
   });
@@ -102,9 +102,9 @@ describe('AbstractRecord', function() {
       var rec = new Rec();
       var spy = jasmine.createSpy();
       rec.watch('value', spy);
-      rec._trigger('value', hp.snaps(99));
+      rec.handler('value')(hp.snaps(99));
       rec.unwatch('value', spy);
-      rec._trigger('value', hp.snaps(100));
+      rec.handler('value')(hp.snaps(100));
       expect(spy.calls.count()).toBe(1);
     });
 
@@ -114,9 +114,9 @@ describe('AbstractRecord', function() {
       var spy = jasmine.createSpy();
       rec.watch('value', spy, ctxA);
       rec.watch('value', spy, ctxB);
-      rec._trigger('value', hp.snaps(99));
+      rec.handler('value')(hp.snaps(99));
       rec.unwatch('value', spy, ctxA);
-      rec._trigger('value', hp.snaps(100));
+      rec.handler('value')(hp.snaps(100));
       expect(spy.calls.count()).toBe(3);
     });
 
@@ -126,7 +126,7 @@ describe('AbstractRecord', function() {
       rec.watch('value', spy);
       rec.watch('value', spy, {});
       rec.unwatch('value');
-      rec._trigger('value', hp.snaps(99));
+      rec.handler('value')(hp.snaps(99));
       expect(spy.calls.count()).toBe(0);
     });
 

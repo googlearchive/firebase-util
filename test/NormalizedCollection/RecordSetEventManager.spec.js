@@ -85,14 +85,14 @@ describe('RecordSetEventManager', function() {
     it('should trigger a child_added event after the record\'s value event fires', function() {
       var data = {foo: 'bar'};
       var stub = loadWithStub(data);
-      expect(stub.rec._trigger)
+      expect(stub.rec.$trigger)
         .toHaveBeenCalledWith('child_added', stub.id, jasmine.any(Object), null);
     });
 
     it('should trigger a value event', function() {
       var data = {foo: 'bar'};
       var stub = loadWithStub(data);
-      expect(stub.rec._trigger).toHaveBeenCalledWith('value', [jasmine.any(Object)]);
+      expect(stub.rec.$trigger).toHaveBeenCalledWith('value', [jasmine.any(Object)]);
     });
 
     it('should not trigger a value event if load not completed', function() {
@@ -117,8 +117,8 @@ describe('RecordSetEventManager', function() {
       // add a new record
       var id = ref.push(data).key();
       ref.flush();
-      rec.child(id)._trigger('value', hp.stubSnap(ref, data));
-      expect(rec._trigger).not.toHaveBeenCalledWith('value', [jasmine.any(Object)]);
+      rec.child(id).handler('value')(hp.stubSnap(ref, data));
+      expect(rec.$trigger).not.toHaveBeenCalledWith('value', [jasmine.any(Object)]);
     });
   });
 
@@ -134,7 +134,7 @@ describe('RecordSetEventManager', function() {
       var stub = loadWithStub({foo: 'bar'});
       stub.ref.child(stub.id).remove();
       stub.ref.flush();
-      expect(stub.rec._trigger).toHaveBeenCalledWith(
+      expect(stub.rec.$trigger).toHaveBeenCalledWith(
         'child_removed', stub.id
       );
     });
@@ -142,10 +142,10 @@ describe('RecordSetEventManager', function() {
     it('should trigger a value event', function() {
       var data = {foo: 'bar'};
       var stub = loadWithStub(data);
-      expect(stub.rec._trigger).toHaveBeenCalledWith('value', [jasmine.any(Object)]);
+      expect(stub.rec.$trigger).toHaveBeenCalledWith('value', [jasmine.any(Object)]);
       stub.ref.child(stub.id).remove();
       stub.ref.flush();
-      expect(stub.rec._trigger).toHaveBeenCalledWith('value', []);
+      expect(stub.rec.$trigger).toHaveBeenCalledWith('value', []);
     });
 
     it('should not trigger a value event if initial load is not completed', function() {
@@ -160,15 +160,15 @@ describe('RecordSetEventManager', function() {
       // add a new record
       var id = ref.push(data).key();
       ref.flush();
-      rec.child(id)._trigger('value', hp.stubSnap(ref, data));
-      expect(rec._trigger).not.toHaveBeenCalledWith('value', [jasmine.any(Object)]);
+      rec.child(id).handler('value')(hp.stubSnap(ref, data));
+      expect(rec.$trigger).not.toHaveBeenCalledWith('value', [jasmine.any(Object)]);
 
       // remove the new record
       ref.child(id).remove();
       ref.flush();
 
       // there should be no event triggered
-      expect(rec._trigger).not.toHaveBeenCalledWith('value', []);
+      expect(rec.$trigger).not.toHaveBeenCalledWith('value', []);
     });
 
     it('should not trigger a child_removed event if child ' +
@@ -177,13 +177,13 @@ describe('RecordSetEventManager', function() {
       var ref = stub.ref;
       var id = ref.push(-99).key();
       ref.flush();
-      // do not do rec.child(id)._trigger() here, to simulate value not being called yet
+      // do not do rec.child(id).$trigger() here, to simulate value not being called yet
 
       // remove the new record
       ref.child(id).remove();
       ref.flush();
 
-      expect(stub.rec._trigger).not.toHaveBeenCalledWith('child_removed', id);
+      expect(stub.rec.$trigger).not.toHaveBeenCalledWith('child_removed', id);
     });
   });
 
@@ -198,7 +198,7 @@ describe('RecordSetEventManager', function() {
       ref.child(a).setPriority(99999);
       ref.flush();
 
-      expect(stub.rec._trigger).toHaveBeenCalledWith('child_moved', a, jasmine.any(Object), b);
+      expect(stub.rec.$trigger).toHaveBeenCalledWith('child_moved', a, jasmine.any(Object), b);
     });
 
     it('should send a value event if initial load is completed', function() {
@@ -206,10 +206,10 @@ describe('RecordSetEventManager', function() {
       var ref = stub.ref;
       var a = stub.add(true);
       var b = stub.add(false);
-      stub.rec._trigger.calls.reset();
+      stub.rec.$trigger.calls.reset();
       ref.child(a).setPriority(99999);
       ref.flush();
-      expect(stub.rec._trigger).toHaveBeenCalledWith('value', jasmine.any(Object));
+      expect(stub.rec.$trigger).toHaveBeenCalledWith('value', jasmine.any(Object));
     });
 
     it('should not trigger a value event if initial load is not completed', function() {
@@ -223,20 +223,20 @@ describe('RecordSetEventManager', function() {
       // add a new record
       var a = ref.push(data).key();
       ref.flush();
-      rec.child(a)._trigger('value', hp.stubSnap(ref, data));
+      rec.child(a).handler('value')(hp.stubSnap(ref, data));
 
       var b = ref.push(data).key();
       ref.flush();
-      rec.child(b)._trigger('value', hp.stubSnap(ref, data));
+      rec.child(b).handler('value')(hp.stubSnap(ref, data));
 
-      rec._trigger.calls.reset();
+      rec.$trigger.calls.reset();
 
       // move record a
       ref.child(a).setPriority(999999);
       ref.flush();
 
       // there should be no event triggered
-      expect(rec._trigger).not.toHaveBeenCalledWith('value', jasmine.any(Object));
+      expect(rec.$trigger).not.toHaveBeenCalledWith('value', jasmine.any(Object));
     });
 
     it('should not trigger a child_moved event if child ' +
@@ -246,11 +246,11 @@ describe('RecordSetEventManager', function() {
       var a = stub.add(true);
       var b = stub.add(false);
 
-      stub.rec._trigger.calls.reset();
+      stub.rec.$trigger.calls.reset();
       ref.child(a).setPriority(99999);
       ref.flush();
 
-      expect(stub.rec._trigger).not.toHaveBeenCalledWith('child_moved', stub.id, jasmine.any(Object), b);
+      expect(stub.rec.$trigger).not.toHaveBeenCalledWith('child_moved', stub.id, jasmine.any(Object), b);
     });
   });
 
@@ -258,17 +258,17 @@ describe('RecordSetEventManager', function() {
     it('should trigger child_changed event', function() {
       var stub = loadWithStub({foo: 'bar'});
       var rec = stub.rec;
-      rec._trigger.calls.reset();
-      rec.child(stub.id)._trigger('value', {foo: 'baz'});
-      expect(rec._trigger).toHaveBeenCalledWith('child_changed', stub.id, jasmine.any(Object));
+      rec.$trigger.calls.reset();
+      rec.child(stub.id).handler('value')({foo: 'baz'});
+      expect(rec.$trigger).toHaveBeenCalledWith('child_changed', stub.id, jasmine.any(Object));
     });
 
     it('should trigger value event if initial load is completed', function() {
       var stub = loadWithStub({foo: 'bar'});
       var rec = stub.rec;
-      rec._trigger.calls.reset();
-      rec.child(stub.id)._trigger('value', {foo: 'baz'});
-      expect(rec._trigger).toHaveBeenCalledWith('value', jasmine.any(Object));
+      rec.$trigger.calls.reset();
+      rec.child(stub.id).handler('value')({foo: 'baz'});
+      expect(rec.$trigger).toHaveBeenCalledWith('value', jasmine.any(Object));
     });
 
     it('should not trigger value event if initial load is not completed', function() {
@@ -281,11 +281,11 @@ describe('RecordSetEventManager', function() {
       // add a new record
       var id = ref.push(99).key();
       ref.flush();
-      rec.child(id)._trigger('value', hp.stubSnap(ref,  99));
-      rec.child(id)._trigger('value', hp.stubSnap(ref, 100));
+      rec.child(id).handler('value')(hp.stubSnap(ref,  99));
+      rec.child(id).handler('value')(hp.stubSnap(ref, 100));
 
       // there should be no event triggered
-      expect(rec._trigger).not.toHaveBeenCalledWith('value', jasmine.any(Object));
+      expect(rec.$trigger).not.toHaveBeenCalledWith('value', jasmine.any(Object));
     });
   });
 
@@ -308,7 +308,7 @@ describe('RecordSetEventManager', function() {
     function addFn(data) {
       var id = ref.push(data).key();
       ref.flush();
-      rec.child(id)._trigger('value', hp.stubSnap(ref.child(id), data));
+      rec.child(id).handler('value')(hp.stubSnap(ref.child(id), data));
       return id;
     }
 
@@ -319,16 +319,13 @@ describe('RecordSetEventManager', function() {
   }
 
   function stubRec() {
-    var obj = jasmine.createSpyObj('Record', ['watch', 'unwatch', '_trigger', 'getPathManager', 'child']);
+    var obj = jasmine.createSpyObj('Record', ['watch', 'unwatch', 'handler', 'getPathManager', 'child', '$trigger']);
     var mgr = hp.stubPathMgr();
     obj.$children = {};
     obj.$spies = [];
     obj.getPathManager.and.returnValue(mgr);
-    obj._trigger.and.callFake(function() {
-      var args = _.toArray(arguments);
-      _.each(obj.$spies, function(spyObj) {
-        spyObj.fn.apply(spyObj.ctx, args);
-      });
+    obj.handler.and.callFake(function(event) {
+      return _.bind(obj.$trigger, obj, event);
     });
     obj.watch.and.callFake(function(event, callback, context) {
       var fn = jasmine.createSpy('$callback listener ' + obj.$spies.length)
@@ -342,6 +339,12 @@ describe('RecordSetEventManager', function() {
         obj.$children[key] = stubRec();
       }
       return obj.$children[key];
+    });
+    obj.$trigger.and.callFake(function() {
+      var args = _.toArray(arguments);
+      _.each(obj.$spies, function(spyObj) {
+        spyObj.fn.apply(spyObj.ctx, args);
+      });
     });
     return obj;
   }

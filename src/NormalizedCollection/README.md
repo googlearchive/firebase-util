@@ -9,7 +9,7 @@ values. For example, we could join two tables with a structure like this:
 ```
 {
   "login": {
-     "user1": "krichardson"
+     "user1": "kato"
   },
 
   "profile": {
@@ -26,7 +26,7 @@ Into a Firebase reference that returns this:
 ```
 {
    "user1": {
-       "login":  "krichardson",
+       "login":  "kato",
        "first":  "Kato",
        "last":   "Richardson"
    }
