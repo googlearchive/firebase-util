@@ -17,7 +17,7 @@ function RecordField(fieldMap) {
 }
 
 util.inherits(RecordField, AbstractRecord, {
-  child: function(key) {
+  makeChild: function(key) {
     var pm = new PathManager([this.path.child(key)]);
     var fm = new FieldMap(pm);
     fm.add({key: FieldMap.key(pm.first(), '$value'), alias: key});
@@ -43,6 +43,10 @@ util.inherits(RecordField, AbstractRecord, {
    */
   mergeData: function(snaps, isExport) {
     return isExport? snaps[0].exportVal() : snaps[0].val();
+  },
+
+  getPriority: function(snaps) {
+    return snaps[0].getPriority();
   },
 
   /**

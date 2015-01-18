@@ -132,10 +132,11 @@ describe('RecordSetEventManager', function() {
 
     it('should send a child_removed event', function() {
       var stub = loadWithStub({foo: 'bar'});
+      stub.rec.$trigger.calls.reset();
       stub.ref.child(stub.id).remove();
       stub.ref.flush();
       expect(stub.rec.$trigger).toHaveBeenCalledWith(
-        'child_removed', stub.id
+        'child_removed', stub.id, jasmine.any(Object)
       );
     });
 
@@ -259,7 +260,8 @@ describe('RecordSetEventManager', function() {
       var stub = loadWithStub({foo: 'bar'});
       var rec = stub.rec;
       rec.$trigger.calls.reset();
-      rec.child(stub.id).handler('value')({foo: 'baz'});
+      var cb = rec.child(stub.id).$spies[0];
+      cb.fn.call(cb.ctx, hp.stubSnap(hp.mockRef(stub.id), {foo: 'baz'}));
       expect(rec.$trigger).toHaveBeenCalledWith('child_changed', stub.id, jasmine.any(Object));
     });
 
@@ -267,7 +269,8 @@ describe('RecordSetEventManager', function() {
       var stub = loadWithStub({foo: 'bar'});
       var rec = stub.rec;
       rec.$trigger.calls.reset();
-      rec.child(stub.id).handler('value')({foo: 'baz'});
+      var cb = rec.child(stub.id).$spies[0];
+      cb.fn.call(cb.ctx, hp.stubSnap(hp.mockRef(stub.id), {foo: 'baz'}));
       expect(rec.$trigger).toHaveBeenCalledWith('value', jasmine.any(Object));
     });
 
@@ -308,7 +311,8 @@ describe('RecordSetEventManager', function() {
     function addFn(data) {
       var id = ref.push(data).key();
       ref.flush();
-      rec.child(id).handler('value')(hp.stubSnap(ref.child(id), data));
+      var cb = rec.child(id).$spies[0];
+      cb.fn.call(cb.ctx, hp.stubSnap(ref.child(id), data));
       return id;
     }
 
@@ -319,34 +323,7 @@ describe('RecordSetEventManager', function() {
   }
 
   function stubRec() {
-    var obj = jasmine.createSpyObj('Record', ['watch', 'unwatch', 'handler', 'getPathManager', 'child', '$trigger']);
-    var mgr = hp.stubPathMgr();
-    obj.$children = {};
-    obj.$spies = [];
-    obj.getPathManager.and.returnValue(mgr);
-    obj.handler.and.callFake(function(event) {
-      return _.bind(obj.$trigger, obj, event);
-    });
-    obj.watch.and.callFake(function(event, callback, context) {
-      var fn = jasmine.createSpy('$callback listener ' + obj.$spies.length)
-        .and.callFake(function() {
-          callback.apply(context, arguments);
-        });
-      obj.$spies.push({ e: event||null, ctx: context||null, fn: fn });
-    });
-    obj.child.and.callFake(function(key) {
-      if( !_.has(obj.$children, key) ) {
-        obj.$children[key] = stubRec();
-      }
-      return obj.$children[key];
-    });
-    obj.$trigger.and.callFake(function() {
-      var args = _.toArray(arguments);
-      _.each(obj.$spies, function(spyObj) {
-        spyObj.fn.apply(spyObj.ctx, args);
-      });
-    });
-    return obj;
+    return hp.stubRec();
   }
 
   function cancelOnce(ref) {

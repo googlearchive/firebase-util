@@ -11,6 +11,18 @@ var logger = function() {
   logger.log.apply(null, util.toArray(arguments));
 };
 
+/** hints for the IDEs */
+logger.warn = noop;
+logger.error = noop;
+logger.info = noop;
+logger.log = noop;
+logger.debug = noop;
+logger.isErrorEnabled = noop;
+logger.isWarnEnabled = noop;
+logger.isInfoEnabled = noop;
+logger.isLogEnabled = noop;
+logger.isDebugEnabled = noop;
+
 /**
  * @param {int} level use -1 to turn off all logging, use 5 for maximum debugging
  * @param {string|RegExp} [grep] filter logs to those whose first value matches this text or expression
@@ -21,14 +33,19 @@ logger.logLevel = function(level, grep) {
   if( oldDebuggingLevel === level ) { return function() {}; }
 
   util.each(['error', 'warn', 'info', 'log', 'debug'], function(k, i) {
-    if( typeof(console) !== 'undefined' && level >= i+1 ) {
+    var isEnabled = typeof(console) !== 'undefined' && level >= i+1;
+    if( isEnabled ) {
       // binding is necessary to prevent IE 8/9 from having a spaz when
       // .apply and .call are used on console methods
       var fn = util.bind(console[k==='debug'? 'log' : k], console);
       logger[k] = function() {
         var args = util.toArray(arguments);
-        if( typeof(args[0]) === 'string' && args[0].match(/(%s|%d|%j)/) ) {
-          args = printf(args);
+        if( args.length > 1 && typeof args[0] === 'string' ) {
+          var m = args[0].match(/(%s|%d|%j)/);
+          if( m ) {
+            var newArgs = [util.printf.apply(util, args)];
+            args = args.length > m.length+1? newArgs.concat(args.slice(m.length+1)) : newArgs;
+          }
         }
         if( !grep || !filterThis(grep, args) ) {
           fn.apply(typeof(console) === 'undefined'? fakeConsole : console, args);
@@ -38,6 +55,7 @@ logger.logLevel = function(level, grep) {
     else {
       logger[k] = noop;
     }
+    logger['is' + ucfirst(k) + 'Enabled'] = function() { return isEnabled; };
   });
 
   // provide a way to revert the debugging level if I want to change it temporarily
@@ -49,7 +67,11 @@ logger.logLevel = function(level, grep) {
   return off;
 };
 
-function getDebugLevel() {
+function ucfirst(s) {
+  return s.charAt(0).toUpperCase() + s.substr(1);
+}
+
+function getDefaultLevel() {
   var m;
   if( typeof(window) !== 'undefined' && window.location && window.location.search ) {
     m = window.location.search.match('\bdebugLevel=([0-9]+)\b');
@@ -58,33 +80,6 @@ function getDebugLevel() {
 }
 
 function noop() { return true; }
-
-function printf(args) {
-  var localArgs = args.slice(0); // make a copy
-  var template = localArgs.shift();
-  var matches = template.match(/(%s|%d|%j)/g);
-  util.each(matches, function (m) {
-    template = template.replace(m, format(localArgs.shift(), m));
-  });
-  return [template].concat(localArgs);
-}
-
-function format(v, type) {
-  switch(type) {
-    case '%d':
-      return parseInt(v, 10);
-    case '%j':
-      v =  util.isObject(v)? JSON.stringify(v) : v+'';
-      if(v.length > 500) {
-        v = v.substr(0, 500)+'.../*truncated*/...}';
-      }
-      return v;
-    case '%s':
-      return v + '';
-    default:
-      return v;
-  }
-}
 
 function filterThis(expr, args) {
   if( !args.length ) {
@@ -116,5 +111,5 @@ function levelInt(x) {
   }
 }
 
-logger.logLevel(getDebugLevel());
+logger.logLevel(getDefaultLevel());
 module.exports = logger;

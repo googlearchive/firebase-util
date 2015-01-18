@@ -18,7 +18,7 @@ util.inherits(NormalizedRef, Query, {
     var ref = this;
     while(parts.length) {
       var key = parts.pop();
-      ref = new NormalizedRef(ref.$getRecord().child(key), parent);
+      ref = new NormalizedRef(ref.$getRecord().makeChild(key), parent);
       parent = ref;
     }
     return ref;

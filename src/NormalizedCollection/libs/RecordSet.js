@@ -33,13 +33,10 @@ function RecordSet(fieldMap, whereClause) {
   // the RecordSetEventManager handles Firebase events and calls event handlers on
   // this RecordSet appropriately. See RecordSetEventManager for more details
   this.monitor = new RecordSetEventManager(this);
-
-  // cache of child records
-  this.children = {};
 }
 
 util.inherits(RecordSet, AbstractRecord, {
-  child: function(key) {
+  makeChild: function(key) {
     var fm = FieldMap.recordMap(this.map, key);
     return new Record(fm);
   },
@@ -54,23 +51,20 @@ util.inherits(RecordSet, AbstractRecord, {
    * @param {string} key
    */
   hasChild: function(snaps, key) {
-    return snaps[0].hasChild(key);
+    return util.contains(snaps, function(s) {
+      return s.key() === key;
+    });
   },
 
   getChildSnaps: function(snapsArray, recordId) {
-    var self = this;
-    return util.map(snapsArray, function(snap) {
-      var key = self._getChildKey(snap, snapsArray, recordId);
-      return key === null? null : snap.child(key);
+    return util.filter(snapsArray, function(s) {
+      return s.key() === recordId;
     });
   },
 
   /**
-   * Merge the data by iterating the snapshots and applying
-   * the updates recursively so that the records are merged.
-   *
-   * Assumes that all dependency graphs have been resolved and
-   * the correct snapshots have been provided.
+   * Since the snapshots attached to this level are records, there isn't much
+   * to do for a merge. Just put them all together.
    *
    * @param {Array} snaps list of snapshots to be merged
    * @param {boolean} isExport true if exportVal() was called
@@ -79,24 +73,17 @@ util.inherits(RecordSet, AbstractRecord, {
   mergeData: function(snaps, isExport) {
     var self = this;
     var out = {};
-    var firstSnap = snaps[0];
-    // iterate each record and then merge the children
-    firstSnap.forEach(function(ss) {
-      var childSnaps = self.getChildSnaps(snaps, ss.key());
-      var fm = FieldMap.recordMap(self.map, ss.key());
-      var data = util.extend.apply(null, util.map(childSnaps, function(cs) {
-        if( cs !== null ) {
-          return fm.extractData(cs, isExport);
-        }
-      }));
-      if( self.filters.test(data, ss.key(), ss.getPriority()) ) {
-        out[ss.key()] = data;
+    util.each(snaps, function(snap) {
+      if( self.filters.test(snap.val(), snap.key(), snap.getPriority()) ) {
+        console.log('mergeData', snap.key(), snap.val()); //debug
+        out[snap.key()] = isExport? snap.exportVal() : snap.val();
       }
     });
-    if( isExport && firstSnap.getPriority() !== null ) {
-      out['.priority'] = firstSnap.getPriority();
-    }
     return out;
+  },
+
+  getPriority: function() {
+    return null;
   },
 
   /**
@@ -117,7 +104,7 @@ util.inherits(RecordSet, AbstractRecord, {
    * @abstract
    */
   forEachKey: function(snaps, iterator, context) {
-    snaps[0].forEach(function(snap) {
+    snaps.forEach(function(snap) {
       return iterator.call(context, snap.key(), snap.key());
     });
   },

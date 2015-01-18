@@ -1,23 +1,25 @@
 'use strict';
 
-//var util = require('../../common');
+var util = require('../../common');
 
 function NormalizedSnapshot(ref, snaps) {
   this._ref = ref;
-  if( !snaps || !snaps.length ) {
-    throw new Error('Must provide at least one valid snapshot to merge');
+  if( !util.isArray(snaps) ) {
+    throw new Error('Must provide an array of snapshots to merge');
   }
-  this._pri = snaps[0].getPriority();
+  this._pri = ref.$getRecord().getPriority(snaps);
   this._snaps = snaps;
 }
 
 NormalizedSnapshot.prototype = {
   val: function() {
+    if( !this._snaps.length ) {
+      return null;
+    }
     return this._ref.$getRecord().mergeData(this._snaps, false);
   },
 
   child: function(key) {
-    //todo-bug does not work for $value and $key properly
     var snap;
     // keys may contain / to separate nested child paths
     // so make a list of child keys (we reverse it once
@@ -47,13 +49,13 @@ NormalizedSnapshot.prototype = {
     //todo optimize and/or memoize?
     var parts = key.split('/').reverse();
     var res = parts.length > 0;
-    var rec = this._ref.$getRecord();
+    var nextRef = this._ref;
     var nsnap = this;
     while(res && parts.length) {
       var nextKey = parts.pop();
-      res = rec.hasChild(nsnap._snaps, nextKey);
+      res = nextRef.$getRecord().hasChild(nsnap._snaps, nextKey);
       if( res && parts.length ) {
-        rec = rec.child(nextKey);
+        nextRef = nextRef.child(nextKey);
         nsnap = nsnap.child(nextKey);
       }
     }

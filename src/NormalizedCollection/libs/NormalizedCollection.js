@@ -44,6 +44,9 @@ NormalizedCollection.prototype = {
         ' before creating a ref');
     }
     this.finalized = true;
+    if( util.log.isInfoEnabled() ) {
+      util.log.info('NormalizedRef created using %s', buildDebugString(this));
+    }
     var recordSet = new RecordSet(this.map, this.filters);
     return new NormalizedRef(recordSet);
   }
@@ -69,6 +72,36 @@ function assertNotFinalized(self, m) {
   if( self.finalized ) {
     throw new Error('Cannot call ' + m + '() after ref() has been invoked');
   }
+}
+
+function buildDebugString(nc) {
+  var paths = [];
+  var selects = [];
+  var filter = '';
+
+  util.each(nc.pathMgr.getPaths(), function(p) {
+    var dep = p.getDependency();
+    paths.push(
+      util.printf('\t"%s%s"%s',
+        p.url(),
+        p.id() === p.name()? '' : ' as ' + p.name(),
+        dep? '-> ' + dep.path + '.' + dep.field : ''
+      )
+    );
+  });
+
+  nc.map.forEach(function(f) {
+    selects.push(util.printf('"%s%s"', f.key, f.alias === f.id? '' : ' as ' + f.alias));
+    if( selects.length % 5 === 0 ) {
+      selects.push('\n');
+    }
+  });
+
+  if(nc.filters.criteria.length > 0) {
+    filter = util.printf('<%s filters applied>', nc.filters.criteria.length);
+  }
+
+  return util.printf('NormalizedCollection(\n%s\n).select(%s)%s.ref()', paths.join('\n'), selects.join(', '), filter);
 }
 
 module.exports = NormalizedCollection;

@@ -222,9 +222,15 @@ describe('NormalizedSnapshot', function() {
   });
 
   describe('#getPriority', function() {
-    it('should return priority from first snapshot', function() {
-      var snap = new NormalizedSnapshot(hp.stubNormRef(), hp.snaps(true, false));
-      expect(snap.getPriority()).toBe(1);
+    it('should call record.getPriority with array of snaps', function() {
+      var snaps = hp.snaps(true, false);
+      var ref = hp.stubNormRef();
+      var spy = ref.$getRecord().getPriority;
+      spy.and.returnValue(-9999.9999);
+      var snap = new NormalizedSnapshot(ref, snaps);
+      var res = snap.getPriority();
+      expect(spy).toHaveBeenCalledWith(snaps);
+      expect(res).toBe(-9999.9999);
     });
   });
 

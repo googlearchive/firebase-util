@@ -77,12 +77,20 @@ Query.prototype = {
    * PACKAGE FUNCTIONS (not API)
    ***************************/
 
+  /** @returns {Record} */
   '$getRecord': function() { return this._rec; },
 
+  /** @return {Firebase} */
   '$getMaster': function() { return this._rec.getPathManager().first().ref(); },
 
+  /** @return {Array} */
   '$getPaths': function() { return this._rec.getPathManager().getPaths(); },
 
+  /**
+   * @param {String} method
+   * @param {Array|arguments} args
+   * @returns {Query}
+   */
   '$replicate': function(method, args) {
     var rec = this.$getRecord();
     var ref = this.$getMaster();

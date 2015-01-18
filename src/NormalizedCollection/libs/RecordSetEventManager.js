@@ -22,7 +22,7 @@ function RecordSetEventManager(parentRec) {
 RecordSetEventManager.prototype = {
   start: function() {
     if( !this.running ) {
-      util.log.debug('Loading sets of normalized records from master list at %s', this.url);
+      util.log('RecordSetEventManager: Loading normalized records from master list %s', this.url);
       this.running = true;
       this.masterRef.on('child_added',   this._add,    this);
       this.masterRef.on('child_removed', this._remove, this);
@@ -38,6 +38,7 @@ RecordSetEventManager.prototype = {
 
   stop: function() {
     if( this.running ) {
+      util.log('RecordSetEventManager: Stopped monitoring master list %s', this.url);
       this.running = false;
       this.masterRef.off('child_added',   this._add,    this);
       this.masterRef.off('child_removed', this._remove, this);
@@ -56,12 +57,11 @@ RecordSetEventManager.prototype = {
   },
 
   _move: function(snap, prevChild) {
-    this.recList.move(snap, prevChild);
+    this.recList.move(snap.key(), prevChild);
   }
 };
 
 function RecordList(observable, url) {
-  console.log('RecordList'); //debug
   this.obs = observable;
   this.url = url;
   this._reset();
@@ -69,25 +69,24 @@ function RecordList(observable, url) {
 
 RecordList.prototype = {
   add: function(key, prevChild) {
-    console.log('RecordList.add', key, prevChild); //debug
-    util.log.debug('RecordSetEventManager: Adding record %s after %s', key, prevChild);
+    util.log.debug('RecordList.add: key=%s, prevChild=%s', key, prevChild);
     var rec = this.obs.child(key);
     this.loading[key] = {rec: rec, prev: prevChild};
     if( !this.loadComplete ) {
       this.initialKeysLeft.push(key);
     }
-    rec.watch('value', util.bind(this._change, this, key));
+    rec.watch('value', util.bind(this._valueUpdated, this, key));
   },
 
   remove: function(key) {
+    util.log.debug('RecordList.remove: key=%s', key);
     var oldSnap = this._dropRecord(key);
     if( oldSnap !== null ) {
       this._notify('child_removed', key, oldSnap);
     }
   },
 
-  move: function(snap, prevChild) {
-    var key = snap.key();
+  move: function(key, prevChild) {
     if(util.has(this.recs, key)) {
       var currPos = util.indexOf(this.recIds, key);
       this.recIds.splice(currPos, 1);
@@ -97,7 +96,7 @@ RecordList.prototype = {
   },
 
   masterPathLoaded: function() {
-    util.log.debug('RecordSetEventManager: Initial data has been loaded from master list at %s', this.url);
+    util.log.debug('RecordList: Initial data has been loaded from master list at %s', this.url);
     this.masterLoaded = true;
     this._checkLoadState();
   },
@@ -124,9 +123,8 @@ RecordList.prototype = {
     this.masterLoaded = false;
   },
 
-  _change: function(key, event, snaps) {
-    console.log('_change', arguments);
-    this.snaps[key] = snaps;
+  _valueUpdated: function(key, snap) {
+    this.snaps[key] = snap;
     if(util.has(this.loading, key)) {
       // newly added record
       var r = this.loading[key];
@@ -135,20 +133,18 @@ RecordList.prototype = {
       this._putAfter(key, r.prev);
       this._checkLoadState(key);
       this._notify('child_added', key);
-      util.log.debug('RecordSetEventManager: finished loading child %s', key);
     }
     else if(util.has(this.recs, key)) {
       // a changed record
       this._notify('child_changed', key);
-      util.log.debug('RecordSetEventManager: updated child %s', key);
     }
     else {
-      util.log('RecordSetEventManager: Orphan key %s ignored. ' +
+      util.log('RecordList: Orphan key %s ignored. ' +
       'Probably deleted locally and changed remotely at the same time.', key);
     }
   },
 
-  _notify: function(event, key) {
+  _notify: function(event, key, oldSnap) {
     var args = [key];
     // do not fetch prev child for other events as it costs an indexOf
     switch(event) {
@@ -161,19 +157,21 @@ RecordList.prototype = {
         args.push(this.snaps[key]);
         break;
       case 'child_removed':
+        args.push(oldSnap);
         break;
       default:
         throw new Error('Invalid event type ' + event + ' for key ' + key);
     }
-    util.log.debug('RecordSetEventManager: %s %s', event, key);
+    util.log('RecordList._notify: %s %s', event, key);
     this.obs.handler(event).apply(this.obs, args);
-    if( this.loadComplete ) {
-      this._notifyValue();
-    }
+    this._notifyValue();
   },
 
   _notifyValue: function() {
-    this.obs.handler('value')(util.toArray(this.snaps));
+    util.log.debug('RecordList._notifyValue: snap_keys=%s, loadComplete=%s', util.keys(this.snaps), this.loadComplete);
+    if( this.loadComplete ) {
+      this.obs.handler('value')(util.toArray(this.snaps));
+    }
   },
 
   _getPrevChild: function(key) {
@@ -210,7 +208,7 @@ RecordList.prototype = {
   _dropRecord: function(key) {
     if(util.has(this.recs, key)) {
       var snap = this.snaps[key];
-      this.recs[key].unwatch('value', this._change, this);
+      this.recs[key].unwatch('value', this._valueUpdated, this);
       delete this.recs[key];
       delete this.snaps[key];
       delete this.loading[key];

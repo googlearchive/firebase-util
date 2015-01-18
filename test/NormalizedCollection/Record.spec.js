@@ -18,27 +18,27 @@ describe('Record', function() {
     });
   });
 
-  describe('#child', function() {
+  describe('#makeChild', function() {
     it('should return a RecordField', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      expect(rec.child('foo')).toBeInstanceOf(RecordField, 'RecordField');
+      expect(rec.makeChild('foo')).toBeInstanceOf(RecordField, 'RecordField');
     });
 
     it('should pick the correct path to descend from', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var child = rec.child('bar');
+      var child = rec.makeChild('bar');
       expect(child.getPathManager().first().parent().url()).toBe(rec.getPathManager().getPath('p2').url());
     });
 
     it('should have exactly one field', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var child = rec.child('bar');
+      var child = rec.makeChild('bar');
       expect(child.getFieldMap().length).toBe(1);
     });
 
     it('should use the primary/first path if none matches the field name', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
-      var child = rec.child('notafieldmatch');
+      var child = rec.makeChild('notafieldmatch');
       expect(child.getPathManager().count()).toBe(1);
       expect(child.getPathManager().first().parent().name()).toBe('p1');
     });

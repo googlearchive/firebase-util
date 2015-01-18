@@ -24,6 +24,8 @@ function AbstractRecord(fieldMap) {
   var self = this;
   self._ref = null;
   self.map = fieldMap;
+  self._name = null;
+  self._url = null;
   self.obs = new util.Observable(
     ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
     {
@@ -145,6 +147,23 @@ AbstractRecord.prototype = {
   saveData: abstract('saveData'),
 
   /**
+   * Returns the priority for a given set of snapshots
+   * @param {Array} snapshots
+   * @return {int|string}
+   */
+  getPriority: abstract('getPriority'),
+
+  /**
+   * This returns the appropriate AbstractRecord type in the chain. Note that references
+   * created here will not be usable until setRef() is called, so this should only be used
+   * for passing into a Query. Use .child() for everything else.
+   *
+   * @param {String} childName
+   * @return {AbstractRecord}
+   */
+  makeChild: abstract('makeChild'),
+
+  /**
    * @param {string} event
    * @param {function} callback
    * @param {function} [cancel]
@@ -175,18 +194,46 @@ AbstractRecord.prototype = {
     this._ref = ref;
   },
 
+  getRef: function() {
+    return this._ref;
+  },
+
+  /**
+   * @param {String} key
+   * @returns {Record}
+   */
+  child: function(key) {
+    return this.getRef().child(key).$getRecord();
+  },
+
+  getName: function() {
+    if( this._name === null ) {
+      this._name = makeName(this.map);
+    }
+    return this._name;
+  },
+
+  getUrl: function() {
+    if( this._url === null ) {
+      this.url = makeUrl(this.map);
+    }
+    return this._url;
+  },
+
   _trigger: function(event, id, snaps) {
     var ref;
     if( event === 'value' ) {
       snaps = id;
-      ref = this._ref;
+      id = null;
+      ref = this.getRef();
     }
     else {
-      ref = this._ref.child(id);
+      ref = this.getRef().child(id);
     }
     if( util.isObject(snaps) && !util.isArray(snaps) && typeof snaps.val === 'function' ) {
       snaps = [snaps];
     }
+    util.log.debug('AbstractRecord._trigger: event=%s, key=%s, snaps=%d, arguments=', event, id, snaps.length, arguments);
     this.obs.triggerEvent(event, new NormalizedSnapshot(ref, snaps));
   },
 
@@ -211,6 +258,22 @@ function abstract(method) {
   return function() {
     throw new Error('Classes implementing AbstractRecord must declare ' + method);
   };
+}
+
+function makeName(map) {
+  var parts = [];
+  map.forEach(function(f) {
+    parts.push(f.alias);
+  });
+  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
+}
+
+function makeUrl(map) {
+  var parts = [];
+  map.forEach(function(f) {
+    parts.push(f.url);
+  });
+  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
 }
 
 module.exports = AbstractRecord;

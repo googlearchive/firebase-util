@@ -11,7 +11,7 @@ function Record(fieldMap) {
 }
 
 util.inherits(Record, AbstractRecord, {
-  child: function(key) {
+  makeChild: function(key) {
     var fm = FieldMap.fieldMap(this.map, key);
     return new RecordField(fm);
   },
@@ -104,6 +104,10 @@ util.inherits(Record, AbstractRecord, {
     return data;
   },
 
+  getPriority: function(snaps) {
+    return snaps[0].getPriority();
+  },
+
   getClass: function() { return Record; },
 
   saveData: function(data, props) {
@@ -168,6 +172,7 @@ util.inherits(Record, AbstractRecord, {
 
   _start: function(event) {
     if( !util.has(this._eventManagers, event) ) {
+      util.log.debug('Record._start: event=%s, url=%s', event, this.getUrl());
       this._eventManagers[event] = event === 'value'?
         new ValueEventManager(this) : new ChildEventManager(event, this);
     }
@@ -176,6 +181,7 @@ util.inherits(Record, AbstractRecord, {
 
   _stop:   function(event) {
     if (util.has(this._eventManagers, event)) {
+      util.log.debug('Record._stop: event=%s, url=%s', event, this.getUrl());
       this._eventManagers[event].stop();
     }
   },
@@ -242,8 +248,10 @@ ValueEventManager.prototype = {
 
   update: function(pathName, snap) {
     this.snaps[pathName] = snap;
-    if( !util.contains(this.snaps, null) ) {
-      this.rec.handler('value')(this.snaps);
+    this._checkLoadState();
+    util.log.debug('Record.ValueEventManager.update: url=%s, loadCompleted=%s', snap.ref().toString(), this.loadCompleted);
+    if( this.loadCompleted ) {
+      this.rec.handler('value')(util.toArray(this.snaps));
     }
   },
 
@@ -263,12 +271,19 @@ ValueEventManager.prototype = {
     }
   },
 
+  _checkLoadState: function() {
+    if( this.loadCompleted ) { return; }
+    var snaps = this.snaps;
+    var pathNames = this.pm.getPathNames();
+    this.loadCompleted = !util.contains(pathNames, function(p) {
+      return !snaps.hasOwnProperty(p);
+    });
+  },
+
   _init: function() {
+    this.loadCompleted = false;
     this.snaps = {};
     this.subs = [];
-    util.each(this.pm.getPathNames(), function(pathName) {
-      this.snaps[pathName] = null;
-    }, this);
   }
 };
 
@@ -310,6 +325,7 @@ ChildEventManager.prototype = {
   update: function(snap) {
     if( snap !== null ) {
       var args = [snap.name(), snap];
+      util.log.debug('Record.ChildEventManager.update: event=%s, key=%s/%s', this.event, snap.ref().parent().key(), snap.key());
       this.rec.handler(this.event).apply(args);
     }
   }
@@ -341,6 +357,7 @@ function Dyno(path, fieldMap, event, updateFn) {
   // establish our listener at the field which contains the id of our ref
   var depFn = depRef.on('value', function(snap) {
     if( ref && ref.key() !== snap.val() ) {
+      util.log.debug('Record.Dyno: stopped monitoring %s', ref.toString());
       // any time the id changes, remove the old listener
       ref.off(event, updateFn);
       updateFn(null);
@@ -349,6 +366,7 @@ function Dyno(path, fieldMap, event, updateFn) {
       // establish our listener at the correct dynamic id for values
       ref = path.ref().child(snap.val());
       ref.on(event, updateFn);
+      util.log('Record.Dyno: monitoring %s', ref.toString()); //debug
     }
   });
 

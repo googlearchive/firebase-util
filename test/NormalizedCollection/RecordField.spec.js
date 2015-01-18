@@ -28,15 +28,15 @@ describe('RecordField', function() {
     });
   });
 
-  describe('#child', function() {
+  describe('#makeChild', function() {
     it('should be a RecordField', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value'], ['p1']));
-      expect(rec.child('foo')).toBeInstanceOf(RecordField);
+      expect(rec.makeChild('foo')).toBeInstanceOf(RecordField);
     });
 
     it('should be for the correct key', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
-      var fm = rec.child('foo').getFieldMap();
+      var fm = rec.makeChild('foo').getFieldMap();
       expect(fm.getField('foo').key).toBe('foo.$value');
     });
   });
