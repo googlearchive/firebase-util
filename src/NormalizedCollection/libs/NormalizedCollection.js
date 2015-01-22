@@ -24,6 +24,7 @@ NormalizedCollection.prototype = {
     assertNotFinalized(this, 'select');
     var args = util.args('NormalizedCollection.select', arguments, 1);
     util.each(args.restAsList(0, ['string', 'object']), function(f) {
+      assertValidField(f);
       this.map.add(f);
     }, this);
     return this;
@@ -102,6 +103,21 @@ function buildDebugString(nc) {
   }
 
   return util.printf('NormalizedCollection(\n%s\n).select(%s)%s.ref()', paths.join('\n'), selects.join(', '), filter);
+}
+
+function assertValidField(f) {
+  var k;
+  if( typeof f === 'string' ) {
+    k = f;
+  }
+  else {
+    k = util.has(f, 'key')? f.key : util.undef;
+  }
+  if( typeof f !== 'string' || !f.indexOf('.') > 0 ) {
+    throw new Error('Each field passed to NormalizedCollection.select() must either be a string ' +
+    'in the format "pathAlias.fieldId", or an object in the format ' +
+    '{key: "pathAlias.fieldId", alias: "any_name_for_field"}, but I received ' + JSON.stringify(f));
+  }
 }
 
 module.exports = NormalizedCollection;

@@ -101,7 +101,7 @@ gulp.task('scaffold-test', function() {
   return copyTemplate('.spec.js', true);
 });
 
-gulp.task('e2e', function() {
+gulp.task('e2e', ['bundle'], function() {
   plugins.livereload.listen();
   return gulp.watch(['./src/**/*.js', './test/e2e/**/*'], ['bundle']);
 });

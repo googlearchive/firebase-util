@@ -8,25 +8,30 @@ var util               = require('../../common');
 function Record(fieldMap) {
   this._super(fieldMap);
   this._eventManagers = {};
+  var first = fieldMap.getPathManager().first();
+  this._name = first.id();
+  this._url = first.url();
+  console.log('new Record', this._name, this._url); //debug
 }
 
 util.inherits(Record, AbstractRecord, {
   makeChild: function(key) {
-    var fm = FieldMap.fieldMap(this.map, key);
+    var fm = FieldMap.fieldMap(this.getFieldMap(), key);
     return new RecordField(fm);
+
   },
 
   hasChild: function(snaps, key) {
-    var field = this.map.getField(key);
+    var field = this.getFieldMap().getField(key);
     if( !field ) { return false; }
-    var snap = this.map.snapFor(snaps, key);
+    var snap = this.getFieldMap().snapFor(snaps, key);
     return snap !== null && snap.hasChild(key);
   },
 
   getChildSnaps: function(snaps, fieldName) {
     var child;
-    var snap = this.map.snapFor(snaps, fieldName);
-    var field = this.map.getField(fieldName);
+    var snap = this.getFieldMap().snapFor(snaps, fieldName);
+    var field = this.getFieldMap().getField(fieldName);
     if( !field ) {
       child = snap.child(fieldName);
     }
@@ -72,7 +77,7 @@ util.inherits(Record, AbstractRecord, {
           return snap && snap.hasChild(fieldId);
       }
     }
-    var map = this.map;
+    var map = this.getFieldMap();
     return map.forEach(function(field) {
       var snap = map.snapFor(snaps, field.alias);
       if( shouldIterate(snap, field.id) ) {
@@ -91,7 +96,7 @@ util.inherits(Record, AbstractRecord, {
    * @returns {Object}
    */
   mergeData: function(snaps, isExport) {
-    var map = this.map;
+    var map = this.getFieldMap();
     var data = util.extend.apply(null, util.map(snaps, function(ss) {
       return map.extractData(ss, isExport);
     }));
@@ -168,6 +173,14 @@ util.inherits(Record, AbstractRecord, {
         'But I can\'t split a primitive value');
     }
     q.handler(props.callback||util.noop, props.context);
+  },
+
+  getName: function() {
+    return this._name;
+  },
+
+  getUrl: function() {
+    return this._url;
   },
 
   _start: function(event) {
@@ -337,7 +350,7 @@ ChildEventManager.prototype = {
  * the ref that we listen on whenever the id is modified.
  *
  * @param {Path} path
- * @param {FieldMap} fieldMap
+ * @param {FieldMap } fieldMap
  * @param {string} event
  * @param {function} updateFn
  * @constructor

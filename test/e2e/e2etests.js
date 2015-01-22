@@ -19,29 +19,29 @@ QUnit.test('value event returns fully merged results', function(assert) {
   Firebase.util.logLevel('debug');
   var done = assert.async();
   var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
-  var ref = nc.select('users.name', 'users.style', 'nicknames.$value').ref();
+  var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref();
   ref.once('value', function(snap) {
     assert.deepEqual(snap.val(), {
-      "[users][nicknames]": {
-        chuck: {
-          "$value": "Chuck",
-          "name": "Carlos Ray Norris",
-          "style": "Chuck Kuk Do"
-        },
-        bruce: {
-          "$value": "Bruce",
-          "name": "Bruce Lee",
-          "style": "Jeet Kune Do"
-        }
+      chuck: {
+        "nick": "Chuck",
+        "name": "Carlos Ray Norris",
+        "style": "Chuck Kuk Do"
+      },
+      bruce: {
+        "nick": "Little Phoenix",
+        "name": "Bruce Lee",
+        "style": "Jeet Kune Do"
       }
     });
     done();
   });
 });
 
+QUnit.skip('child_added triggers for correct keys');
+
 QUnit.module('Record', setup);
 
-QUnit.skip('value event returns fully merged results', function(assert) {
+QUnit.test('value event returns fully merged results', function(assert) {
   var done = assert.async();
   var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
   var ref = nc.select('users.name', 'users.style', 'nicknames.$value').ref().child('bruce');
@@ -51,9 +51,27 @@ QUnit.skip('value event returns fully merged results', function(assert) {
   });
 });
 
+QUnit.skip('child_added triggers for correct keys');
+
 QUnit.module('RecordField', setup);
 
-QUnit.skip('value event returns fully merged results');
+QUnit.test('ref is for the correct path/url', function(assert) {
+  var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
+  var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref().child('bruce/nick');
+  assert.equal(ref.toString(), fb.child('users/nicknames/nick').toString());
+});
+
+QUnit.test('value event returns fully merged results', function(assert) {
+  var done = assert.async();
+  var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
+  var ref = nc.select('users.name', 'users.style', {ref: 'nicknames.$value', alias: 'nick'}).ref().child('bruce/nick');
+  ref.once('value', function(snap) {
+    assert.deepEqual(snap.val(), "Little Phoenix");
+    done();
+  });
+});
+
+QUnit.skip('child_added triggers for correct keys');
 
 var URL = 'https://fbutil.firebaseio.com/test';
 var DEFAULT_DATA = {

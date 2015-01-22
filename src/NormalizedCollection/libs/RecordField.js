@@ -92,6 +92,10 @@ util.inherits(RecordField, AbstractRecord, {
 
   getClass: function() { return RecordField; },
 
+  getName: function() { return this.path.name(); },
+
+  getUrl: function() { return this.path.url(); },
+
   _start: function(event) {
     this.path.ref().on(event, this.handler(event), this._cancel, this);
   },

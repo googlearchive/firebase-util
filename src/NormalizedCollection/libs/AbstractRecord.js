@@ -23,22 +23,20 @@ var util = require('../../common/');
 function AbstractRecord(fieldMap) {
   var self = this;
   self._ref = null;
-  self.map = fieldMap;
-  self._name = null;
-  self._url = null;
-  self.obs = new util.Observable(
+  self._map = fieldMap;
+  self._obs = new util.Observable(
     ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
     {
       onAdd: function(event) {
-        var count = self.obs.getObservers(event).length;
+        var count = self._obs.getObservers(event).length;
         if( count === 1 ) {
-          self._start(event, self.obs.getObservers().length);
+          self._start(event, self._obs.getObservers().length);
         }
       },
       onRemove: function(event) {
-        var count = self.obs.getObservers(event).length;
+        var count = self._obs.getObservers(event).length;
         if( count === 0 ) {
-          self._stop(event, self.obs.getObservers().length);
+          self._stop(event, self._obs.getObservers().length);
         }
       }
     }
@@ -164,13 +162,25 @@ AbstractRecord.prototype = {
   makeChild: abstract('makeChild'),
 
   /**
+   * Returns an appropriate path name or merged set of names for this record type.
+   * @return {String}
+   */
+  getName: abstract('getName'),
+
+  /**
+   * Returns a Firebase URL or a merged set of URLs for the Record
+   * @return {String}
+   */
+  getUrl: abstract('getUrl'),
+
+  /**
    * @param {string} event
    * @param {function} callback
    * @param {function} [cancel]
    * @param {object} [context]
    */
   watch: function(event, callback, cancel, context) {
-    this.obs.observe(event, callback, cancel, context);
+    this._obs.observe(event, callback, cancel, context);
   },
 
   /**
@@ -179,15 +189,15 @@ AbstractRecord.prototype = {
    * @param {object} [context]
    */
   unwatch: function(event, callback, context) {
-    this.obs.stopObserving(event, callback, context);
+    this._obs.stopObserving(event, callback, context);
   },
 
   getFieldMap: function() {
-    return this.map;
+    return this._map;
   },
 
   getPathManager: function() {
-    return this.map.getPathManager();
+    return this._map.getPathManager();
   },
 
   setRef: function(ref) {
@@ -206,20 +216,6 @@ AbstractRecord.prototype = {
     return this.getRef().child(key).$getRecord();
   },
 
-  getName: function() {
-    if( this._name === null ) {
-      this._name = makeName(this.map);
-    }
-    return this._name;
-  },
-
-  getUrl: function() {
-    if( this._url === null ) {
-      this.url = makeUrl(this.map);
-    }
-    return this._url;
-  },
-
   _trigger: function(event, id, snaps) {
     var ref;
     if( event === 'value' ) {
@@ -234,7 +230,7 @@ AbstractRecord.prototype = {
       snaps = [snaps];
     }
     util.log.debug('AbstractRecord._trigger: event=%s, key=%s, snaps=%d, arguments=', event, id, snaps.length, arguments);
-    this.obs.triggerEvent(event, new NormalizedSnapshot(ref, snaps));
+    this._obs.triggerEvent(event, new NormalizedSnapshot(ref, snaps));
   },
 
   /**
@@ -250,7 +246,7 @@ AbstractRecord.prototype = {
    */
   _cancel: function(error) {
     util.error(error);
-    this.obs.abortObservers(error);
+    this._obs.abortObservers(error);
   }
 };
 
@@ -258,22 +254,6 @@ function abstract(method) {
   return function() {
     throw new Error('Classes implementing AbstractRecord must declare ' + method);
   };
-}
-
-function makeName(map) {
-  var parts = [];
-  map.forEach(function(f) {
-    parts.push(f.alias);
-  });
-  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
-}
-
-function makeUrl(map) {
-  var parts = [];
-  map.forEach(function(f) {
-    parts.push(f.url);
-  });
-  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
 }
 
 module.exports = AbstractRecord;

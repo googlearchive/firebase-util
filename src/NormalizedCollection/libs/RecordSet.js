@@ -37,7 +37,7 @@ function RecordSet(fieldMap, whereClause) {
 
 util.inherits(RecordSet, AbstractRecord, {
   makeChild: function(key) {
-    var fm = FieldMap.recordMap(this.map, key);
+    var fm = FieldMap.recordMap(this.getFieldMap(), key);
     return new Record(fm);
   },
 
@@ -146,6 +146,20 @@ util.inherits(RecordSet, AbstractRecord, {
     q.handler(opts.callback||util.noop, opts.context);
   },
 
+  getName: function() {
+    if( this._name === null ) {
+      this._name = makeName(this.map);
+    }
+    return this._name;
+  },
+
+  getUrl: function() {
+    if( this._url === null ) {
+      this.url = makeUrl(this.map);
+    }
+    return this._url;
+  },
+
   /**
    * Return the correct child key for a snapshot by determining if its corresponding path
    * has dependencies. If so, we look up the id and return that child, otherwise, we just
@@ -158,11 +172,11 @@ util.inherits(RecordSet, AbstractRecord, {
    */
   _getChildKey: function(snap, snapsArray, recordId) {
     var key = recordId;
-    var path = this.map.getPathManager().getPathFor(snap.ref().toString());
+    var path = this.getPathManager().getPathFor(snap.ref().toString());
     // resolve any dependencies to determine the child key's value
     if( path.hasDependency() ) {
       var dep = path.getDependency();
-      var depPath = this.map.getPath(dep.path);
+      var depPath = this.getFieldMap().getPath(dep.path);
       if( !depPath ) {
         throw new Error('Invalid dependency path. ' + snap.ref.toString() +
         ' depends on ' + dep.path +
@@ -193,5 +207,22 @@ util.inherits(RecordSet, AbstractRecord, {
     this.monitor.stop(event);
   }
 });
+
+
+function makeName(map) {
+  var parts = [];
+  map.forEach(function(f) {
+    parts.push(f.alias);
+  });
+  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
+}
+
+function makeUrl(map) {
+  var parts = [];
+  map.forEach(function(f) {
+    parts.push(f.url);
+  });
+  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
+}
 
 module.exports = RecordSet;
