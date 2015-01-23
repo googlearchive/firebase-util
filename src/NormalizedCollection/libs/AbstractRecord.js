@@ -224,12 +224,13 @@ AbstractRecord.prototype = {
     return this._url;
   },
 
-  _trigger: function(event, id, snaps) {
+  _trigger: function(event, id, snaps, prev) {
     var ref;
     if( event === 'value' ) {
       snaps = id;
       id = null;
       ref = this.getRef();
+      prev = null;
     }
     else {
       ref = this.getRef().child(id);
@@ -237,8 +238,12 @@ AbstractRecord.prototype = {
     if( util.isObject(snaps) && !util.isArray(snaps) && typeof snaps.val === 'function' ) {
       snaps = [snaps];
     }
-    util.log.debug('AbstractRecord._trigger: event=%s, key=%s, snaps=%d, arguments=', event, id, snaps.length, arguments);
-    this._obs.triggerEvent(event, new NormalizedSnapshot(ref, snaps));
+    var args = [event, new NormalizedSnapshot(ref, snaps)];
+    if( event === 'child_added' || event === 'child_moved' ) {
+      args.push(prev);
+    }
+    util.log.debug('AbstractRecord._trigger: event=%s, id=%s, snaps=%d, prev=%s', event, id, snaps.length, prev);
+    this._obs.triggerEvent.apply(this._obs, args);
   },
 
   /**

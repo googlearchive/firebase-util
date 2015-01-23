@@ -162,7 +162,7 @@ RecordList.prototype = {
       default:
         throw new Error('Invalid event type ' + event + ' for key ' + key);
     }
-    util.log('RecordList._notify: %s %s', event, key);
+    util.log('RecordList._notify: event=%s, key=%s, prev=%s', event, key, prev);
     this.obs.handler(event).apply(this.obs, args);
     this._notifyValue();
   },

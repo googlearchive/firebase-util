@@ -10,6 +10,7 @@ var setup = {
 
   afterEach: function(assert) {
     this.fbRef.remove(assert.async());
+    Firebase.util.logLevel();
   }
 };
 
@@ -44,7 +45,27 @@ QUnit.test('value event returns fully merged results', function(assert) {
   });
 });
 
-QUnit.skip('child_added triggers for correct keys');
+QUnit.test('child_added triggers for correct keys', function(assert) {
+  assert.expect(4);
+  var done = assert.async();
+  var keys = ['bruce', 'chuck'];
+  var vals = {
+    bruce: { name: 'Bruce Lee', style: 'Jeet Kune Do', nick: 'Little Phoenix' },
+    chuck: { name: 'Carlos Ray Norris', style: 'Chuck Kuk Do', nick: 'Chuck' }
+  };
+  var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
+  var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref();
+  ref.on('child_added', function(snap) {
+    var key = keys.shift();
+    assert.equal(snap.name(), key);
+    assert.equal(snap.val(), vals[key]);
+  });
+  ref.once('value', function() { done(); });
+});
+
+QUnit.skip('set() writes correct data to each path');
+
+QUnit.skip('update() writes correct data to each path');
 
 QUnit.module('Record', setup);
 
@@ -69,6 +90,10 @@ QUnit.test('value event returns fully merged results', function(assert) {
 
 QUnit.skip('child_added triggers for correct keys');
 
+QUnit.skip('set() writes correct data to each path');
+
+QUnit.skip('update() writes correct data to each path');
+
 QUnit.module('RecordField', setup);
 
 QUnit.test('ref is for the correct path/url', function(assert) {
@@ -90,6 +115,10 @@ QUnit.test('value event returns value for correct child path', function(assert) 
 });
 
 QUnit.skip('child_added triggers for correct keys');
+
+QUnit.skip('set() writes correct data to each path');
+
+QUnit.skip('update() writes correct data to each path');
 
 var URL = 'https://fbutil.firebaseio.com/test';
 var DEFAULT_DATA = {

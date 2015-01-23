@@ -333,11 +333,12 @@ ChildEventManager.prototype = {
     this.subs = [];
   },
 
-  update: function(snap) {
+  update: function(snap, prev) {
     if( snap !== null ) {
-      var args = [snap.name(), snap];
+      var args = [snap.key(), snap];
+      if( prev !== util.undef ) { args.push(prev); }
       util.log('Record.ChildEventManager.update: event=%s, key=%s/%s', this.event, snap.ref().parent().key(), snap.key());
-      this.rec.handler(this.event).apply(args);
+      this.rec.handler(this.event).apply(this.rec, args);
     }
   }
 };
