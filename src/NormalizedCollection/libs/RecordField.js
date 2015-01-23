@@ -14,6 +14,7 @@ function RecordField(fieldMap) {
     throw new Error('RecordField must have exactly one field, but we found '+ fieldMap.length);
   }
   this.path = fieldMap.getPathManager().first();
+  util.log.debug('RecordField created', this.getName(), this.getUrl());
 }
 
 util.inherits(RecordField, AbstractRecord, {

@@ -63,6 +63,10 @@ PathManager.prototype = {
     return this.pathNames.slice();
   },
 
+  getUrls: function() {
+    return util.keys(this.pathsByUrl);
+  },
+
   //todo remove?
   getDependencyGraph: function() {
     return util.extend(true, this.deps);

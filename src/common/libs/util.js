@@ -323,6 +323,14 @@ util.printf = function() {
   return template;
 };
 
+util.mergeToString = function(list) {
+  if( list.length === 0 ) { return null; }
+  else if( list.length === 1 ) { return list[0]; }
+  else {
+    return '[' + list.join('][') + ']';
+  }
+};
+
 // credits: http://stackoverflow.com/questions/1606797/use-of-apply-with-new-operator-is-this-possible
 util.construct = function(constructor, args) {
   function F() {

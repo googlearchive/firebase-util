@@ -8,17 +8,15 @@ var util               = require('../../common');
 function Record(fieldMap) {
   this._super(fieldMap);
   this._eventManagers = {};
-  var first = fieldMap.getPathManager().first();
-  this._name = first.id();
-  this._url = first.url();
-  console.log('new Record', this._name, this._url); //debug
+  this._name = fieldMap.getPathManager().first().id();
+  this._url = util.mergeToString(fieldMap.getPathManager().getUrls());
+  util.log.debug('Record created', this._name, this._url);
 }
 
 util.inherits(Record, AbstractRecord, {
   makeChild: function(key) {
     var fm = FieldMap.fieldMap(this.getFieldMap(), key);
     return new RecordField(fm);
-
   },
 
   hasChild: function(snaps, key) {
@@ -155,7 +153,7 @@ util.inherits(Record, AbstractRecord, {
           }
         }
         else {
-          util.log('No dynamic key found for master', paths[0].ref().toString(), 'with dynamic path', path.ref().toString());
+          util.log.info('No dynamic key found for master', paths[0].ref().toString(), 'with dynamic path', path.ref().toString());
         }
       }, this);
     }
@@ -262,7 +260,7 @@ ValueEventManager.prototype = {
   update: function(pathName, snap) {
     this.snaps[pathName] = snap;
     this._checkLoadState();
-    util.log.debug('Record.ValueEventManager.update: url=%s, loadCompleted=%s', snap.ref().toString(), this.loadCompleted);
+    util.log('Record.ValueEventManager.update: url=%s, loadCompleted=%s', snap.ref().toString(), this.loadCompleted);
     if( this.loadCompleted ) {
       this.rec.handler('value')(util.toArray(this.snaps));
     }
@@ -338,7 +336,7 @@ ChildEventManager.prototype = {
   update: function(snap) {
     if( snap !== null ) {
       var args = [snap.name(), snap];
-      util.log.debug('Record.ChildEventManager.update: event=%s, key=%s/%s', this.event, snap.ref().parent().key(), snap.key());
+      util.log('Record.ChildEventManager.update: event=%s, key=%s/%s', this.event, snap.ref().parent().key(), snap.key());
       this.rec.handler(this.event).apply(args);
     }
   }

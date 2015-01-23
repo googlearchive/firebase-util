@@ -58,14 +58,16 @@ QUnit.module('RecordField', setup);
 QUnit.test('ref is for the correct path/url', function(assert) {
   var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
   var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref().child('bruce/nick');
-  assert.equal(ref.toString(), fb.child('users/nicknames/nick').toString());
+  assert.equal(ref.toString(), this.fbRef.child('nicknames/bruce').toString());
 });
 
-QUnit.test('value event returns fully merged results', function(assert) {
+QUnit.test('value event returns value for correct child path', function(assert) {
   var done = assert.async();
   var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
-  var ref = nc.select('users.name', 'users.style', {ref: 'nicknames.$value', alias: 'nick'}).ref().child('bruce/nick');
+  var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref().child('bruce/nick');
+  var fbRef = this.fbRef;
   ref.once('value', function(snap) {
+    assert.equal(snap.ref().toString(), fbRef.child('/nicknames/bruce').toString());
     assert.deepEqual(snap.val(), "Little Phoenix");
     done();
   });

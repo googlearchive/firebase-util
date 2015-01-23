@@ -75,7 +75,6 @@ util.inherits(RecordSet, AbstractRecord, {
     var out = {};
     util.each(snaps, function(snap) {
       if( self.filters.test(snap.val(), snap.key(), snap.getPriority()) ) {
-        console.log('mergeData', snap.key(), snap.val()); //debug
         out[snap.key()] = isExport? snap.exportVal() : snap.val();
       }
     });
@@ -148,14 +147,14 @@ util.inherits(RecordSet, AbstractRecord, {
 
   getName: function() {
     if( this._name === null ) {
-      this._name = makeName(this.map);
+      this._name = util.mergeToString(this.getPathManager().getPathNames());
     }
     return this._name;
   },
 
   getUrl: function() {
     if( this._url === null ) {
-      this.url = makeUrl(this.map);
+      this._url = util.mergeToString(this.getPathManager().getUrls());
     }
     return this._url;
   },
@@ -207,22 +206,5 @@ util.inherits(RecordSet, AbstractRecord, {
     this.monitor.stop(event);
   }
 });
-
-
-function makeName(map) {
-  var parts = [];
-  map.forEach(function(f) {
-    parts.push(f.alias);
-  });
-  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
-}
-
-function makeUrl(map) {
-  var parts = [];
-  map.forEach(function(f) {
-    parts.push(f.url);
-  });
-  return parts.length > 1? '[' + parts.join('][') + ']' : parts[0];
-}
 
 module.exports = RecordSet;

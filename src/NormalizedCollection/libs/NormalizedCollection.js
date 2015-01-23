@@ -113,7 +113,7 @@ function assertValidField(f) {
   else {
     k = util.has(f, 'key')? f.key : util.undef;
   }
-  if( typeof f !== 'string' || !f.indexOf('.') > 0 ) {
+  if( typeof k !== 'string' || k.indexOf('.') <= 0 ) {
     throw new Error('Each field passed to NormalizedCollection.select() must either be a string ' +
     'in the format "pathAlias.fieldId", or an object in the format ' +
     '{key: "pathAlias.fieldId", alias: "any_name_for_field"}, but I received ' + JSON.stringify(f));

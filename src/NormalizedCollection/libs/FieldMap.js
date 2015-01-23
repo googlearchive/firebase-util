@@ -191,7 +191,17 @@ FieldMap.key = function(path, field) {
 };
 
 FieldMap.fieldMap = function(map, fieldName) {
-  var childPath = map.pathFor(fieldName).child(fieldName);
+  var childPath;
+  var field = map.getField(fieldName);
+  if( field ) {
+    childPath = field.path;
+    if( field.id !== '$value' ) {
+      childPath = childPath.child(field.id);
+    }
+  }
+  else {
+    childPath = map.pathFor(fieldName).child(fieldName);
+  }
   var pm = new PathManager([childPath]);
   var fm = new FieldMap(pm);
   fm.add({key: FieldMap.key(childPath, '$value'), alias: fieldName});
@@ -212,7 +222,7 @@ FieldMap.recordMap = function(map, recordId) {
   });
   var childMap = new FieldMap(new PathManager(paths));
   map.forEach(function(field) {
-    childMap.add(field);
+    childMap.add({key: field.key, alias: field.alias});
   });
   return childMap;
 };
