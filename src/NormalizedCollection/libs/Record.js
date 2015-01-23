@@ -6,11 +6,11 @@ var AbstractRecord     = require('./AbstractRecord');
 var util               = require('../../common');
 
 function Record(fieldMap) {
-  this._super(fieldMap);
+  var name = fieldMap.getPathManager().first().id();
+  var url = util.mergeToString(fieldMap.getPathManager().getUrls());
+  this._super(fieldMap, name, url);
   this._eventManagers = {};
-  this._name = fieldMap.getPathManager().first().id();
-  this._url = util.mergeToString(fieldMap.getPathManager().getUrls());
-  util.log.debug('Record created', this._name, this._url);
+  util.log.debug('Record created', this.getName(), this.getUrl());
 }
 
 util.inherits(Record, AbstractRecord, {

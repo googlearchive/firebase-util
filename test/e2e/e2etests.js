@@ -15,8 +15,15 @@ var setup = {
 
 QUnit.module("RecordSet", setup);
 
+QUnit.test('ref is for the correct path/url', function(assert) {
+  var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
+  var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref();
+  assert.equal(ref.toString(),
+    '[' + this.fbRef.child('users').toString() + '][' + this.fbRef.child('nicknames').toString() + ']');
+  assert.equal(ref.key(), '[users][nicknames]');
+});
+
 QUnit.test('value event returns fully merged results', function(assert) {
-  Firebase.util.logLevel('debug');
   var done = assert.async();
   var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
   var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref();
@@ -40,6 +47,15 @@ QUnit.test('value event returns fully merged results', function(assert) {
 QUnit.skip('child_added triggers for correct keys');
 
 QUnit.module('Record', setup);
+
+QUnit.test('ref is for the correct path/url', function(assert) {
+  var nc = new Firebase.util.NormalizedCollection(this.fbRef.child('users'), this.fbRef.child('nicknames'));
+  var ref = nc.select('users.name', 'users.style', {key: 'nicknames.$value', alias: 'nick'}).ref().child('bruce');
+  assert.equal(ref.toString(),
+    '[' + this.fbRef.child('users').child('bruce').toString() + '][' +
+        this.fbRef.child('nicknames').child('bruce').toString() + ']');
+  assert.equal(ref.key(), 'bruce');
+});
 
 QUnit.test('value event returns fully merged results', function(assert) {
   var done = assert.async();

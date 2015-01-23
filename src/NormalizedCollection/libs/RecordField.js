@@ -6,14 +6,14 @@ var AbstractRecord     = require('./AbstractRecord');
 var util               = require('../../common');
 
 function RecordField(fieldMap) {
-  this._super(fieldMap);
+  this.path = fieldMap.getPathManager().first();
+  this._super(fieldMap, this.path.name(), this.path.url());
   if( fieldMap.getPathManager().count() !== 1 ) {
     throw new Error('RecordField must have exactly one path, but we got '+ fieldMap.getPathManager().count());
   }
   if( fieldMap.length !== 1 ) {
     throw new Error('RecordField must have exactly one field, but we found '+ fieldMap.length);
   }
-  this.path = fieldMap.getPathManager().first();
   util.log.debug('RecordField created', this.getName(), this.getUrl());
 }
 
@@ -92,10 +92,6 @@ util.inherits(RecordField, AbstractRecord, {
   },
 
   getClass: function() { return RecordField; },
-
-  getName: function() { return this.path.name(); },
-
-  getUrl: function() { return this.path.url(); },
 
   _start: function(event) {
     this.path.ref().on(event, this.handler(event), this._cancel, this);

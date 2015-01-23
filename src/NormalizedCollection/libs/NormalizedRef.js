@@ -5,10 +5,9 @@ var Query     = require('./Query');
 
 function NormalizedRef(record, parent) {
   this._super(this, record);
-  var paths = record.getPathManager().getPaths();
   this._parent = parent||null;
-  this._key = _key(paths);
-  this._toString = _toString(paths);
+  this._key = record.getName();
+  this._toString = record.getUrl();
 }
 
 util.inherits(NormalizedRef, Query, {
@@ -138,23 +137,6 @@ function notSupported(method) {
     throw new Error(method + ' is not supported for NormalizedCollection references. ' +
       'Try calling it on the original reference used to create the NormalizedCollection instead.');
   };
-}
-
-function _key(paths) {
-  if( paths.length > 1 ) {
-    return '[' + util.map(paths, function(p) {
-      return p.name();
-    }).join('][') + ']';
-  }
-  else {
-    return paths[0].name();
-  }
-}
-
-function _toString(paths) {
-  return paths.length > 1? '[' + util.map(paths, function(p) {
-    return p.url();
-  }).join('][') + ']' : paths[0].url();
 }
 
 module.exports = NormalizedRef;

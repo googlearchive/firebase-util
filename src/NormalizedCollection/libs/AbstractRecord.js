@@ -18,12 +18,16 @@ var util = require('../../common/');
  * used by all three implementations.
  *
  * @param fieldMap the field map applied to Record objects
+ * @param {String} name
+ * @param {String} url
  * @constructor
  */
-function AbstractRecord(fieldMap) {
+function AbstractRecord(fieldMap, name, url) {
   var self = this;
   self._ref = null;
   self._map = fieldMap;
+  self._name = name;
+  self._url = url;
   self._obs = new util.Observable(
     ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
     {
@@ -162,18 +166,6 @@ AbstractRecord.prototype = {
   makeChild: abstract('makeChild'),
 
   /**
-   * Returns an appropriate path name or merged set of names for this record type.
-   * @return {String}
-   */
-  getName: abstract('getName'),
-
-  /**
-   * Returns a Firebase URL or a merged set of URLs for the Record
-   * @return {String}
-   */
-  getUrl: abstract('getUrl'),
-
-  /**
    * @param {string} event
    * @param {function} callback
    * @param {function} [cancel]
@@ -214,6 +206,22 @@ AbstractRecord.prototype = {
    */
   child: function(key) {
     return this.getRef().child(key).$getRecord();
+  },
+
+  /**
+   * Returns an appropriate path name or merged set of names for this record type.
+   * @return {String}
+   */
+  getName: function() {
+    return this._name;
+  },
+
+  /**
+   * Returns a Firebase URL or a merged set of URLs for the Record
+   * @return {String}
+   */
+  getUrl: function() {
+    return this._url;
   },
 
   _trigger: function(event, id, snaps) {

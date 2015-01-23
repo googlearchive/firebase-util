@@ -22,9 +22,12 @@ var RecordSetEventManager = require('./RecordSetEventManager');
  * @constructor
  */
 function RecordSet(fieldMap, whereClause) {
+  var name = util.mergeToString(fieldMap.getPathManager().getPathNames());
+  var url = util.mergeToString(fieldMap.getPathManager().getUrls());
+
   // AbstractRecord makes this observable and abstracts some common impl details
   // between RecordSet, Record, and RecordField
-  this._super(fieldMap);
+  this._super(fieldMap, name, url);
 
   // Used to filter the merged data and determine which merged Records should trigger events and
   // which ones should be ignored
@@ -143,20 +146,6 @@ util.inherits(RecordSet, AbstractRecord, {
       }
     }
     q.handler(opts.callback||util.noop, opts.context);
-  },
-
-  getName: function() {
-    if( this._name === null ) {
-      this._name = util.mergeToString(this.getPathManager().getPathNames());
-    }
-    return this._name;
-  },
-
-  getUrl: function() {
-    if( this._url === null ) {
-      this._url = util.mergeToString(this.getPathManager().getUrls());
-    }
-    return this._url;
   },
 
   /**
