@@ -1,5 +1,4 @@
 'use strict';
-var util = require('../../common');
 var Cache = require('./Cache');
 
 /**

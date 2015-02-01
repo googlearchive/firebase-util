@@ -4,11 +4,7 @@ var util      = require('../../common');
 function ReadOnlyRef(ref) {
   this._ref = ref;
   this._obs = new util.Observable(
-    ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
-    {
-      onAdd: function(event) {},
-      onRemove: function(event) {}
-    }
+    ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed']
   );
 }
 

@@ -1,4 +1,5 @@
 'use strict';
+var util = require('../common');
 var Scroll = require('./libs/Scroll.js');
 var Paginate = require('./libs/Paginate.js');
 var ReadOnlyRef = require('./libs/ReadOnlyRef.js');
