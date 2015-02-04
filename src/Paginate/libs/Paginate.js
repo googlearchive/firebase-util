@@ -13,9 +13,10 @@ function Paginate(ref, field, opts) {
   this.field = field;
   this.ref = ref;
   this.pageSize = opts.pageSize;
-  this.max = opts.maxCache;
+  this.max = opts.maxCacheSize;
   this.subs = [];
-  this.cache = new Cache(ref, field, opts.maxCache);
+  this.pageChangeListeners = [];
+  this.cache = new Cache(ref, field, opts.maxCacheSize);
 }
 
 /**
@@ -46,6 +47,7 @@ Paginate.prototype.prev = function() {
  * @return {bool} true if there are more records after the currently loaded page
  */
 Paginate.prototype.hasNext = function() {
+  console.log('hasNext?', this.cache.offset.getKey()); //debug
   return this.currPage === 0 || this.cache.offset.getKey() !== false;
 };
 
@@ -58,7 +60,7 @@ Paginate.prototype.hasPrev = function() {
 
 /**
  * Invoked whenever the local record count is changed. This may not include
- * all records that exist on the remote server, as it is limited by maxCache
+ * all records that exist on the remote server, as it is limited by maxCacheSize
  */
 Paginate.prototype.onRecordCount = function(callback, context) {
   var oldRecCount = -1;
@@ -75,9 +77,14 @@ Paginate.prototype.onRecordCount = function(callback, context) {
   return dispose;
 };
 
+Paginate.prototype.onPageChange = function(callback, context) {
+  this.pageChangeListeners.push([callback, context]);
+  callback.call(context, this.currPage);
+};
+
 /**
  * Invoked whenever the local page count is changed. This may not include
- * all records that exist on the remote server, as it is limited by maxCache
+ * all records that exist on the remote server, as it is limited by maxCacheSize
  */
 Paginate.prototype.onPageCount = function(callback, context) {
   var oldPageCount = -1;
@@ -121,11 +128,17 @@ Paginate.prototype.destroy = function() {
 };
 
 Paginate.prototype._pageChange = function() {
-  this.cache.moveTo(this.currPage-1 * this.pageSize, this.currPage * this.pageSize -1);
+  var currPage = this.currPage;
+  var start = (currPage - 1) * this.pageSize + 1;
+  console.log('Paginate._pageChange: ', start, this.pageSize, currPage); //debug
+  this.cache.moveTo(start, this.pageSize);
+  util.each(this.pageChangeListeners, function(parts) {
+    parts[0].call(parts[1], currPage);
+  });
 };
-
-exports.Paginate = Paginate;
 
 // https://code.google.com/p/microajax/
 // new BSD license: http://opensource.org/licenses/BSD-3-Clause
-function microAjax(B,A){this.bindFunction=function(E,D){return function(){return E.apply(D,[D])}};this.stateChange=function(D){if(this.request.readyState==4){this.callbackFunction(this.request.responseText)}};this.getRequest=function(){if(window.ActiveXObject){return new ActiveXObject("Microsoft.XMLHTTP")}else{if(window.XMLHttpRequest){return new XMLHttpRequest()}}return false};this.postBody=(arguments[2]||"");this.callbackFunction=A;this.url=B;this.request=this.getRequest();if(this.request){var C=this.request;C.onreadystatechange=this.bindFunction(this.stateChange,this);if(this.postBody!==""){C.open("POST",B,true);C.setRequestHeader("X-Requested-With","XMLHttpRequest");C.setRequestHeader("Content-type","application/x-www-form-urlencoded");C.setRequestHeader("Connection","close")}else{C.open("GET",B,true)}C.send(this.postBody)}}; // jshint ignore:line
+function microAjax(B,A){this.bindFunction=function(E,D){return function(){return E.apply(D,[D])}};this.stateChange=function(D){if(this.request.readyState==4){this.callbackFunction(this.request.responseText)}};this.getRequest=function(){if(window.ActiveXObject){return new ActiveXObject("Microsoft.XMLHTTP")}else{if(window.XMLHttpRequest){return new XMLHttpRequest()}}return false};this.postBody=(arguments[2]||"");this.callbackFunction=A;this.url=B;this.request=this.getRequest();if(this.request){var C=this.request;C.onreadystatechange=this.bindFunction(this.stateChange,this);if(this.postBody!==""){C.open("POST",B,true);C.setRequestHeader("X-Requested-With","XMLHttpRequest");C.setRequestHeader("Content-type","application/x-www-form-urlencoded");C.setRequestHeader("Connection","close")}else{C.open("GET",B,true)}C.send(this.postBody)}} // jshint ignore:line
+
+module.exports = Paginate;

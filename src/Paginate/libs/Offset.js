@@ -17,9 +17,8 @@ function Offset(opts) {
   }, this, 100, 1000);
 }
 
-Offset.prototype.getOffset = function() { return this.curr; };
-
 Offset.prototype.goTo = function(newOffset) {
+  console.log('Offset.goTo?', newOffset, this.curr); //debug
   if( newOffset !== this.curr ) {
     util.log('Offset.goTo: offset changed from %d to %d', this.curr, newOffset);
     this.lastNotifyValue = util.undef;
@@ -30,10 +29,13 @@ Offset.prototype.goTo = function(newOffset) {
 
 Offset.prototype.observe = function(callback, context) {
   this.listeners.push([callback, context]);
-  callback.call(context, this.getKey(this.curr));
+  var key = this.getKey();
+  var ref = offsetRef(this.ref, key);
+  callback.call(context, key && key.val, key && key.key, ref);
 };
 
 Offset.prototype.getKey = function(offset) {
+  if( !arguments.length ) { offset = this.curr; }
   if( offset === 0 ) { return null; }
   return this.keys.length >= offset && this.keys[offset-1];
 };
@@ -47,9 +49,9 @@ Offset.prototype.destroy = function() {
 };
 
 Offset.prototype._notify = function() {
-  var key = this.getKey(this.curr);
+  var key = this.getKey();
   if( !util.isEqual(this.lastNotifyValue, key) ) {
-    util.log('Offset._notify: key at offset %d is now %s', this.curr, key);
+    util.log('Offset._notify: key at offset %d is %s', this.curr, key && key.key);
     this.lastNotifyValue = key;
     var ref = offsetRef(this.ref, key);
     util.each(this.listeners, function(parts) {
@@ -68,7 +70,7 @@ Offset.prototype._recache = function() {
 var killCount = 0;
 Offset.prototype._grow = function(callback) {
   var self = this;
-  var oldKey = self.getKey(self.curr);
+  var oldKey = self.getKey();
   var len = self.keys.length;
   var limit = Math.min(self.curr-len, self.max);
   if( len !== 0 ) { limit += 1; }
@@ -94,7 +96,7 @@ Offset.prototype._grow = function(callback) {
       else {
         killCount = 0;
         util.log.debug('Offset._grow: Cached %d keys', self.keys.length);
-        callback.call(self, !util.isEqual(self.getKey(self.curr), oldKey));
+        callback.call(self, !util.isEqual(self.getKey(), oldKey));
       }
     });
   }
@@ -118,7 +120,7 @@ Offset.prototype._queryRef = function() {
 };
 
 Offset.prototype._moved = function(snap) {
-  if( snap.key() === this.getKey(this.curr) ) {
+  if( snap.key() === this.getKey() ) {
     this._recache();
   }
 };
@@ -169,7 +171,7 @@ Offset.prototype._monitorEmptyOffset = function() {
 
 Offset.prototype._listen = function() {
   this._unsubscribe();
-  var key = this.getKey(this.curr);
+  var key = this.getKey();
   if( key === null ) {
     this._notify();
   }
@@ -302,4 +304,4 @@ function lastKey(list) {
   return len? list[len-1] : null;
 }
 
-exports.Offset = Offset;
+module.exports = Offset;

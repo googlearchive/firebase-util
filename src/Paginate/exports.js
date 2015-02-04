@@ -7,7 +7,7 @@ var ReadOnlyRef = require('./libs/ReadOnlyRef.js');
 var DEFAULTS = {
   field: null,
   pageSize: 10,
-  maxCache: 500,
+  maxCacheSize: 500,
   windowSize: 250
 };
 

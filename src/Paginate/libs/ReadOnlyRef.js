@@ -112,4 +112,4 @@ function notSupported(method) {
   };
 }
 
-exports.ReadOnlyRef = ReadOnlyRef;
+module.exports = ReadOnlyRef;

@@ -3,16 +3,19 @@ var util = require('../../common');
 var Offset = require('./Offset');
 
 function Cache(outRef, sortField, maxRecordsLoaded) {
-  this.offset = new Offset({field: sortField, max: maxRecordsLoaded});
+  util.log.debug('Cache: caching %s using field=%s maxRecordsLoaded=%d', outRef.toString(), sortField, maxRecordsLoaded);
+  this.offset = new Offset({field: sortField, max: maxRecordsLoaded, ref: outRef.ref()});
   this.outRef = outRef;
   this.inRef = null;
   this.queryRef = null;
   this.keys = {};
-  this.start = -1;
+  this.start = 0;
   this.count = -1;
+  this.offset.observe(this._keyChange, this);
 }
 
-Cache.moveTo = function(startOffset, numberOfRecords) {
+Cache.prototype.moveTo = function(startOffset, numberOfRecords) {
+  util.log.debug('Cache.moveTo: startOffset=%d, numberOfRecords=%d', startOffset, numberOfRecords);
   var s = this.start, e = this.count;
   this.start = startOffset;
   this.count = numberOfRecords;
@@ -28,7 +31,7 @@ Cache.prototype.destroy = function() {
   this._unsubscribe();
   this.offset.destroy();
   this.offset = null;
-  this.start = -1;
+  this.start = 0;
   this.count = -1;
   this.inRef = null;
   this.outRef = null;
@@ -37,6 +40,7 @@ Cache.prototype.destroy = function() {
 };
 
 Cache.prototype._keyChange = function(val, key, ref) {
+  console.log('Cache._keyChange', val, key, ref.toString()); //debug
   this.inRef = ref;
   this._refChange();
 };
@@ -54,8 +58,8 @@ Cache.prototype._unsubscribe = function() {
 
 Cache.prototype._refChange = function() {
   this._unsubscribe();
-  if( this.inRef && this.start > -1 ) {
-    this.queryRef = this.inRef.limitToFirst(this.count - this.start);
+  if( this.inRef && this.count > -1 ) {
+    this.queryRef = this.inRef.limitToFirst(this.count);
     this.queryRef.on('child_added', this._add, this);
     this.queryRef.on('child_removed', this._remove, this);
     this.queryRef.on('child_moved', this._move, this);
@@ -110,4 +114,4 @@ Cache.prototype._removeOrphans = function(valueSnap) {
   }, this);
 };
 
-exports.Cache = Cache;
+module.exports = Cache;

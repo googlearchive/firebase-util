@@ -11,7 +11,7 @@ function Scroll(readOnlyRef, field, opts) {
   this.max = opts.windowSize;
   this.start = 0;
   this.end = 0;
-  this.cache = new Cache(readOnlyRef, field, opts.maxCache);
+  this.cache = new Cache(readOnlyRef, field, opts.maxCacheSize);
 }
 
 /**
@@ -25,7 +25,7 @@ Scroll.prototype.next = function(numberToAppend) {
   if( this.hasNext() ) {
     this.end = this.end + numberToAppend;
     this.start = Math.max(0, this.end - this.max, this.start);
-    this.cache.moveTo(this.start, this.end);
+    this.cache.moveTo(this.start, this.end-this.start);
   }
 };
 
@@ -40,7 +40,7 @@ Scroll.prototype.prev = function(numberToPrepend) {
   if( this.hasPrev() ) {
     this.start = Math.max(0, this.start - numberToPrepend);
     this.end = Math.min(this.start + this.max, this.end);
-    this.cache.moveTo(this.start, this.end);
+    this.cache.moveTo(this.start, this.end-this.start);
   }
 };
 
@@ -68,4 +68,4 @@ Scroll.prototype.destroy = function() {
   this.cache = null;
 };
 
-exports.Scroll = Scroll;
+module.exports = Scroll;
