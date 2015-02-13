@@ -25,7 +25,7 @@ Scroll.prototype.next = function(numberToAppend) {
   if( this.hasNext() ) {
     this.end = this.end + numberToAppend;
     this.start = Math.max(0, this.end - this.max, this.start);
-    this.cache.moveTo(this.start, this.end-this.start);
+    this.cache.moveTo(this.start, this.end - this.start);
   }
 };
 
@@ -48,7 +48,7 @@ Scroll.prototype.prev = function(numberToPrepend) {
  * @return {boolean} true if there are more records after the currently loaded page
  */
 Scroll.prototype.hasNext = function() {
-  return this.cache.offset.getKey() !== false;
+  return this.cache.hasNext();
 };
 
 /**
@@ -56,6 +56,10 @@ Scroll.prototype.hasNext = function() {
  */
 Scroll.prototype.hasPrev = function() {
   return this.start > 0;
+};
+
+Scroll.prototype.observeHasNext = function(callback, context) {
+  return this.cache.observeHasNext(callback, context);
 };
 
 /**

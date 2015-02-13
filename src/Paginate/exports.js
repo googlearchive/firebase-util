@@ -7,7 +7,6 @@ var ReadOnlyRef = require('./libs/ReadOnlyRef.js');
 var DEFAULTS = {
   field: null,
   pageSize: 10,
-  maxCacheSize: 500,
   windowSize: 250
 };
 
@@ -22,7 +21,7 @@ exports.Scroll = function(baseRef, sortField, opts) {
     throw new Error('Optional third argument to Firebase.util.Scroll must be an object of key/value pairs');
   }
   var ref = new ReadOnlyRef(baseRef);
-  ref.scroll = new Scroll(ref, sortField, util.extend({}, DEFAULTS, opts));
+  ref.scroll = new Scroll(ref, sortField, calcOpts(opts, 'windowSize', 'Scroll'));
   return ref;
 };
 
@@ -37,6 +36,22 @@ exports.Paginate = function(baseRef, sortField, opts) {
     throw new Error('Optional third argument to Firebase.util.Paginate must be an object of key/value pairs');
   }
   var ref = new ReadOnlyRef(baseRef);
-  ref.page = new Paginate(ref, sortField, util.extend({}, DEFAULTS, opts));
+  ref.page = new Paginate(ref, sortField, calcOpts(opts, 'pageSize', 'Paginate'));
   return ref;
 };
+
+function calcOpts(opts, maxFromKey, method) {
+  var res = util.extend({}, DEFAULTS, opts);
+  if( !res.maxCacheSize ) {
+    res.maxCacheSize = opts[maxFromKey] * 3;
+  }
+  assertNumber(res, maxFromKey, method);
+  assertNumber(res, 'maxCacheSize', method);
+  return res;
+}
+
+function assertNumber(obj, key, method) {
+  if( !(typeof obj[key] === 'number') ) {
+    throw new Error('Argument ' + key + ' passed into opts for ' + method + 'must be a number' );
+  }
+}

@@ -12,17 +12,17 @@ function Offset(opts) {
   this.isSubscribing = false;
   this.lastNotifyValue = util.undef;
   this._debouncedRecache = debounce(function() {
+    util.log.debug('Offset._debouncedRecache: recaching keys for offset %d', this.curr);
     this.keys = [];
     this._grow(this._listen);
   }, this, 100, 1000);
 }
 
 Offset.prototype.goTo = function(newOffset) {
-  console.log('Offset.goTo?', newOffset, this.curr); //debug
   if( newOffset !== this.curr ) {
     util.log('Offset.goTo: offset changed from %d to %d', this.curr, newOffset);
-    this.lastNotifyValue = util.undef;
     this.curr = newOffset;
+    this.lastNotifyValue = util.undef;
     this._listen();
   }
 };
@@ -37,7 +37,7 @@ Offset.prototype.observe = function(callback, context) {
 Offset.prototype.getKey = function(offset) {
   if( !arguments.length ) { offset = this.curr; }
   if( offset === 0 ) { return null; }
-  return this.keys.length >= offset && this.keys[offset-1];
+  return this.keys.length > offset && this.keys[offset];
 };
 
 Offset.prototype.destroy = function() {
@@ -62,7 +62,6 @@ Offset.prototype._notify = function() {
 
 Offset.prototype._recache = function() {
   if( !this.isSubscribing ) {
-    util.log.debug('Offset._recache: recaching keys for offset %d', this.curr);
     this._debouncedRecache();
   }
 };
@@ -72,7 +71,9 @@ Offset.prototype._grow = function(callback) {
   var self = this;
   var oldKey = self.getKey();
   var len = self.keys.length;
-  var limit = Math.min(self.curr-len, self.max);
+  //todo the calculations for limit and use of limit seems overly complicated
+  //todo and this whole algorithm can probably be simplified and more understandable
+  var limit = Math.min(self.curr-len+1, self.max);
   if( len !== 0 ) { limit += 1; }
   var startAt = lastKey(self.keys);
   if( limit > 0 ) {
@@ -106,7 +107,7 @@ Offset.prototype._grow = function(callback) {
 };
 
 Offset.prototype._startOffset = function() {
-  return Math.max(0, this.curr - this.max, this.curr - 50);
+  return Math.max(0, this.curr - this.max, this.curr - 10);
 };
 
 Offset.prototype._queryRef = function() {
@@ -116,7 +117,7 @@ Offset.prototype._queryRef = function() {
     var key = this.getKey(start);
     ref = ref.startAt(key.val, key.key);
   }
-  return ref.limitToLast(this.curr - start);
+  return ref.limitToLast(Math.max(this.curr - start, 1));
 };
 
 Offset.prototype._moved = function(snap) {
@@ -142,7 +143,7 @@ Offset.prototype._subscribe = function() {
   this.sub.on('child_added', this._recache, this);
   this.sub.on('child_moved', this._moved, this);
   this.sub.on('child_removed', this._recache, this);
-  this.sub.on('value', this._doneSubscribing, this);
+  this.sub.once('value', this._doneSubscribing, this);
 };
 
 Offset.prototype._doneSubscribing = function() {
@@ -155,7 +156,7 @@ Offset.prototype._monitorEmptyOffset = function() {
     var count = snap.numChildren();
     if( count > (key === null? 0 : 1) ) {
       ref.off('value', fn);
-      self._recache();
+      self._grow();
     }
   }
   var self = this;
@@ -166,18 +167,14 @@ Offset.prototype._monitorEmptyOffset = function() {
     ref = ref.startAt(key.val, key.key);
   }
   util.log.debug('Offset._monitorEmptyOffset: No value exists at offset %d, currently %d keys at this path. Watching for a new value.', this.curr, this.keys.length);
-  ref.on('value', fn);
+  ref.limitToFirst(2).on('value', fn);
 };
 
 Offset.prototype._listen = function() {
   this._unsubscribe();
-  var key = this.getKey();
-  if( key === null ) {
-    this._notify();
-  }
-  else if( key === false ) {
-    this._grow(function(changed) {
-      if( changed ) { this._subscribe(); }
+  if( this.curr > this.keys.length ) {
+    this._grow(function(/*changed*/) {
+      if( this.keys.length > this.curr ) { this._subscribe(); }
       else {
         this._monitorEmptyOffset();
         this._notify();
