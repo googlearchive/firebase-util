@@ -51,7 +51,7 @@ function calcOpts(opts, maxFromKey, method) {
 }
 
 function assertNumber(obj, key, method) {
-  if( !(typeof obj[key] === 'number') ) {
+  if( typeof obj[key] !== 'number' ) {
     throw new Error('Argument ' + key + ' passed into opts for ' + method + 'must be a number' );
   }
 }

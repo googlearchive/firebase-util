@@ -69,30 +69,27 @@ Offset.prototype._recache = function() {
 var killCount = 0;
 Offset.prototype._grow = function(callback) {
   var self = this;
-  var oldKey = self.getKey();
   var len = self.keys.length;
-  //todo the calculations for limit and use of limit seems overly complicated
-  //todo and this whole algorithm can probably be simplified and more understandable
-  var limit = Math.min(self.curr-len+1, self.max);
-  if( len !== 0 ) { limit += 1; }
-  var startAt = lastKey(self.keys);
-  if( limit > 0 ) {
-    var ref = startAt? self.ref.startAt(startAt.val, startAt.key) : self.ref;
+  if( self.curr >= len ) {
+    var oldKey = self.getKey();
+    var startAt = lastKey(self.keys);
+    var limit = Math.min(self.curr + (startAt? 2 : 1) - len, self.max);
+    var ref = startAt !== null? self.ref.startAt(startAt.val, startAt.key) : self.ref;
     ref.limitToFirst(limit).once('value', function(snap) {
-      var skipFirst = len !== 0;
+      var skipFirst = startAt !== null;
       snap.forEach(function(ss) {
         if( skipFirst ) {
           skipFirst = false;
           return;
         }
         self.keys.push(extractKey(ss, self.field));
-        len++;
       });
       if( killCount++ > 10000 ) {
         throw new Error('Tried to fetch more than 10,000 pages to determine the correct offset. Giving up now. Sorry.');
       }
-      if( len < self.curr && snap.numChildren() === limit ) {
-        self._grow(callback);
+      if( self.curr >= self.keys.length && snap.numChildren() === limit ) {
+        // prevents recursive scoping
+        setTimeout(util.bind(self._grow, self, callback), 0);
       }
       else {
         killCount = 0;
@@ -155,6 +152,7 @@ Offset.prototype._monitorEmptyOffset = function() {
   function fn(snap) {
     var count = snap.numChildren();
     if( count > (key === null? 0 : 1) ) {
+      util.log.debug('Offset._monitorEmptyOffset: A value exists now.');
       ref.off('value', fn);
       self._grow();
     }
@@ -174,7 +172,9 @@ Offset.prototype._listen = function() {
   this._unsubscribe();
   if( this.curr > this.keys.length ) {
     this._grow(function(/*changed*/) {
-      if( this.keys.length > this.curr ) { this._subscribe(); }
+      if( this.keys.length > this.curr ) {
+        this._subscribe();
+      }
       else {
         this._monitorEmptyOffset();
         this._notify();

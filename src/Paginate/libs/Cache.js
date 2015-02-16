@@ -32,7 +32,6 @@ Cache.prototype.moveTo = function(startOffset, numberOfRecords) {
 };
 
 Cache.prototype.hasNext = function() {
-  console.log('hasNext', this.start, this.count, this.endCount, this.endCount > this.start + this.count); //debug
   return this.count === -1 || this.endCount > this.start + this.count;
 };
 
