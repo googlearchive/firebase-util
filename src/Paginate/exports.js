@@ -43,7 +43,7 @@ exports.Paginate = function(baseRef, sortField, opts) {
 function calcOpts(opts, maxFromKey, method) {
   var res = util.extend({}, DEFAULTS, opts);
   if( !res.maxCacheSize ) {
-    res.maxCacheSize = opts[maxFromKey] * 3;
+    res.maxCacheSize = res[maxFromKey] * 3;
   }
   assertNumber(res, maxFromKey, method);
   assertNumber(res, 'maxCacheSize', method);
