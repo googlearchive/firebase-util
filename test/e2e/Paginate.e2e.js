@@ -15,34 +15,34 @@ var setup = {
 
 QUnit.module('Paginate', setup);
 
-QUnit.test('appends next page'); //todo-test
+QUnit.skip('appends next page'); //todo-test
 
-QUnit.test('appends previous page'); //todo-test
+QUnit.skip('appends previous page'); //todo-test
 
-QUnit.test('adjusts first key when a record is deleted'); //todo-test
+QUnit.skip('adjusts first key when a record is deleted'); //todo-test
 
-QUnit.test('adjusts first key when a record is added'); //todo-test
+QUnit.skip('adjusts first key when a record is added'); //todo-test
 
-QUnit.test('adjusts first key when a record is moved'); //todo-test
+QUnit.skip('adjusts first key when a record is moved'); //todo-test
 
-QUnit.test('adjusts first key when first key is moved');  //todo-test
+QUnit.skip('adjusts first key when first key is moved');  //todo-test
 
 
-Qunit.module('Scroll', setup);
+QUnit.module('Scroll', setup);
 
-QUnit.test('appends next set'); //todo-test
+QUnit.skip('appends next set'); //todo-test
 
-QUnit.test('appends previous set'); //todo-test
+QUnit.skip('appends previous set'); //todo-test
 
-QUnit.test('removes records when window size is exceeded'); //todo-test
+QUnit.skip('removes records when window size is exceeded'); //todo-test
 
-QUnit.test('adjusts first key when a record is deleted'); //todo-test
+QUnit.skip('adjusts first key when a record is deleted'); //todo-test
 
-QUnit.test('adjusts first key when a record is added'); //todo-test
+QUnit.skip('adjusts first key when a record is added'); //todo-test
 
-QUnit.test('adjusts first key when a record is moved'); //todo-test
+QUnit.skip('adjusts first key when a record is moved'); //todo-test
 
-QUnit.test('adjusts first key when first key is moved');  //todo-test
+QUnit.skip('adjusts first key when first key is moved');  //todo-test
 
 
 var URL = 'https://fbutil.firebaseio.com/test';

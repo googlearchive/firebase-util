@@ -66,7 +66,7 @@ util.inherits(NormalizedRef, Query, {
   },
 
   'push': function(data, callback, context) { // jshint unused:false
-    var uid = this.$getMaster().push().name();
+    var uid = this.$getMaster().push().key();
     var child = this.child(uid);
     if( arguments.length ) {
       child.set.apply(child, arguments);

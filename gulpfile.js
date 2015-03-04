@@ -102,6 +102,7 @@ gulp.task('scaffold-test', function() {
 });
 
 gulp.task('e2e', ['bundle'], function() {
+  console.log('\n-----------------------\nPlease open e2etests.html in\nyour browser and enable LiveReload\n-----------------------\n');
   plugins.livereload.listen();
   return gulp.watch(['./src/**/*.js', './test/e2e/**/*'], ['bundle']);
 });

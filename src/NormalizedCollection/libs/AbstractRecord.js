@@ -225,7 +225,7 @@ AbstractRecord.prototype = {
   },
 
   _trigger: function(event, id, snaps, prev) {
-    var ref;
+    var ref, args;
     if( event === 'value' ) {
       snaps = id;
       id = null;
@@ -235,10 +235,17 @@ AbstractRecord.prototype = {
     else {
       ref = this.getRef().child(id);
     }
-    if( util.isObject(snaps) && !util.isArray(snaps) && typeof snaps.val === 'function' ) {
-      snaps = [snaps];
+    //todo probably just have the record types pass in the final snapshot to _trigger
+    //todo instead of this coupled and crazy dance
+    if( snaps instanceof NormalizedSnapshot ) {
+      args = [event, snaps];
     }
-    var args = [event, new NormalizedSnapshot(ref, snaps)];
+    else {
+      if( util.isObject(snaps) && !util.isArray(snaps) && typeof snaps.val === 'function' ) {
+        snaps = [snaps];
+      }
+      args = [event, new NormalizedSnapshot(ref, snaps)];
+    }
     if( event === 'child_added' || event === 'child_moved' ) {
       args.push(prev);
     }
