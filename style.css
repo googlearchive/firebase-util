@@ -27,3 +27,37 @@ h3, h4 {
 @media (max-width: 767px) {
    #fork_on_github { display: none }
 }
+
+ul.toolbox {
+   list-style-type: none;
+}
+
+.toolbox > div > a {
+   display: block;
+   border: 1px solid gray;
+   border-radius: 5px;
+   padding: 8px;
+   min-height: 175px;
+   color: black;
+   position: relative;
+   background-color: #efe;
+}
+
+.toolbox > div > a:hover {
+   background-color: #e1f1e1;
+   text-decoration: none;
+}
+
+.toolbox > div.soon > a {
+   border-style: dashed;
+   color: gray;
+}
+
+.toolbox > div.soon > a > h3 {
+   color: gray;
+}
+
+.toolbox > div > a > h3 {
+   margin: 0 0 10px 0;
+   color: #8a5a00;
+}

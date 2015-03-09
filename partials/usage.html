@@ -4,25 +4,25 @@
 <h3>On the Web</h3>
 
 <pre class="prettyprint lang-html linenums">
-&lt;script src="http://cdn.firebase.com/v0/firebase.js"&gt;&lt;/script&gt;
-&lt;script src="https://cdn.firebase.com/libs/firebase-util/0.1.0/firebase-util.min.js"&gt;&lt;/script&gt;
+&lt;script src="https://cdn.firebase.com/js/client/2.1.1/firebase.js"&gt;&lt;/script&gt;
+&lt;script src="https://cdn.firebase.com/libs/firebase-util/0.2.0/firebase-util.min.js"&gt;&lt;/script&gt;
 &lt;script&gt;
-    var ref = Firebase.util.join( new Firebase(PATH1), new Firebase(PATH2), ... );
+    Firebase.util.log('hello world');
 &lt;/script&gt;
 </pre>
 
 <h3>Node.js</h3>
 
-Just manually include the js file in your node scripts.
-
 <pre class="prettyprint lang-js linenums">
 var Firebase = require('firebase');
 var FirebaseUtil = require('./firebase-util.js');
-var ref = FirebaseUtil.join( new Firebase(PATH1), new Firebase(PATH2), ... );
+FirebaseUtil.log('hello world');
 </pre>
 
 <h3>Full Documentation</h3>
 
-<p>For now, the <a href="https://github.com/firebase/firebase-util/blob/master/src/join/README.md">README on GitHub</a>
+<p>For now, the <a href="https://github.com/firebase/firebase-util/blob/master/README.md">README on GitHub</a>
     serves as the full documentation for Firebase.util.join libs. It covers everything from dynamic path keys to best
     practices and limitations. Be sure to check it out after the examples.</p>
+
+<p><a href="https://github.com/firebase/firebase-util/blob/master/README.md" class="btn btn-primary btn-lg">Read the Docs</a></p>

@@ -1,0 +1,51 @@
+
+<h1>NormalizedCollection</h1>
+
+<p class="note">A library for joining paths and normalizing data.</p>
+
+<h2>Basics</h2>
+
+A normalized collection wraps Firebase references and provides the same API. It can be used
+almost anywhere a regular Firebase reference would be appropriate, including libraries like
+AngularFire.
+
+<pre class="prettyprint lang-js linenums">
+// create a Firebase reference
+var fb = new Firebase('https://fbutil.firebaseio.com/examples/profiles');
+
+// map the paths we are going to join
+var norm = new Firebase.util.NormalizedCollection(
+  fb.child('login'),
+  fb.child('profile')
+);
+
+// specify the fields for each path
+norm = norm.select( 'login.username', 'profile.first', 'profile.last' );
+
+// get a reference we can use like a normal Firebase instance
+ref = norm.ref();
+
+// run it and see what we get
+ref.on('value', function(snap) {
+  console.log('profile updated!', snap.name(), snap.val());
+});
+</pre>
+
+<h2 id="examples">Examples</h2>
+
+<tabset>
+  <tab
+      ng-repeat="t in tabs"
+      heading="{{t.heading}}"
+      select="go(t)"
+      active="t.active">
+  </tab>
+</tabset>
+
+<div ui-view name="examples"></div>
+
+<h2>Full Documentation</h2>
+
+<p>The complete API doc and guide are maintained in the GitHub readme.</p>
+
+<p><a href="https://github.com/firebase/firebase-util/blob/master/src/NormalizedCollection/README.md" class="btn btn-primary btn-lg">View the Doc</a></p>
