@@ -1,6 +1,8 @@
 
 # NormalizedCollection
 
+THIS IS A BETA FEATURE. NOT RECOMMENDED FOR USE IN PRODUCTION.
+
 ## Summary
 
 A normalized collection is a method for joining paths and data together based on keys or field
@@ -403,11 +405,11 @@ var ref = new Firebase.util.NormalizedCollection(ref1, [ref2, 'refTheTwo'])
     .select('foo.name', 'bar.color')
     .ref();
 
-ref.name(); // "[foo][refTheTwo]" (a merged collection)
+ref.key(); // "[foo][refTheTwo]" (a merged collection)
 
-ref.child('record1').name(); // "[record1][record1]" (a merged record)
+ref.child('record1').key(); // "[record1][record1]" (a merged record)
 
-ref.child('record1/name').name(); // "name"
+ref.child('record1/name').key(); // "name"
 ```
 
 #### toString()
@@ -432,7 +434,7 @@ ref.toString();
 ref.child('record1').toString();
 
 // https://kato1.firebaseio.com/foo/record1/name
-ref.child('record1/name').name();
+ref.child('record1/name').key();
 ```
 
 #### transaction()

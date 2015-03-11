@@ -41,7 +41,7 @@ logger.logLevel = function(level, grep) {
       logger[k] = function() {
         var args = util.toArray(arguments);
         if( args.length > 1 && typeof args[0] === 'string' ) {
-          var m = args[0].match(/(%s|%d|%j)/);
+          var m = args[0].match(/(%s|%d|%j)/g);
           if( m ) {
             var newArgs = [util.printf.apply(util, args)];
             args = args.length > m.length+1? newArgs.concat(args.slice(m.length+1)) : newArgs;

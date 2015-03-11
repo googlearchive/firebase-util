@@ -12,10 +12,11 @@ var gutil      = require('gulp-util');
 var path       = require('path');
 var seq        = require('run-sequence');
 
-function getBundle(debug, args) {
-  return browserify({debug: debug||false}, args)
+function getBundle(pkg) {
+  var fileName = 'fbutil' + (pkg? '.' + pkg : '') + '.js';
+  return browserify({debug: false})
     .external('firebase', {expose: 'firebase'})
-    .require('./src/fbutil.js', {expose: 'firebase-util'})
+    .require('./src/' + fileName, {expose: 'firebase-util'})
     .add('./src/expose.js');
 }
 
@@ -75,7 +76,33 @@ gulp.task('test', function () {
 
 //todo include the debug maps as external files
 gulp.task('minify', function() {
-  getBundle()
+  return seq('minify-paginate', 'minify-normalize', 'minify-all');
+});
+
+gulp.task('minify-paginate', function() {
+  return getBundle('paginate')
+    .bundle()
+    .pipe(source('./firebase-util-paginate.min.js'))
+    .pipe(buffer())
+    .pipe(plugins.uglify())
+    .pipe(plugins.size())
+    .pipe(gulp.dest('dist'))
+    .pipe(plugins.livereload());
+});
+
+gulp.task('minify-normalize', function() {
+  return getBundle('normalize')
+    .bundle()
+    .pipe(source('./firebase-util-normalize.min.js'))
+    .pipe(buffer())
+    .pipe(plugins.uglify())
+    .pipe(plugins.size())
+    .pipe(gulp.dest('dist'))
+    .pipe(plugins.livereload());
+});
+
+gulp.task('minify-all', function() {
+  return getBundle()
     .bundle()
     .pipe(source('./firebase-util.min.js'))
     .pipe(buffer())
@@ -102,6 +129,7 @@ gulp.task('scaffold-test', function() {
 });
 
 gulp.task('e2e', ['bundle'], function() {
+  console.log('\n-----------------------\nPlease open e2etests.html in\nyour browser and enable LiveReload\n-----------------------\n');
   plugins.livereload.listen();
   return gulp.watch(['./src/**/*.js', './test/e2e/**/*'], ['bundle']);
 });

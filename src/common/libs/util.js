@@ -315,9 +315,10 @@ util.printf = function() {
   var localArgs = util.toArray(arguments);
   var template = localArgs.shift();
   var matches = template.match(/(%s|%d|%j)/g);
-  if( matches ) {
-    util.each(matches, function (m) {
+  if( matches && localArgs.length ) {
+    util.find(matches, function (m) {
       template = template.replace(m, format(localArgs.shift(), m));
+      return localArgs.length === 0;
     });
   }
   return template;

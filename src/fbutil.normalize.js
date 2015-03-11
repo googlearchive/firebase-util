@@ -9,8 +9,7 @@ var util = require('./common/index.js');
 // put all our public methods into the exported scope
 util.extend(exports,
   require('./common/exports.js'),
-  require('./NormalizedCollection/exports.js'),
-  require('./Paginate/exports.js')
+  require('./NormalizedCollection/exports.js')
 );
 
 /*global window */
