@@ -1,4 +1,6 @@
 
+THIS IS A BETA FEATURE. NOT RECOMMENDED FOR USE IN PRODUCTION.
+
 # Summary
 
 The Paginate library currently contains tools for pagination (next page, previous page, and skip

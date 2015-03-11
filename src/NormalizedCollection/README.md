@@ -1,6 +1,8 @@
 
 # NormalizedCollection
 
+THIS IS A BETA FEATURE. NOT RECOMMENDED FOR USE IN PRODUCTION.
+
 ## Summary
 
 A normalized collection is a method for joining paths and data together based on keys or field
