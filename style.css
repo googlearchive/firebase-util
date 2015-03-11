@@ -61,3 +61,32 @@ ul.toolbox {
    margin: 0 0 10px 0;
    color: #8a5a00;
 }
+
+.example .output-block {
+    display: none;
+}
+
+.example.ready .output-block {
+    display: block;
+}
+
+.example.example-custom .output-block .standard-output-block {
+    display: none;
+}
+
+.example.example-custom .output-block .custom-output-block {
+    display: block;
+}
+
+.example h3 {
+    position: relative;
+}
+
+.example h3 a {
+    float: right;
+    display: inline-block;
+}
+
+i.glyphicon-remove {
+    color: #990000;
+}

@@ -1,7 +1,7 @@
 (function ($) {
    "use strict";
 
-   Firebase.util.logLevel('debug');
+   //Firebase.util.logLevel('debug');
 
    var app = angular.module('app', ['ui.router', 'ui.bootstrap', 'ngSanitize', 'firebase']);
 
@@ -20,28 +20,7 @@
            .state('norm', {
               url: '/toolbox/NormalizedCollection',
               abstract: true,
-              templateUrl: 'demo/NormalizedCollection/index.html',
-              controller: 'NormalizedCollectionCtrl'
-           })
-           .state('norm.default', {
-              url: '',
-              data: { exampleid: 'users', sectionid: 'examples' },
-              views: {
-                 examples: {
-                    templateUrl: 'demo/NormalizedCollection/example.template.html',
-                    controller: 'NormalizedExampleCtrl'
-                 }
-              }
-           })
-           .state('norm.custom', {
-             url: '/custom',
-             data: {sectionid: 'examples'},
-             views: {
-               examples: {
-                 templateUrl: 'demo/NormalizedCollection/custom.template.html',
-                 controller: 'NormalizedExampleCtrl'
-               }
-             }
+              templateUrl: 'demo/NormalizedCollection/index.html'
            })
            .state('norm.example', {
              url: '/example/:exampleid',
