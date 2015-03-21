@@ -119,7 +119,6 @@ gulp.task('lint', function () {
     .pipe(plugins.jshint.reporter('fail'));
 });
 
-
 gulp.task('scaffold-file', function() {
   return copyTemplate('.js');
 });
