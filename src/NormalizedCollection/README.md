@@ -3,6 +3,8 @@
 
 THIS IS A BETA FEATURE. NOT RECOMMENDED FOR USE IN PRODUCTION.
 
+See [LIVE EXAMPLES](http://firebase.github.io/firebase-util/toolbox/NormalizedCollection/).
+
 ## Summary
 
 A normalized collection is a method for joining paths and data together based on keys or field
@@ -51,7 +53,7 @@ var norm = new Firebase.util.NormalizedCollection(
 );
 
 // specify the fields for each path
-norm = norm.select( {key: 'login.$key', alias: 'login'}, 'profile.first', 'profile.last' );
+norm = norm.select( {key: 'login.$value', alias: 'login'}, 'profile.first', 'profile.last' );
 
 // apply a client-side filter to the data (only return users where key === 'user1'
 norm = norm.filter(

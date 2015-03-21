@@ -11,10 +11,10 @@ This is a collection of power toys (mostly experimental) and utilities for use i
  - **Firebase.util.NormalizedCollection**
    Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use most of your favorite
    Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
-   during set/update/remove ops. [View Docs and API](src/join/README.md)
+   during set/update/remove ops. [View Docs and API](src/NormalizedCollection/README.md)
 
  - **Firebase.util.Paginate**
-   Coming soon.
+   Infinite scrolling and pagination with Firebase. [View Docs and API](src/Paginate/README.md)
    
 ## Setup
 
