@@ -3,21 +3,23 @@
 
 <h3>On the Web</h3>
 
-<pre class="prettyprint lang-html linenums">
-&lt;script src="https://cdn.firebase.com/js/client/2.1.1/firebase.js"&gt;&lt;/script&gt;
-&lt;script src="https://cdn.firebase.com/libs/firebase-util/0.2.0/firebase-util.min.js"&gt;&lt;/script&gt;
+<prettify target="versions">
+<pre><code class="prettyprint lang-html linenums">&lt;script src="https://cdn.firebase.com/js/client/{{target.firebase}}/firebase.js"&gt;&lt;/script&gt;
+&lt;script src="https://cdn.firebase.com/libs/firebase-util/{{target.util}}/firebase-util.min.js"&gt;&lt;/script&gt;
 &lt;script&gt;
     Firebase.util.log('hello world');
 &lt;/script&gt;
-</pre>
+</code></pre>
+</prettify>
 
 <h3>Node.js</h3>
 
-<pre class="prettyprint lang-js linenums">
-var Firebase = require('firebase');
+<prettify target="versions">
+<pre class="prettyprint lang-js linenums"><code>var Firebase = require('firebase');
 var FirebaseUtil = require('./firebase-util.js');
 FirebaseUtil.log('hello world');
-</pre>
+</code></pre>
+</prettify>
 
 <h3>Full Documentation</h3>
 

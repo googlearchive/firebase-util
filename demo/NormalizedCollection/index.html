@@ -9,7 +9,8 @@ A normalized collection wraps Firebase references and provides the same API. It 
 almost anywhere a regular Firebase reference would be appropriate, including libraries like
 AngularFire.
 
-<pre class="prettyprint lang-js linenums">
+<prettify>
+<pre><code class="prettyprint lang-js linenums">
 // create a Firebase reference
 var fb = new Firebase('https://fbutil.firebaseio.com/examples/profiles');
 
@@ -29,7 +30,8 @@ ref = norm.ref();
 ref.on('value', function(snap) {
   console.log('profile updated!', snap.name(), snap.val());
 });
-</pre>
+</code></pre>
+</prettify>
 
 <h2 id="examples">Examples</h2>
 

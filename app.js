@@ -37,31 +37,50 @@
            .otherwise('/');
       }]);
 
+   app.constant('VERSION_FIREBASE', '2.2.2');
+
+   app.constant('VERSION_FBUTIL', '0.2.0');
+
    // make our bookmarks work in a single page for now
-   app.run(function($rootScope, $location) {
+   app.run(function($rootScope, VERSION_FIREBASE, VERSION_FBUTIL) {
       $rootScope.$on('$stateChangeSuccess', function(event, toState, toParams, fromState, fromParams) {
          scrollToHeader((toParams && toParams.sectionid)||(toState.data && toState.data.sectionid));
       });
       $rootScope.$on('$locationChangeError', function() {
          console.error(arguments);
       });
+      $rootScope.versions = {
+         firebase: VERSION_FIREBASE,
+         util: VERSION_FBUTIL
+      };
    });
 
-   app.directive('prettyprint', function() {
+   app.directive('prettify', ['$compile', '$timeout', function ($compile, $timeout) {
       return {
-         restrict: 'C',
-         compile: function(el, attr) {
-            if( attr.ngPrettify ) {
-               var html = $('script[type="text/template"][name="'+attr.ngPrettify+'"]').html();
-               el.text(html);
-            }
-            prettyPrint();
+         restrict: 'E',
+         scope: {
+            target: '='
          },
-         link: function() {
-            prettyPrint();
+         link: function (scope, element, attrs) {
+            var template = element.html();
+            var templateFn = $compile(template);
+            var update = function(){
+               $timeout(function () {
+                  var compiled = templateFn(scope).html();
+                  // hacky, can't tell why the pre tags get stripped here
+                  var prettified = prettyPrintOne('<pre>' + compiled + '</pre>');
+                  element.html(prettified);
+               }, 0);
+            };
+            if( attrs.target ) {
+              scope.$watch('target', function () {
+                 update();
+              }, true);
+            }
+            update();
          }
-      }
-   });
+      };
+   }]);
 
    app.filter('pathname', function() {
       return function(url) {

@@ -74,6 +74,10 @@ ul.toolbox {
     display: none;
 }
 
+.example .output-block .custom-output-block {
+    display: none;
+}
+
 .example.example-custom .output-block .custom-output-block {
     display: block;
 }
