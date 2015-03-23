@@ -52,6 +52,23 @@ Paginate.prototype.prev = function() {
 };
 
 /**
+ * Skip to a specific page. The pageNumber must be less than pageCount.
+ *
+ * @param {int} pageNumber
+ * @return {Paginate} returns `this`
+ */
+Paginate.prototype.setPage = function(pageNumber) {
+  if( pageNumber > 0 && pageNumber <= this.pageCount ) {
+    this.currPage = pageNumber;
+    util.log.debug('Paginate.setPage: current page is %d', this.currPage);
+    this._pageChange();
+  }
+  else {
+    util.log.warn('Paginate.setPage: invalid page number %d', pageNumber);
+  }
+};
+
+/**
  * @return {boolean} true if there are more records after the currently loaded page
  */
 Paginate.prototype.hasNext = function() {
