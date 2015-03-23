@@ -1,0 +1,14 @@
+
+<h4>Items loaded: {{scrollItems.length}}</h4>
+
+<p>
+    <button class="btn btn-primary"
+        ng-click="scrollItems.scroll.next(25)"
+        ng-disabled="!scrollItems.scroll.hasNext()">
+        Load Next 25
+    </button>
+</p>
+
+<ul class="scrollbox list-inline" scroll-to-bottom="scrollItems">
+    <li ng-repeat="item in scrollItems">{{item.$id}}</li>
+</ul>

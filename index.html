@@ -9,8 +9,8 @@
     <link rel="shortcut icon" href="favicon.ico"/>
 
     <!-- Bootstrap core CSS -->
-    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap-theme.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css"/>
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css"/>
 
     <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -25,7 +25,7 @@
 
     <title>Firebase.util: Tools for Firebase</title>
 </head>
-<body ng-app="app" class="ng-cloak" >
+<body ng-app="app" class="ng-cloak">
 
 <header class="navbar navbar-default navbar-fixed-top" role="navigation">
     <div class="navbar-header">
@@ -39,22 +39,16 @@
     </div>
     <nav class="collapse navbar-collapse" id="navbar">
         <ul class="nav navbar-nav">
-            <li><a href="#">Home</a></li>
-            <li><a href="#/getting_started">Getting Started</a></li>
-            <li><a href="#/examples">Examples</a></li>
-            <li><a href="#/support">Support</a></li>
+            <li><a ui-sref="home">Home</a></li>
+            <li><a ui-sref="section({sectionid: 'getting_started'})">Getting Started</a></li>
+            <li><a ui-sref="section({sectionid: 'toolbox'})">Toolbox</a></li>
+            <li><a ui-sref="section({sectionid: 'support'})">Support</a></li>
         </ul>
     </nav>
 </header>
 
 <div class="container">
-    <!--<div ng-view></div>-->
-    <div ng-include="'partials/home.html'"></div>
-    <div ng-include="'partials/usage.html'"></div>
-    <h2 id="examples">Examples</h2>
-    <div ng-include="'partials/examples.join.html'" ng-controller="JoinDemoCtrl"></div>
-    <div ng-include="'partials/examples.join.custom.html'" ng-controller="JoinCustomCtrl"></div>
-    <div ng-include="'partials/support.html'"></div>
+    <div ui-view></div>
 
     <div class="footer">
         <p><a href="http://firebase.mit-license.org/">MIT License</a> | <a href="http://www.firebase.com">Firebase</a></p>
@@ -64,19 +58,26 @@
 <a id="fork_on_github" href="https://github.com/firebase/firebase-util" target="_blank"><img src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
 
 <!-- libs and dependencies -->
-<script type="text/javascript" src="https://cdn.firebase.com/v0/firebase.js"></script>
+<script type="text/javascript" src="https://cdn.firebase.com/js/client/2.2.2/firebase.js"></script>
+<!--<script type="text/javascript" src="lib/firebase-debug.js"></script>-->
 <script type="text/javascript" src="https://code.jquery.com/jquery-2.0.3.min.js"></script>
-<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.js"></script>
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.4/angular.min.js"></script>
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.4/angular-route.min.js"></script>
-<!--<script type="text/javascript" src="https://cdn.firebase.com/libs/angularfire/0.5.0/angularfire.min.js"></script>-->
-<script type="text/javascript" src="https://cdn.firebase.com/libs/firebase-util/0.1.0/firebase-util.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.8/angular.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.8/angular-sanitize.js"></script>
+<script type="text/javascript" src="https://cdn.firebase.com/libs/angularfire/1.0.0/angularfire.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.13/angular-ui-router.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.12.0/ui-bootstrap.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.12.0/ui-bootstrap-tpls.min.js"></script>
+<script type="text/javascript" src="lib/firebase-util.js"></script>
+<!--<script type="text/javascript" src="https://cdn.firebase.com/libs/firebase-util/2.1.0/firebase-util.min.js"></script>-->
 
 <!-- the app -->
 <script type="text/javascript" src="app.js"></script>
-<script type="text/javascript" src="examples.join.js"></script>
-<script type="text/javascript" src="examples.join.custom.js"></script>
+<script type="text/javascript" src="demo/NormalizedCollection/norm.tabs.js"></script>
+<script type="text/javascript" src="demo/NormalizedCollection/norm.services.js"></script>
+<script type="text/javascript" src="demo/NormalizedCollection/norm.app.js"></script>
+<script type="text/javascript" src="demo/Paginate/page.app.js"></script>
 
 <script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){

@@ -1,0 +1,120 @@
+
+<tabset>
+  <tab
+      ng-repeat="t in tabs"
+      heading="{{t.heading}}"
+      select="go(t)"
+      active="t.active">
+  </tab>
+</tabset>
+
+<h3>{{tab.title}}</h3>
+
+<p ng-bind-html="tab.description"></p>
+
+<div class="container example example-{{exampleid}}" ng-class="{ready: ready}">
+
+  <div class="row" ng-show="exampleid === 'custom'">
+    <form ng-submit="run()" class="form-horizontal" ng-repeat="path in paths">
+      <h3>
+        <a href="#" ng-click="removePath($event, $index)" ng-show="paths.length > 1">
+          <i class="glyphicon glyphicon-remove"></i>
+        </a>
+        Path {{$index + 1}}
+        <span ng-show="$index === 0">(Master)</span>
+      </h3>
+      <div class="form-group">
+        <label for="path-{{$index}}-url" class="col-sm-1 control-label">URL</label>
+        <div class="col-sm-11">
+          <input type="url" class="form-control" id="path-{{$index}}-url"
+                 ng-model="path.url"
+                 ng-change="path.update()"
+                 placeholder="https://<instance>.firebaseio.com/path/..." >
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="path-{{$index}}-alias" class="col-sm-1 control-label">Alias</label>
+        <div class="col-sm-11">
+          <input type="text" class="form-control" id="path-{{$index}}-alias"
+                 ng-model="path.alias"
+                 ng-change="path.update()"
+                 placeholder="(optional, must be unique)">
+        </div>
+      </div>
+
+      <div class="form-group" ng-show="$index > 0">
+        <label for="path-{{$index}}-dep" class="col-sm-1 control-label">Dependency</label>
+        <div class="col-sm-11">
+          <input type="text" class="form-control" id="path-{{$index}}-dep"
+                 ng-model="path.dep"
+                 placeholder="pathAlias.fieldName (leave blank to match on keys)">
+        </div>
+      </div>
+
+      <div class="form-group" ng-show="!!path.url" ng-repeat="field in path.fields">
+        <label for="field-{{path.url}}-{{field.key}}" class="col-sm-2 control-label">Field</label>
+        <div class="col-sm-3">
+          <input type="text" class="form-control" id="field-{{path.url}}-{{field.key}}"
+                 ng-model="field.key"
+                 placeholder="Enter field ($key and $value are acceptable)">
+        </div>
+        <label for="fieldalias-{{path.url}}-{{field.key}}" class="col-sm-1 control-label">Alias</label>
+        <div class="col-sm-3">
+          <input type="text" class="form-control" id="fieldalias-{{path.url}}-{{field.key}}"
+                 ng-model="field.alias"
+                 placeholder="(optional)">
+        </div>
+        <a href="#" ng-click="removeField($event, $index, path)" ng-show="path.fields.length > 1">
+          <i class="glyphicon glyphicon-remove"></i>
+        </a>
+      </div>
+
+      <div class="form-group" ng-show="!!path.url">
+        <label class="col-sm-2 control-label"></label>
+        <div class="col-sm-4">
+          <button role="button" class="btn btn-default" ng-click="addField(path)">
+            <i class="glyphicon glyphicon-plus"></i> field
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <button role="button" class="btn btn-default btn-lg" ng-click="addPath()">
+      <i class="glyphicon glyphicon-plus"></i> path
+    </button>
+    <button role="button" class="btn btn-primary btn-lg" ng-click="run()">
+      <i class="glyphicon glyphicon-play"></i> view results
+    </button>
+  </div>
+
+  <div class="row output-block">
+    <div class="col-md-12">
+      <h4>Constructor</h4>
+        <prettify target="output">
+            <pre><code class="prettyprint lang-html linenums">{{target.code}}</code></pre>
+        </prettify>
+    </div>
+  </div>
+
+  <div class="row output-block">
+    <div class="col-md-6 standard-output-block">
+      <h4>Joined Data (live)</h4>
+      <prettify target="output">
+        <pre><code class="prettify lang-js pre-scrollable">{{target.joined|json}}</code></pre>
+      </prettify>
+    </div>
+    <div class="col-md-6 standard-output-block">
+      <h4>Raw Data (live)</h4>
+      <prettify target="output">
+        <pre class="prettify lang-js pre-scrollable">{{target.raw|json}}</pre>
+      </prettify>
+    </div>
+    <div class="col-md-12 custom-output-block">
+      <h4>Joined Data (live)</h4>
+      <prettify target="output">
+        <pre><code class="prettify lang-js pre-scrollable">{{target.joined|json}}</code></pre>
+      </prettify>
+    </div>
+  </div>
+</div>
