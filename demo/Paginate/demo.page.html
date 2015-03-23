@@ -1,0 +1,32 @@
+
+<h4>Showing: Page {{ pageItems.currentPageNumber }} of {{ pageItems.pageCount }}<span ng-show="pageItems.couldHaveMore"> or more</span></h4>
+
+<p>
+    <button class="btn btn-primary"
+            ng-click="pageItems.page.setPage(1)"
+            ng-disabled="pageItems.currentPageNumber < 2">
+        <i class="glyphicon glyphicon-fast-backward"></i>
+    </button>
+
+    <button class="btn btn-primary"
+            ng-click="pageItems.page.prev()"
+            ng-disabled="!pageItems.page.hasPrev()">
+        <i class="glyphicon glyphicon-backward"></i>
+    </button>
+
+    <button class="btn btn-primary"
+            ng-click="pageItems.page.next()"
+            ng-disabled="!pageItems.page.hasNext()">
+        <i class="glyphicon glyphicon-forward"></i>
+    </button>
+
+    <button class="btn btn-primary"
+            ng-click="pageItems.page.setPage(pageItems.pageCount)"
+            ng-disabled="!pageItems.page.hasNext() || pageItems.currentPageNumber >= pageItems.pageCount">
+        <i class="glyphicon glyphicon-fast-forward"></i>
+    </button>
+</p>
+
+<ul class="scrollbox list-inline" scroll-to-bottom="pageItems">
+    <li ng-repeat="item in pageItems">{{item.$id}}</li>
+</ul>

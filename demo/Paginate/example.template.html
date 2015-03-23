@@ -1,0 +1,31 @@
+
+<tabset>
+    <tab
+            ng-repeat="t in tabs"
+            heading="{{t.title}}"
+            select="go(t)"
+            active="t.active">
+    </tab>
+</tabset>
+
+<div class="container">
+    <div class="row" ng-if="tab.demo">
+        <div class="col-md-12">
+            <ng-include src="tab.demo"></ng-include>
+        </div>
+    </div>
+    <div class="row" ng-if="tab.gistid">
+        <div class="col-md-12">
+            <h4 ng-repeat-start="(key, example) in content.data[tab.exampleid]">{{key}}</h4>
+            <prettify ng-repeat-end target="example">
+                <pre><code>{{target}}</code></pre>
+            </prettify>
+        </div>
+    </div>
+    <div clrass="row">
+        <div class="col-md-12">
+            <p><a ng-href="{{tab.dataurl}}">View source data</a></p>
+            <p ng-if="tab.gistid"><a ng-href="https://gist.github.com/katowulf/{{tab.gistid}}">Go to gist</a></p>
+        </div>
+    </div>
+</div>

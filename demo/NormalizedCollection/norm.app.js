@@ -33,8 +33,8 @@
   }
 
 
-  angular.module('app').controller('NormalizedExampleCtrl', function($scope, normUtil, normTabs, $stateParams, $state) {
-    var subs = [];
+  angular.module('app').controller('NormCtrl', function($scope, $stateParams, normUtil, normTabs, exampleTabsManager) {
+    var subs = [], defaultExampleId = 'users';
 
     function rawData(scope, varName, paths) {
       angular.forEach(paths, function(path) {
@@ -52,14 +52,6 @@
       subs.push(function() { ref.off('value', mgr.update); });
     }
 
-    $scope.go = function(tab) {
-      // this check is necessary because ui-bootstrap's tabs directive will trigger
-      // the select listener on initial load, which conflicts with routing here and causes
-      // redundant calls to $scope.go()
-      if( tab.exampleid !== $stateParams.exampleid ) {
-        $state.go('norm.example', {exampleid: tab.exampleid});
-      }
-    };
 
     $scope.run = function() {
       try {
@@ -95,7 +87,8 @@
     };
 
     $scope.output = {};
-    $scope.exampleid = $stateParams.exampleid||'users';
+    $scope.exampleid = $stateParams.exampleid||defaultExampleId;
+    $scope.go = exampleTabsManager('norm', $scope.exampleid);
     $scope.tabs = normTabs($scope.exampleid);
     $scope.tab = findTab($scope.tabs, $scope.exampleid);
     $scope.paths = normUtil.buildPaths($scope.tab.urls, $scope.tab.fields);

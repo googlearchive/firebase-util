@@ -1,0 +1,37 @@
+
+<h1>Paginate</h1>
+
+<p class="note">A library for simple infinite scroll and paginate in Firebase.</p>
+
+<h2>Basics</h2>
+
+A Scroll or Paginate call wraps a Firebase reference and provides the same API. The reference
+is read-only, but works almost anywhere a Firebase reference would be appropriate for reading
+data, including libs like AngularFire.
+
+<prettify>
+<pre><code class="prettyprint lang-js linenums">// create a Firebase reference
+var fb = new Firebase('https://fbutil.firebaseio.com/paginate');
+
+// create an infinite scroll reference
+var scrollRef = new Firebase.util.Scroll(fb, 'number');
+
+// append the next 25 items
+scrollRef.scroll.next(25);
+
+// listen normally
+scrollRef.on('child_added', function(snap) {
+  console.log('loaded record ' + snap.key());
+});
+</code></pre>
+</prettify>
+
+<h2 id="examples">Examples</h2>
+
+<div ui-view name="examples"></div>
+
+<h2>Full Documentation</h2>
+
+<p>The complete API doc and guide are maintained in the GitHub readme.</p>
+
+<p><a href="https://github.com/firebase/firebase-util/blob/master/src/Paginate/README.md" class="btn btn-primary btn-lg">View the Docs</a></p>

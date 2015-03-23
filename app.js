@@ -22,13 +22,46 @@
               abstract: true,
               templateUrl: 'demo/NormalizedCollection/index.html'
            })
+           .state('norm.start', {
+              url: '/',
+              views: {
+                examples: {
+                  templateUrl: 'demo/NormalizedCollection/example.template.html',
+                  controller: 'NormCtrl'
+                }
+              }
+           })
            .state('norm.example', {
              url: '/example/:exampleid',
              data: {sectionid: 'examples'},
              views: {
                examples: {
                  templateUrl: 'demo/NormalizedCollection/example.template.html',
-                 controller: 'NormalizedExampleCtrl'
+                 controller: 'NormCtrl'
+               }
+             }
+           })
+           .state('page', {
+             url: '/toolbox/Paginate',
+             abstract: true,
+             templateUrl: 'demo/Paginate/index.html'
+           })
+           .state('page.start', {
+             url: '/',
+             views: {
+               examples: {
+                 templateUrl: 'demo/Paginate/example.template.html',
+                 controller: 'PageCtrl'
+               }
+             }
+           })
+           .state('page.example', {
+             url: '/example/:exampleid',
+             data: {sectionid: 'examples'},
+             views: {
+               examples: {
+                 templateUrl: 'demo/Paginate/example.template.html',
+                 controller: 'PageCtrl'
                }
              }
            });
@@ -44,7 +77,7 @@
    // make our bookmarks work in a single page for now
    app.run(function($rootScope, VERSION_FIREBASE, VERSION_FBUTIL) {
       $rootScope.$on('$stateChangeSuccess', function(event, toState, toParams, fromState, fromParams) {
-         scrollToHeader((toParams && toParams.sectionid)||(toState.data && toState.data.sectionid));
+        scrollToHeader((toParams && toParams.sectionid) || (toState.data && toState.data.sectionid));
       });
       $rootScope.$on('$locationChangeError', function() {
          console.error(arguments);
@@ -82,11 +115,42 @@
       };
    }]);
 
+   app.factory('exampleTabsManager', function($stateParams, $state) {
+     return function(stateName, currentExampleId) {
+       var skipFirst = !$stateParams.exampleid;
+       return function(tab) {
+         // this check is necessary because ui-bootstrap's tabs directive will trigger
+         // the select listener on initial load, which conflicts with routing here and causes
+         // redundant calls to $scope.go()
+         if( skipFirst ) {
+           skipFirst = false;
+         }
+         else if( tab.exampleid !== currentExampleId ) {
+           $state.go(stateName + '.example', {exampleid: tab.exampleid});
+         }
+       }
+     }
+   });
+
    app.filter('pathname', function() {
       return function(url) {
          return (url||'').replace(/^[a-z]+:\/\/[^/]+\//, '');
       }
    });
+
+  app.directive('scrollToBottom', function () {
+    var unbind;
+    return {
+      restrict: 'A',
+      scope: { scrollToBottom: "=" },
+      link: function (scope, element) {
+        if( unbind ) { unbind(); }
+        unbind = scope.$watchCollection('scrollToBottom', function () {
+          $(element).animate({scrollTop: element[0].scrollHeight});
+        });
+      }
+    }
+  });
 
    function scrollToHeader(path) {
       setTimeout(function() {
