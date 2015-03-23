@@ -84,7 +84,10 @@ gulp.task('minify-paginate', function() {
     .bundle()
     .pipe(source('./firebase-util-paginate.min.js'))
     .pipe(buffer())
-    .pipe(plugins.uglify())
+    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
+      pkg: require('./package.json')
+    }))
+    .pipe(plugins.uglify({preserveComments: 'some'}))
     .pipe(plugins.size())
     .pipe(gulp.dest('dist'))
     .pipe(plugins.livereload());
@@ -95,7 +98,10 @@ gulp.task('minify-normalize', function() {
     .bundle()
     .pipe(source('./firebase-util-normalize.min.js'))
     .pipe(buffer())
-    .pipe(plugins.uglify())
+    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
+      pkg: require('./package.json')
+    }))
+    .pipe(plugins.uglify({preserveComments: 'some'}))
     .pipe(plugins.size())
     .pipe(gulp.dest('dist'))
     .pipe(plugins.livereload());
@@ -106,7 +112,10 @@ gulp.task('minify-all', function() {
     .bundle()
     .pipe(source('./firebase-util.min.js'))
     .pipe(buffer())
-    .pipe(plugins.uglify())
+    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
+      pkg: require('./package.json')
+    }))
+    .pipe(plugins.uglify({preserveComments: 'some'}))
     .pipe(plugins.size())
     .pipe(gulp.dest('dist'))
     .pipe(plugins.livereload());
