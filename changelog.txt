@@ -1,0 +1,6 @@
+
+important - This is an alpha release and not ready for production.
+feature - Added `Firebase.util.NormalizedCollection` library for joining paths.
+feature - Added `Firebase.util.Scroll` and `Firebase.util.Paginate` classes for handling infinite scroll and paging.
+feature - New examples and docs at http://firebase.github.io/firebase-util/.
+removed - `Firebase.util.join` has been removed in favor of `NormalizedCollection`.
