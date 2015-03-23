@@ -5,7 +5,10 @@
 
    var app = angular.module('app', ['ui.router', 'ui.bootstrap', 'ngSanitize', 'firebase']);
 
-   // later if we have more libs we'll want to switch to this layout
+  app.constant('VERSION_FIREBASE', '2.2.2');
+  app.constant('VERSION_FBUTIL', '0.2.1');
+
+  // later if we have more libs we'll want to switch to this layout
    app.config(['$stateProvider', '$urlRouterProvider',
       function($stateProvider, $urlRouterProvider) {
          $stateProvider
@@ -69,10 +72,6 @@
          $urlRouterProvider
            .otherwise('/');
       }]);
-
-   app.constant('VERSION_FIREBASE', '2.2.2');
-
-   app.constant('VERSION_FBUTIL', '0.2.0');
 
    // make our bookmarks work in a single page for now
    app.run(function($rootScope, VERSION_FIREBASE, VERSION_FBUTIL) {
