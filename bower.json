@@ -1,7 +1,7 @@
 {
   "name": "firebase-util",
   "description": "A set of experimental power tools for Firebase.",
-  "version": "0.2.1",
+  "version": "0.0.0",
   "authors": [
     "Firebase <support@firebase.com> (https://www.firebase.com/)"
   ],
