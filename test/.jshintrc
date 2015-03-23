@@ -1,5 +1,6 @@
 {
   "predef": [
+    "it", "describe", "jasmine", "spyOn", "expect", "beforeEach", "afterEach"
   ],
   "curly": true,
   "eqeqeq": true,
@@ -13,6 +14,6 @@
   "quotmark": "single",
   "strict": true,
   "trailing": true,
-  "undef": true,
-  "unused": true
+  "undef": false,
+  "unused": false
 }
