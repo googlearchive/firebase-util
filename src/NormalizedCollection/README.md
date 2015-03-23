@@ -3,7 +3,7 @@
 
 THIS IS A BETA FEATURE. NOT RECOMMENDED FOR USE IN PRODUCTION.
 
-See [LIVE EXAMPLES](http://firebase.github.io/firebase-util/toolbox/NormalizedCollection/).
+See [LIVE EXAMPLES](http://firebase.github.io/firebase-util/#/toolbox/NormalizedCollection/).
 
 ## Summary
 
