@@ -199,6 +199,13 @@ Append the previous `pageSize` records by triggering `child_added` events for ea
 items in any other page loaded before prev() was called. The `onPageChange()` method can be used to observe any
 next()/prev() calls that successfully load new content.
 
+### ref.page.setPage(pageNumber)
+
+  @param {int} pageNumber must be less than or equal to ref.page.pageCount
+
+Skip directly to the `pageNumber` specified. This can only load pages we know exist, so it must be less than or equal
+to the current `ref.page.pageCount` value.
+
 ### ref.page.hasNext()
 
    @returns {boolean}
