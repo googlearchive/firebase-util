@@ -8,6 +8,7 @@
       "We need to display the names and arts for the members in room <code>The Dojo</code>. " +
       "But this data is split across three different tables. Great! Time for a NormalizedCollection.",
       active: false,
+      baseUrl: 'https://fbutil.firebaseio.com/examples/chatfu/',
       urls: [
         'https://fbutil.firebaseio.com/examples/chatfu/users',
         'https://fbutil.firebaseio.com/examples/chatfu/nicknames'
@@ -24,6 +25,7 @@
       "new messaging app, <code>ChatFu!</code>. We need to join the users table with " +
       "messages, but they are stored in different paths. Great! Time for another NormalizedCollection.",
       active: false,
+      baseUrl: 'https://fbutil.firebaseio.com/examples/chatfu/',
       urls: [
         ['https://fbutil.firebaseio.com/examples/chatfu/messages/TheDojo', 'message'],
         ['https://fbutil.firebaseio.com/examples/chatfu/users', 'users', 'message.user']

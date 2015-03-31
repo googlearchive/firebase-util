@@ -53,6 +53,25 @@
       updateManager: function(scope, varName) {
         return UpdateManager($parse, scope, varName);
       },
+      createSampleConstructor: function(paths, baseUrl) {
+        var baseRef = baseUrl || findBaseRef(paths);
+        var pathParts = [];
+        var selectParts = [];
+        angular.forEach(paths, function(path) {
+          pathParts.push('  ' + pathString(path, baseRef));
+          angular.forEach(path.fields, function(f) {
+            if(f.exists()) {
+              selectParts.push('  ' + f.toString());
+            }
+          });
+        });
+        return (baseRef? 'var baseRef = new Firebase("' + baseRef + '");\n' : '' )
+          + 'new Firebase.util.NormalizedCollection(\n'
+          + pathParts.join(',\n')
+          + '\n).select(\n'
+          + selectParts.join(',\n')
+          + '\n).ref();\n';
+      },
       getJoinedRef: getJoinedRef
     }
   });
@@ -147,20 +166,6 @@
       f.pathName = key;
     });
   };
-  Path.prototype.toArray = function() {
-    return [this.url, this.alias, this.dep];
-  };
-  Path.prototype.toString = function() {
-    var parts;
-    if( this.dep || this.alias ) {
-      parts = [this.url, this.alias];
-      if( this.dep ) { parts.push(this.dep); }
-    }
-    else {
-      parts = this.url;
-    }
-    return angular.toJson(parts);
-  };
   Path.prototype.toProps = function() {
     var ref = this.getRef();
     if( this.alias || this.dep ) {
@@ -173,5 +178,48 @@
   Path.prototype.getRef = function() {
     return new Firebase(this.url);
   };
+
+  function pathString(path, baseRef) {
+    var s;
+    if( path.dep || path.alias ) {
+      s = '[' + fbText(path.url, baseRef) + ', "' + path.alias + '"';
+      if( path.dep ) { s += ', "' + path.dep + '"'; }
+      s += ']';
+    }
+    else {
+      s = fbText(path.url, baseRef);
+    }
+    return s;
+  }
+
+  function findBaseRef(paths) {
+    var nextBase;
+    var baseRef = basePath(paths[0].url) || null;
+    for(var i=1; i < paths.length && baseRef !== null; i++) {
+      nextBase = basePath(paths[i].url);
+      if( nextBase !== baseRef ) {
+        baseRef = null;
+        break;
+      }
+    }
+    return baseRef;
+  }
+
+  function fbText(url, baseRef) {
+    if( baseRef ) {
+      return 'baseRef.child("' + childPath(url, baseRef) + '")';
+    }
+    else {
+      return 'new Firebase("' + url + '")';
+    }
+  }
+
+  function basePath(url) {
+    return (url || '').replace(/^(.*\.firebaseio\.com).*$/, '$1');
+  }
+
+  function childPath(url, baseRef) {
+    return url.replace(baseRef, '');
+  }
 
 })(angular);
