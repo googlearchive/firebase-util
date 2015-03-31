@@ -187,12 +187,12 @@ util.inherits(RecordSet, AbstractRecord, {
     return key;
   },
 
-  _start: function(event) {
-    this.monitor.start(event);
+  _start: function() {
+    this.monitor.start();
   },
 
-  _stop:   function(event) {
-    this.monitor.stop(event);
+  _stop:   function(event, count) {
+    if( count === 0 ) { this.monitor.stop(); }
   }
 });
 
