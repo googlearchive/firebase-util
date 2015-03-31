@@ -1,20 +1,21 @@
 (function() {
 
   function sampleCode(paths) {
-    var fieldText = '';
-    var txt = 'new Firebase.util.NormalizedCollection(\n';
-    angular.forEach(paths, function(path) {
-      txt += '  ' + path.toString() + '\n';
+    var pathParts = [];
+    var selectParts = [];
+    angular.forEach(paths, function(path, ct) {
+      pathParts.push('  ' + path.toString());
       angular.forEach(path.fields, function(f) {
         if(f.exists()) {
-          fieldText += '  ' + f.toString() + '\n';
+          selectParts.push('  ' + f.toString());
         }
       });
     });
-    txt += ').select(\n';
-    txt += fieldText;
-    txt += ').ref();\n';
-    return txt;
+    return 'new Firebase.util.NormalizedCollection(\n'
+      + pathParts.join(',\n')
+      + '\n).select(\n'
+      + selectParts.join(',\n')
+      + '\n).ref();\n';
   }
 
   function findTab(tabs, id) {
