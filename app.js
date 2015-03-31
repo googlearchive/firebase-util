@@ -5,8 +5,8 @@
 
    var app = angular.module('app', ['ui.router', 'ui.bootstrap', 'ngSanitize', 'firebase']);
 
-  app.constant('VERSION_FIREBASE', '2.2.2');
-  app.constant('VERSION_FBUTIL', '0.2.2');
+  app.constant('VERSION_FIREBASE', '2.2.3');
+  app.constant('VERSION_FBUTIL', '0.2.3');
 
   // later if we have more libs we'll want to switch to this layout
    app.config(['$stateProvider', '$urlRouterProvider',
