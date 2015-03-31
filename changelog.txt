@@ -1,2 +1,0 @@
-
-fixed - Fixed #26 - Not synchronizing items with `$firebaseArray` for AngularFire
