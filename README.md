@@ -21,7 +21,8 @@ This is a collection of power toys (mostly experimental) and utilities for use i
 ### In the browser
 
 With Bower: `bower install firebase-util`
-From the CDN: https://cdn.firebase.com/libs/firebase-util/0.2.2/firebase-util.min.js
+
+From the CDN: https://cdn.firebase.com/libs/firebase-util/x.x.x/firebase-util.min.js
 
 ```
 <script>
