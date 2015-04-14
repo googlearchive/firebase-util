@@ -18,12 +18,19 @@ Query.prototype = {
   },
 
   'once': function(event, callback, cancel, context) {
-    function fn(snap) {
-      /*jshint validthis:true */
-      this.off(event, fn, this);
+    var self = this;
+    function successHandler(snap) {
+      self.off(event, successHandler);
       callback.call(context, snap);
     }
-    this.on(event, fn, cancel, this);
+
+    function cancelHandler(err) {
+      if( cancel ) {
+        cancel.call(context, err);
+      }
+    }
+
+    this.on(event, successHandler, cancelHandler);
   },
 
   'off': function(event, callback, context) {
