@@ -71,11 +71,12 @@ RecordList.prototype = {
   add: function(key, prevChild) {
     util.log.debug('RecordList.add: key=%s, prevChild=%s', key, prevChild);
     var rec = this.obs.child(key);
-    this.loading[key] = {rec: rec, prev: prevChild};
+    var fn = util.bind(this._valueUpdated, this, key);
+    this.loading[key] = {rec: rec, prev: prevChild, fn: fn};
     if( !this.loadComplete ) {
       this.initialKeysLeft.push(key);
     }
-    rec.watch('value', util.bind(this._valueUpdated, this, key));
+    rec.watch('value', fn);
   },
 
   remove: function(key) {
@@ -129,18 +130,23 @@ RecordList.prototype = {
       // newly added record
       var r = this.loading[key];
       delete this.loading[key];
-      this.recs[key] = r.rec;
-      this._putAfter(key, r.prev);
-      this._checkLoadState(key);
-      this._notify('child_added', key);
+      if( this.obs.filters.test(snap.val(), key, snap.getPriority()) ) {
+        this.recs[key] = r.rec;
+        this._putAfter(key, r.prev);
+        this._checkLoadState(key);
+        this._notify('child_added', key);
+      }
+      else {
+        util.log('RecordList: Filtered key %s', key);
+        r.rec.unwatch('value', r.fn);
+      }
     }
     else if(util.has(this.recs, key)) {
       // a changed record
       this._notify('child_changed', key);
     }
     else {
-      util.log('RecordList: Orphan key %s ignored. ' +
-      'Probably deleted locally and changed remotely at the same time.', key);
+      util.log('RecordList: Orphan key %s ignored. Probably a concurrent edit.', key);
     }
   },
 

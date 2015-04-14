@@ -323,7 +323,9 @@ describe('RecordSetEventManager', function() {
   }
 
   function stubRec() {
-    return hp.stubRec();
+    var rec = hp.stubRec();
+    rec.filters = { test: function() { return true; } };
+    return rec;
   }
 
   function cancelOnce(ref) {
