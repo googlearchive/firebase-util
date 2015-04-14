@@ -352,6 +352,12 @@ util.isFirebaseRef = function(x) {
   if( proto && proto.constructor === util.Firebase.prototype.constructor ) {
     return true;
   }
+
+  //todo-hack: SDK 2.2.x no longer works with the above. This is a hack to make that work until fixed
+  if( isObject && typeof(x.ref) === 'function' && typeof(x.ref().transaction) === 'function' ) {
+    return true;
+  }
+
   return util.find(wrappingClasses, function(C) {
     return isObject? x instanceof C : x === C;
   });

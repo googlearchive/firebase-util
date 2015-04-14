@@ -1,6 +1,7 @@
 
 var _ = require('lodash');
 var MockFirebase = require('mockfirebase').MockFirebase;
+var Firebase = require('firebase');
 
 addTwoDotOhStubs(MockFirebase);
 
@@ -38,6 +39,15 @@ exports.doAfterTest = (function() {
     subs.push(_.bind.apply(null, _.toArray(arguments)));
   }
 })();
+
+exports.liveRef = function(data, callback) {
+  var ref = new Firebase('https://fbutil.firebaseio.com/test/').push();
+  ref.onDisconnect().remove();
+  if( data ) {
+    ref.set(data, callback||function() {});
+  }
+  return ref;
+};
 
 /**
  * Creates a PathManager stub.

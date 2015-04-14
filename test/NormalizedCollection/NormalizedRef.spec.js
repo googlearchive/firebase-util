@@ -166,7 +166,7 @@ describe('NormalizedRef', function() {
       var ref = new NormalizedRef(rec);
       var mock = ref.$getMaster();
       var res = ref.push();
-      expect(res.name()).toBe(mock._lastAutoId);
+      expect(res.key()).toBe(mock._lastAutoId);
     });
 
     it('returns a child whose parent is the original ref', function() {
@@ -183,7 +183,7 @@ describe('NormalizedRef', function() {
       var rec = hp.stubRec();
       var ref = new NormalizedRef(rec);
       var res = ref.push(dat, cb, ctx);
-      expect(rec.child(res.name()).saveData).toHaveBeenCalledWith(dat, {
+      expect(rec.child(res.key()).saveData).toHaveBeenCalledWith(dat, {
          callback: cb, context: ctx, isUpdate: false
       });
     });

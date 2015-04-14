@@ -205,7 +205,7 @@ AbstractRecord.prototype = {
    * @returns {Record}
    */
   child: function(key) {
-    return this.getRef().child(key).$getRecord();
+    return this.getRef().ref().child(key).$getRecord();
   },
 
   /**
@@ -233,7 +233,7 @@ AbstractRecord.prototype = {
       prev = null;
     }
     else {
-      ref = this.getRef().child(id);
+      ref = this.getRef().ref().child(id);
     }
     //todo probably just have the record types pass in the final snapshot to _trigger
     //todo instead of this coupled and crazy dance
