@@ -77,7 +77,7 @@ util.inherits(RecordSet, AbstractRecord, {
     var self = this;
     var out = {};
     util.each(snaps, function(snap) {
-      if( self.filters.test(snap.val(), snap.key(), snap.getPriority()) ) {
+      if( snap.val() !== null && self.filters.test(snap.val(), snap.key(), snap.getPriority()) ) {
         out[snap.key()] = isExport? snap.exportVal() : snap.val();
       }
     });
