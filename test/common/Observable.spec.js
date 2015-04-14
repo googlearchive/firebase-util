@@ -78,7 +78,7 @@ describe('common/Observable.js', function() {
          obs.observe('test', xfn, fn);
          obs.stopObserving('test', xfn);
 
-         expect(fn).toHaveBeenCalledWith(null, jasmine.any(Object));
+         expect(fn).toHaveBeenCalledWith(null);
       });
    });
 

@@ -28,16 +28,6 @@ describe('Query', function() {
   });
 
   describe('#once', function () {
-    it('calls Record.watch with the correct arguments', function() {
-      var ref = hp.stubNormRef();
-      var rec = ref.$getRecord();
-      var q = new Query(ref, rec);
-      var fn = function() {};
-      var ctx = {};
-      q.once('value', fn, null, ctx);
-      expect(rec.watch).toHaveBeenCalledWith('value', jasmine.any(Function), null, q);
-    });
-
     it('calls Record.unwatch after being invoked', function() {
       var ref = hp.stubNormRef();
       var rec = ref.$getRecord();

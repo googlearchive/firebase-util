@@ -39,7 +39,7 @@ Observer.prototype = {
   },
 
   notifyCancelled: function(err) {
-    this.cancelFn.call(this.context, err||null, this);
+    this.cancelFn.call(this.context, err||null);
   }
 };
 

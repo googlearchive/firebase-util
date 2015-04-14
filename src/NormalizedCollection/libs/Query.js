@@ -14,18 +14,26 @@ function Query(ref, record) {
 
 Query.prototype = {
   'on': function(event, callback, cancel, context) {
+    if( arguments.length === 3 && util.isObject(cancel) ) {
+      context = cancel;
+      cancel = util.undef;
+    }
     this.$getRecord().watch(event, callback, cancel, context);
   },
 
   'once': function(event, callback, cancel, context) {
     var self = this;
+    if( arguments.length === 3 && util.isObject(cancel) ) {
+      context = cancel;
+      cancel = util.undef;
+    }
     function successHandler(snap) {
       self.off(event, successHandler);
       callback.call(context, snap);
     }
 
     function cancelHandler(err) {
-      if( cancel ) {
+      if( typeof(cancel) === 'function' && err !== null ) {
         cancel.call(context, err);
       }
     }
