@@ -1,5 +1,0 @@
-
-fixed - Incompatibility between Firebase SDK 2.2.3 and validation of input args for NormalizedCollection
-fixed - Improved interoperability between AngularFire services and NormalizedCollection
-fixed - Bug with using queries as input to NormalizedCollection.
-fixed - Applies `filter()` properly to RecordSet entries when using child_added.
