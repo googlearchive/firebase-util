@@ -233,6 +233,10 @@ AbstractRecord.prototype = {
       prev = null;
     }
     else {
+      if( util.isObject(id) ) {
+        snaps = id;
+        id = snaps.key();
+      }
       ref = this.getRef().ref().child(id);
     }
     //todo probably just have the record types pass in the final snapshot to _trigger
