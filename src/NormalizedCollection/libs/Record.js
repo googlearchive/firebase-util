@@ -334,7 +334,7 @@ ChildEventManager.prototype = {
   },
 
   update: function(snap, prev) {
-    if( snap !== null ) {
+    if( snap !== null && this.map.aliasFor(snap.ref().toString()) !== null ) {
       var args = [snap.key(), snap];
       if( prev !== util.undef ) { args.push(prev); }
       util.log('Record.ChildEventManager.update: event=%s, key=%s/%s', this.event, snap.ref().parent().key(), snap.key());
