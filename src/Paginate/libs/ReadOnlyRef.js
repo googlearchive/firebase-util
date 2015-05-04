@@ -15,9 +15,10 @@ ReadOnlyRef.prototype = {
   },
 
   'once': function(event, callback, cancel, context) {
+    var self = this;
     function fn(snap) {
       /*jshint validthis:true */
-      this.off(event, fn, this);
+      self.off(event, fn, self);
       callback.call(context, snap);
     }
     this.on(event, fn, cancel, this);
