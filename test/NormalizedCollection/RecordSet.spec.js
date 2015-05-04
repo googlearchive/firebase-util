@@ -184,6 +184,22 @@ describe('RecordSet', function() {
       expect(data).toHaveKey('r1');
       expect(data).not.toHaveKey('r2');
     });
+
+    it('should return null if master path is null', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var recs = new RecordSet(fm, new Filter());
+      var snaps = createSnaps(fm);
+      snaps[0] = hp.stubSnap(snaps[0].ref, null, null);
+      var data = recs.mergeData(snaps, true);
+      expect(data).toEqual(null);
+    });
+
+    it('should return null if no snapshots provided', function() {
+      var fm = makeFieldMap(makePathMgr());
+      var recs = new RecordSet(fm, new Filter());
+      var data = recs.mergeData([], true);
+      expect(data).toEqual(null);
+    });
   });
 
   describe('#forEachKey', function() {

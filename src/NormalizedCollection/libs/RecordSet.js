@@ -74,13 +74,16 @@ util.inherits(RecordSet, AbstractRecord, {
    * @returns {Object}
    */
   mergeData: function(snaps, isExport) {
-    var self = this;
-    var out = {};
-    util.each(snaps, function(snap) {
-      if( snap.val() !== null && self.filters.test(snap.val(), snap.key(), snap.getPriority()) ) {
-        out[snap.key()] = isExport? snap.exportVal() : snap.val();
-      }
-    });
+    var self = this, out = null;
+    // if the master path is empty, there is no data to be merged
+    if( snaps.length && snaps[0].val() !== null ) {
+      out = {};
+      util.each(snaps, function(snap) {
+        if( snap.val() !== null && self.filters.test(snap.val(), snap.key(), snap.getPriority()) ) {
+          out[snap.key()] = isExport? snap.exportVal() : snap.val();
+        }
+      });
+    }
     return out;
   },
 
