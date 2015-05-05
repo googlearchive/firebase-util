@@ -94,16 +94,23 @@ util.inherits(Record, AbstractRecord, {
    * @returns {Object}
    */
   mergeData: function(snaps, isExport) {
-    var map = this.getFieldMap();
-    var data = util.extend.apply(null, util.map(snaps, function(ss) {
-      return map.extractData(ss, isExport);
-    }));
-    if( isExport && snaps.length > 0 && snaps[0].getPriority() !== null ) {
-      if( !util.isObject(data) ) {
-        data = {'.value': data};
+    var data = null, map = this.getFieldMap();
+
+    // if the master path is null, the record does not exist
+    // so we do not add any data
+    if( snaps.length > 0 && snaps[0].val() !== null ) {
+      data = util.extend.apply(null, util.map(snaps, function(ss) {
+        return map.extractData(ss, isExport);
+      }));
+
+      if( isExport && data !== null && snaps[0].getPriority() !== null ) {
+        if( !util.isObject(data) ) {
+          data = {'.value': data};
+        }
+        data['.priority'] = snaps[0].getPriority();
       }
-      data['.priority'] = snaps[0].getPriority();
     }
+
     return data;
   },
 
@@ -262,7 +269,8 @@ ValueEventManager.prototype = {
     this._checkLoadState();
     util.log('Record.ValueEventManager.update: url=%s, loadCompleted=%s', snap.ref().toString(), this.loadCompleted);
     if( this.loadCompleted ) {
-      this.rec.handler('value')(util.toArray(this.snaps));
+      var snaps = util.toArray(this.snaps);
+      this.rec.handler('value')(snaps);
     }
   },
 

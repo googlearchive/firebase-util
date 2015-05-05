@@ -28,6 +28,7 @@ function AbstractRecord(fieldMap, name, url) {
   self._map = fieldMap;
   self._name = name;
   self._url = url;
+  self.lastMergedValue = util.undef; // starts undefined since first value may be null
   self._obs = new util.Observable(
     ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
     {
@@ -231,6 +232,12 @@ AbstractRecord.prototype = {
       id = null;
       ref = this.getRef();
       prev = null;
+      // this is necessary because data may change in one of the merged nodes which does
+      // not correspond to the data we are displaying, so we need to actually do the
+      // content merge and evaluate the final object to decide if value event should be triggered
+      var currentValue = this.mergeData(snaps);
+      if( util.isEqual(currentValue, this.lastMergedValue) ) { return; }
+      this.lastMergedValue = currentValue;
     }
     else {
       if( util.isObject(id) ) {
@@ -239,8 +246,6 @@ AbstractRecord.prototype = {
       }
       ref = this.getRef().ref().child(id);
     }
-    //todo probably just have the record types pass in the final snapshot to _trigger
-    //todo instead of this coupled and crazy dance
     if( snaps instanceof NormalizedSnapshot ) {
       args = [event, snaps];
     }

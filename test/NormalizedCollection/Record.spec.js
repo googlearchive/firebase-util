@@ -127,13 +127,34 @@ describe('Record', function() {
       expect(data.nest.p4val['.value']).toBe(false);
     });
 
-    it('should include .value if export == true and value has a priority', function() {
+    it('should include .value if export === true and node has a priority', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
       var snaps = createSnaps(defaultIdFn,
-        null, null, {$value: 0, $priority: 1}, null
+        true, //first snap cannot be null
+        null,
+        {$value: 0, $priority: 1},
+        null
       );
       var data = rec.mergeData(snaps, true);
       expect(data.p3val).toEqual({'.value': 0, '.priority': 1});
+    });
+
+    it('should return null value if master path is null, even when other paths have data', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var snaps = createSnaps(defaultIdFn,
+        null,
+        {f99: 'p2.f99val'},
+        '99',
+        {$value: false, $priority: 44}
+      );
+      var data = rec.mergeData(snaps, true);
+      expect(data).toEqual(null);
+    });
+
+    it('should be null if no snapshots provided', function() {
+      var rec = new Record(makeFieldMap(makePathMgr()));
+      var data = rec.mergeData([], true);
+      expect(data).toEqual(null);
     });
 
     it('should include correct val for dynamic fields');

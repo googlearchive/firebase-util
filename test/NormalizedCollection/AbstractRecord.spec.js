@@ -12,9 +12,11 @@ describe('AbstractRecord', function() {
       this._super(hp.stubFieldMap());
       this.setRef(hp.stubNormRef());
     };
+    var i = 0;
     util.inherits(Rec, AbstractRecord, {
       _start: jasmine.createSpy('_start'),
-      _stop: jasmine.createSpy('_stop')
+      _stop: jasmine.createSpy('_stop'),
+      mergeData: jasmine.createSpy('mergeData').and.callFake(function() { return 'call'+(++i); })
     });
   });
 
