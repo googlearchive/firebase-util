@@ -72,7 +72,7 @@ RecordList.prototype = {
     util.log.debug('RecordList.add: key=%s, prevChild=%s', key, prevChild);
     var rec = this.obs.child(key);
     var fn = util.bind(this._valueUpdated, this, key);
-    this.loading[key] = {rec: rec, prev: prevChild, fn: fn};
+    this.loading[key] = {rec: rec, prev: prevChild, fn: fn, unwatch: function() { rec.unwatch('value', fn); }};
     if( !this.loadComplete ) {
       this.initialKeysLeft.push(key);
     }
@@ -131,14 +131,14 @@ RecordList.prototype = {
       var r = this.loading[key];
       delete this.loading[key];
       if( this.obs.filters.test(snap.val(), key, snap.getPriority()) ) {
-        this.recs[key] = r.rec;
+        this.recs[key] = r;
         this._putAfter(key, r.prev);
         this._checkLoadState(key);
         this._notify('child_added', key);
       }
       else {
         util.log('RecordList: Filtered key %s', key);
-        r.rec.unwatch('value', r.fn);
+        r.unwatch();
       }
     }
     else if(util.has(this.recs, key)) {
@@ -214,7 +214,7 @@ RecordList.prototype = {
   _dropRecord: function(key) {
     if(util.has(this.recs, key)) {
       var snap = this.snaps[key];
-      this.recs[key].unwatch('value', this._valueUpdated, this);
+      this.recs[key].unwatch();
       delete this.recs[key];
       delete this.snaps[key];
       delete this.loading[key];

@@ -243,7 +243,6 @@ function ValueEventManager(rec) {
   this.rec = rec;
   this.pm = rec.getPathManager();
   this.running = false;
-  this.lastMergedValue = util.undef; // starts undefined
   this._init();
 }
 
@@ -271,11 +270,7 @@ ValueEventManager.prototype = {
     util.log('Record.ValueEventManager.update: url=%s, loadCompleted=%s', snap.ref().toString(), this.loadCompleted);
     if( this.loadCompleted ) {
       var snaps = util.toArray(this.snaps);
-      var newValue = this.rec.mergeData(snaps);
-      if( !util.isEqual(newValue, this.lastMergedValue) ) {
-        this.lastMergedValue = newValue;
-        this.rec.handler('value')(snaps);
-      }
+      this.rec.handler('value')(snaps);
     }
   },
 
