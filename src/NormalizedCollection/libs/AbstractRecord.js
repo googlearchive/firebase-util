@@ -234,11 +234,9 @@ AbstractRecord.prototype = {
       prev = null;
       // this is necessary because data may change in one of the merged nodes which does
       // not correspond to the data we are displaying, so we need to actually do the
-      // content merge and evaluate the final object to decide if changes exist
+      // content merge and evaluate the final object to decide if value event should be triggered
       var currentValue = this.mergeData(snaps);
-      if( util.isEqual(currentValue, this.lastMergedValue) ) {
-        return;
-      }
+      if( util.isEqual(currentValue, this.lastMergedValue) ) { return; }
       this.lastMergedValue = currentValue;
     }
     else {
