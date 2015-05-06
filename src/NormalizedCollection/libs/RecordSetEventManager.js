@@ -1,5 +1,6 @@
 'use strict';
 
+var SnapshotFactory = require('./SnapshotFactory');
 var util = require('../../common');
 
 /**
