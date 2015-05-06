@@ -1,6 +1,5 @@
 'use strict';
 
-var NormalizedSnapshot = require('./NormalizedSnapshot');
 var util = require('../../common/');
 
 /**
@@ -46,13 +45,6 @@ function AbstractRecord(fieldMap, name, url) {
       }
     }
   );
-  self.eventHandlers = {
-    'value': util.bind(self._trigger, self, 'value'),
-    'child_added': util.bind(self._trigger, self, 'child_added'),
-    'child_changed': util.bind(self._trigger, self, 'child_changed'),
-    'child_removed': util.bind(self._trigger, self, 'child_removed'),
-    'child_moved': util.bind(self._trigger, self, 'child_moved')
-  };
 }
 
 AbstractRecord.prototype = {
@@ -225,49 +217,14 @@ AbstractRecord.prototype = {
     return this._url;
   },
 
-  _trigger: function(event, id, snaps, prev) {
-    var ref, args;
-    if( event === 'value' ) {
-      snaps = id;
-      id = null;
-      ref = this.getRef();
-      prev = null;
-      // this is necessary because data may change in one of the merged nodes which does
-      // not correspond to the data we are displaying, so we need to actually do the
-      // content merge and evaluate the final object to decide if value event should be triggered
-      var currentValue = this.mergeData(snaps);
-      if( util.isEqual(currentValue, this.lastMergedValue) ) { return; }
-      this.lastMergedValue = currentValue;
-    }
-    else {
-      if( util.isObject(id) ) {
-        snaps = id;
-        id = snaps.key();
-      }
-      ref = this.getRef().ref().child(id);
-    }
-    if( snaps instanceof NormalizedSnapshot ) {
-      args = [event, snaps];
-    }
-    else {
-      if( util.isObject(snaps) && !util.isArray(snaps) && typeof snaps.val === 'function' ) {
-        snaps = [snaps];
-      }
-      args = [event, new NormalizedSnapshot(ref, snaps)];
-    }
-    if( event === 'child_added' || event === 'child_moved' ) {
-      args.push(prev);
-    }
-    util.log.debug('AbstractRecord._trigger: event=%s, id=%s, snaps=%d, prev=%s', event, id, snaps.length, prev);
-    this._obs.triggerEvent.apply(this._obs, args);
-  },
-
-  /**
-   * @param {string} event
-   * @returns {function}
-   */
-  handler: function(event) {
-    return this.eventHandlers[event];
+  trigger: function(snapshotFactory) {
+    util.log.debug('AbstractRecord._trigger: event=%s, id=%s, snaps=%d, prev=%s',
+      snapshotFactory.event,
+      snapshotFactory.key,
+      snapshotFactory.snaps.length,
+      snapshotFactory.prevChild
+    );
+    this._obs.triggerEvent(snapshotFactory.event, snapshotFactory.create(this.getRef()));
   },
 
   /**

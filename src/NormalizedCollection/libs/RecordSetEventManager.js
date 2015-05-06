@@ -1,12 +1,12 @@
 'use strict';
 
+var SnapshotFactory = require('./SnapshotFactory');
 var util = require('../../common');
 
 /**
  * Monitors the references attached to a RecordSet and maintains a cache of
  * current snapshots (inside RecordList below). Any time there is an update, this calls
- * RecordSet.handler() to invoke the correct event types (child_added, child_removed, value, et al)
- * on the RecordSet object.
+ * RecordSet.trigger() to notify event listeners.
  *
  * @param parentRec
  * @constructor
@@ -151,32 +151,21 @@ RecordList.prototype = {
   },
 
   _notify: function(event, key, oldSnap) {
-    var args = [key];
-    // do not fetch prev child for other events as it costs an indexOf
-    switch(event) {
-      case 'child_added':
-      case 'child_moved':
-        var prev = this._getPrevChild(key);
-        args.push(this.snaps[key], prev);
-        break;
-      case 'child_changed':
-        args.push(this.snaps[key]);
-        break;
-      case 'child_removed':
-        args.push(oldSnap);
-        break;
-      default:
-        throw new Error('Invalid event type ' + event + ' for key ' + key);
+    var prev;
+    if( event === 'child_added' || event === 'child_moved' ) {
+      prev = this._getPrevChild(key);
     }
     util.log('RecordList._notify: event=%s, key=%s, prev=%s', event, key, prev);
-    this.obs.handler(event).apply(this.obs, args);
+    var factory = new SnapshotFactory(event, key, oldSnap||this.snaps[key], prev);
+    this.obs.trigger(factory);
     this._notifyValue();
   },
 
   _notifyValue: function() {
     util.log.debug('RecordList._notifyValue: snap_keys=%s, loadComplete=%s', util.keys(this.snaps), this.loadComplete);
     if( this.loadComplete ) {
-      this.obs.handler('value')(util.toArray(this.snaps));
+      var factory = new SnapshotFactory('value', null, util.toArray(this.snaps));
+      this.obs.trigger(factory);
     }
   },
 
