@@ -23,6 +23,13 @@ SnapshotFactory.prototype.create = function(ref) {
   return snapshot;
 };
 
+SnapshotFactory.prototype.toString = function() {
+  return util.printf(
+    'SnapshotFactory(event=%s, key=%s, numberOfSnapshots=%s, prevChild=%s',
+    this.event, this.key, this.snaps.length, this.prevChild === util.undef? 'undefined' : this.prevChild
+  );
+};
+
 function assertValidTrigger(trigger) {
   switch(trigger.event) {
     case 'value':

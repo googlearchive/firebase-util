@@ -211,6 +211,7 @@ describe('RecordField', function() {
     it('should invoke off() for ref', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
       var spy = spyOn(rec.getPathManager().first().ref(), 'off');
+      rec._start('value');
       rec._stop('value');
       expect(spy).toHaveBeenCalled();
     });
@@ -218,6 +219,7 @@ describe('RecordField', function() {
     it('should use correct event', function() {
       var rec = new RecordField(hp.stubFieldMap(['p1,$value,foo'], ['p1']));
       var spy = spyOn(rec.getPathManager().first().ref(), 'off');
+      rec._start('value');
       rec._stop('value');
       expect(spy.calls.argsFor(0)[0]).toBe('value');
     });

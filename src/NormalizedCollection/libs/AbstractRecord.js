@@ -218,12 +218,7 @@ AbstractRecord.prototype = {
   },
 
   trigger: function(snapshotFactory) {
-    util.log.debug('AbstractRecord._trigger: event=%s, id=%s, snaps=%d, prev=%s',
-      snapshotFactory.event,
-      snapshotFactory.key,
-      snapshotFactory.snaps.length,
-      snapshotFactory.prevChild
-    );
+    util.log.debug('AbstractRecord._trigger: %s', snapshotFactory.toString());
     this._obs.triggerEvent(snapshotFactory.event, snapshotFactory.create(this.getRef()));
   },
 
