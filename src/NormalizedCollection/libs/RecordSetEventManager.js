@@ -99,7 +99,9 @@ RecordList.prototype = {
   masterPathLoaded: function() {
     util.log.debug('RecordList: Initial data has been loaded from master list at %s', this.url);
     this.masterLoaded = true;
-    this._checkLoadState();
+    if( this._checkLoadState() ) {
+      this._notifyValue();
+    }
   },
 
   unloaded: function() {
@@ -107,7 +109,6 @@ RecordList.prototype = {
   },
 
   findKey: function(key) {
-    //todo cache these lookups in a weak map?
     return util.indexOf(this.recIds, key);
   },
 
@@ -133,12 +134,14 @@ RecordList.prototype = {
       if( this.obs.filters.test(snap.val(), key, snap.getPriority()) ) {
         this.recs[key] = r;
         this._putAfter(key, r.prev);
-        this._checkLoadState(key);
         this._notify('child_added', key);
       }
       else {
         util.log('RecordList: Filtered key %s', key);
         r.unwatch();
+      }
+      if( this._checkLoadState(key) ) {
+        this._notifyValue();
       }
     }
     else if(util.has(this.recs, key)) {
@@ -174,8 +177,8 @@ RecordList.prototype = {
   },
 
   _notifyValue: function() {
-    util.log.debug('RecordList._notifyValue: snap_keys=%s, loadComplete=%s', util.keys(this.snaps), this.loadComplete);
     if( this.loadComplete ) {
+      util.log.debug('RecordList._notifyValue: snap_keys=%s', util.keys(this.snaps));
       this.obs.handler('value')(util.toArray(this.snaps));
     }
   },
@@ -231,16 +234,16 @@ RecordList.prototype = {
    * @private
    */
   _checkLoadState: function(key) {
-    if( this.loadComplete ) { return; }
-    if( key ) {
-      util.remove(this.initialKeysLeft, key);
-    }
-    if( !this.initialKeysLeft.length && this.masterLoaded ) {
-      this.loadComplete = true;
-      if( !key ) {
-        this._notifyValue();
+    if( !this.loadComplete ) {
+      if( key ) {
+        util.remove(this.initialKeysLeft, key);
+      }
+      if( !this.initialKeysLeft.length && this.masterLoaded ) {
+        this.loadComplete = true;
+        return true;
       }
     }
+    return false;
   }
 };
 
