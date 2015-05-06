@@ -57,6 +57,10 @@ Query.prototype = {
     return this.$replicate('orderByKey', util.toArray(arguments));
   },
 
+  'orderByValue': function() {
+    return this.$replicate('orderByValue', util.toArray(arguments));
+  },
+
   'orderByPriority': function() {
     return this.$replicate('orderByPriority', util.toArray(arguments));
   },

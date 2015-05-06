@@ -195,6 +195,9 @@ function extractKey(snap, field) {
     case '$priority':
       v = snap.getPriority();
       break;
+    case '$value':
+      v = snap.val();
+      break;
     default:
       var obj = snap.val();
       if( !util.isObject(obj) ) {
@@ -228,6 +231,9 @@ function baseRef(ref, field) {
   }
   else if( field === '$priority' ) {
     return ref.orderByPriority();
+  }
+  else if( field === '$value' ) {
+    return ref.orderByValue();
   }
   else {
     return ref.orderByChild(field);
