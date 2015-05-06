@@ -3,6 +3,7 @@
 var FieldMap           = require('./FieldMap');
 var RecordField        = require('./RecordField');
 var AbstractRecord     = require('./AbstractRecord');
+var SnapshotFactory       = require('./SnapshotFactory');
 var util               = require('../../common');
 
 function Record(fieldMap) {
@@ -269,8 +270,7 @@ ValueEventManager.prototype = {
     this._checkLoadState();
     util.log('Record.ValueEventManager.update: url=%s, loadCompleted=%s', snap.ref().toString(), this.loadCompleted);
     if( this.loadCompleted ) {
-      var snaps = util.toArray(this.snaps);
-      this.rec.handler('value')(snaps);
+      this.rec.trigger(new SnapshotFactory('value', this.rec.getName(), util.toArray(this.snaps)));
     }
   },
 
@@ -343,10 +343,8 @@ ChildEventManager.prototype = {
 
   update: function(snap, prev) {
     if( snap !== null && this.map.aliasFor(snap.ref().toString()) !== null ) {
-      var args = [snap.key(), snap];
-      if( prev !== util.undef ) { args.push(prev); }
       util.log('Record.ChildEventManager.update: event=%s, key=%s/%s', this.event, snap.ref().parent().key(), snap.key());
-      this.rec.handler(this.event).apply(this.rec, args);
+      this.rec.trigger(new SnapshotFactory(this.event, snap.key(), snap, prev));
     }
   }
 };

@@ -83,7 +83,7 @@ describe('AbstractRecord', function() {
         expect(snap.val()).toBe(99);
       });
       rec.watch('value', spy);
-      rec.handler('value')([hp.stubSnap(hp.mockRef('p1'), 99)]);
+      rec.trigger(makeSnapshotFactory('value', 'p1', 99));
       expect(spy).toHaveBeenCalled();
     });
 
@@ -94,7 +94,7 @@ describe('AbstractRecord', function() {
       });
       var rec = new Rec();
       rec.watch('value', spy, ctx);
-      rec.handler('value')(hp.snaps(99));
+      rec.trigger(makeSnapshotFactory('value', 'p1', 99));
       expect(spy).toHaveBeenCalled();
     });
   });
@@ -104,9 +104,9 @@ describe('AbstractRecord', function() {
       var rec = new Rec();
       var spy = jasmine.createSpy();
       rec.watch('value', spy);
-      rec.handler('value')(hp.snaps(99));
+      rec.trigger(makeSnapshotFactory('value', 'p1', 99));
       rec.unwatch('value', spy);
-      rec.handler('value')(hp.snaps(100));
+      rec.trigger(makeSnapshotFactory('value', 'p1', 100));
       expect(spy.calls.count()).toBe(1);
     });
 
@@ -116,9 +116,9 @@ describe('AbstractRecord', function() {
       var spy = jasmine.createSpy();
       rec.watch('value', spy, ctxA);
       rec.watch('value', spy, ctxB);
-      rec.handler('value')(hp.snaps(99));
+      rec.trigger(makeSnapshotFactory('value', 'p1', 99));
       rec.unwatch('value', spy, ctxA);
-      rec.handler('value')(hp.snaps(100));
+      rec.trigger(makeSnapshotFactory('value', 'p1', 100));
       expect(spy.calls.count()).toBe(3);
     });
 
@@ -128,7 +128,7 @@ describe('AbstractRecord', function() {
       rec.watch('value', spy);
       rec.watch('value', spy, {});
       rec.unwatch('value');
-      rec.handler('value')(hp.snaps(99));
+      rec.trigger(makeSnapshotFactory('value', 'p1', 99));
       expect(spy.calls.count()).toBe(0);
     });
 
@@ -148,4 +148,17 @@ describe('AbstractRecord', function() {
       expect(rec._stop).not.toHaveBeenCalled();
     });
   });
+
+  function makeSnapshotFactory(event, key, data, prevChild) {
+    var ref = hp.mockRef(key);
+    return {
+      event: event,
+      key: ref.key(),
+      prevChild: prevChild,
+      toString: function() { return 'FakeSnapshotFactory(' + ref.key() + ')'; },
+      create: function() {
+        return hp.stubSnap(ref, data);
+      }
+    };
+  }
 });

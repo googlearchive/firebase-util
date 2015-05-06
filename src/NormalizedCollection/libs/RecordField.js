@@ -3,9 +3,11 @@
 var PathManager        = require('./PathManager');
 var FieldMap           = require('./FieldMap');
 var AbstractRecord     = require('./AbstractRecord');
+var SnapshotFactory       = require('./SnapshotFactory');
 var util               = require('../../common');
 
 function RecordField(fieldMap) {
+  this.handlers = {};
   this.path = fieldMap.getPathManager().first();
   this._super(fieldMap, this.path.name(), this.path.url());
   if( fieldMap.getPathManager().count() !== 1 ) {
@@ -94,11 +96,17 @@ util.inherits(RecordField, AbstractRecord, {
   getClass: function() { return RecordField; },
 
   _start: function(event) {
-    this.path.ref().on(event, this.handler(event), this._cancel, this);
+    var self = this;
+    this.handlers[event] = function(snap, prev) {
+      self.trigger(new SnapshotFactory(event, snap.key(), snap, prev));
+    };
+    this.path.ref().on(event, this.handlers[event], this._cancel, this);
   },
 
   _stop:   function(event) {
-    this.path.ref().off(event, this.handler(event), this);
+    if( this.handlers.hasOwnProperty(event) ) {
+      this.path.ref().off(event, this.handlers[event], this);
+    }
   }
 });
 

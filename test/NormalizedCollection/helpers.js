@@ -341,7 +341,7 @@ exports.stubRec = function(pathList, fieldList, ref) {
   var fieldMap = exports.stubFieldMap(fieldList, mgr);
   var rec = jasmine.createSpyObj('RecordStub',
     ['getPathManager', 'mergeData', 'child', 'getChildSnaps', 'hasChild', 'forEachKey',
-      'getFieldMap', 'setRef', 'watch', 'unwatch', 'getClass', 'saveData', 'handler', '$trigger',
+      'getFieldMap', 'setRef', 'watch', 'unwatch', 'getClass', 'saveData', 'trigger',
       'getPriority', 'makeChild', 'getRef', 'getUrl', 'getName']
   );
   rec.$spies = [];
@@ -416,12 +416,6 @@ exports.stubRec = function(pathList, fieldList, ref) {
   rec.getClass.and.callFake(function() { return function() {
     return exports.stubRec(pathList, fieldList);
   }});
-  rec.handler.and.callFake(function(event) {
-    return function() {
-      var args = [event].concat(_.toArray(arguments));
-      rec.$trigger.apply(rec, args);
-    };
-  });
   rec.makeChild.and.callFake(function(key) { return rec.child(key); });
   rec.getUrl.and.callFake(function() {
     var urls = _.map(paths, function(p) { return p.url(); });
