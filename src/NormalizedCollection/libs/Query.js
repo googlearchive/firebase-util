@@ -18,7 +18,15 @@ Query.prototype = {
       context = cancel;
       cancel = util.undef;
     }
-    this.$getRecord().watch(event, callback, cancel, context);
+
+    function cancelHandler(err) {
+      if( typeof(cancel) === 'function' && err !== null ) {
+        cancel.call(context, err);
+      }
+    }
+
+    this.$getRecord().watch(event, callback, cancelHandler, context);
+    return callback;
   },
 
   'once': function(event, callback, cancel, context) {
@@ -38,7 +46,7 @@ Query.prototype = {
       }
     }
 
-    this.on(event, successHandler, cancelHandler);
+    return this.on(event, successHandler, cancelHandler);
   },
 
   'off': function(event, callback, context) {
