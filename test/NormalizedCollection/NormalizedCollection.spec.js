@@ -23,8 +23,4 @@ describe('NormalizedCollection', function() {
       }).not.toThrowError();
     });
   });
-
-  describe('#filter', function() {
-    it('should blow up if filter is not a function');
-  });
 });

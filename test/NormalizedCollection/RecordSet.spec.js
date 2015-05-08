@@ -297,22 +297,6 @@ describe('RecordSet', function() {
     });
   });
 
-  describe('#_start', function() {
-    it('should invoke on() for master path');
-
-    it('should not invoke on() for other paths');
-
-    it('should not invoke on() twice (even for multiple events)');
-
-    it('should invoke on() again if off() is called');
-  });
-
-  describe('#_stop', function() {
-    it('should invoke off() for master path');
-
-    it('should not call off() if on never called');
-  });
-
   function makePathMgr() {
     return new PathManager(makePaths());
   }

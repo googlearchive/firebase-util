@@ -68,12 +68,12 @@ var setup = {
   },
 
   afterEach: function(assert) {
-    this.fbRef.remove(assert.async());
-    Firebase.util.logLevel();
     subscriptions.forEach(function(sub) {
       sub.ref.off(sub.event, sub.fn);
     });
     subscriptions = [];
+    this.fbRef.remove(assert.async());
+    Firebase.util.logLevel();
   }
 };
 
@@ -182,6 +182,64 @@ QUnit.test('update() writes correct data to each path', function(assert) {
         done();
       }, done);
     }, done);
+  });
+});
+
+QUnit.test('manipulating data can trigger child_added and child_removed events for filtered values', function(assert) {
+  assert.expect(7);
+  var done = assert.async();
+  var fbRef = this.fbRef;
+
+  fbRef.child('users/chuck/filtered').set(true, function() {
+    // create our normalized collection
+    var normRef = new Firebase.util.NormalizedCollection(
+      fbRef.child('users'),
+      fbRef.child('nicknames')
+    ).select(
+      'users.name',
+      'users.style',
+      'users.filtered',
+      { 'key':'nicknames.$value', 'alias':'nick' }
+    ).filter(
+      function(data) {
+        return data.filtered !== true;
+      }
+    ).ref();
+
+    var adds = [], removes = [], changes = [], values = [];
+    subscribe(normRef, 'child_added', function(snap) {
+      adds.push(snap.key());
+    });
+    subscribe(normRef, 'child_removed', function(snap) {
+      removes.push(snap.key());
+    });
+    subscribe(normRef, 'child_changed', function(snap) {
+      changes.push(snap.key());
+    });
+    subscribe(normRef, 'value', function(snap) {
+      values = Object.keys(snap.val());
+    });
+
+    // give events time to process
+    normRef.once('value', function() {
+      assert.deepEqual(values, ['bruce'], 'Chuck should be filtered initially and not in value event');
+      assert.deepEqual(adds, ['bruce'], 'Chuck should be filtered initially and not in child_added event');
+      fbRef.child('users/chuck/filtered').set(false, function() {
+        setTimeout(function() {
+          assert.deepEqual(adds, ['bruce', 'chuck'], 'Chuck should trigger add event if removed from filtering');
+          assert.deepEqual(values, ['bruce', 'chuck'], 'Chuck should trigger value event if removed from filtering');
+          assert.equal(changes.length, 0, 'Chuck should not trigger a change if removed from filtering');
+          fbRef.child('users/chuck/filtered').set(true, function() {
+            // give events time to finish
+            setTimeout(function() {
+              assert.deepEqual(removes, ['chuck'], 'Chuck should trigger remove event if filtered again');
+              assert.equal(changes.length, 0, 'Chuck should not trigger a change if filtered again');
+              done();
+            }, 100);
+          });
+        }, 100);
+      });
+    });
   });
 });
 
@@ -376,7 +434,7 @@ QUnit.test('Realtime all the things (a big test of sequential ops with filtering
       name: "set nick then user",
       expect: 2,
       setup: function () {
-        return setNick().then(setUser);
+        return setNick().delay(10).then(setUser);
       },
       test: function(eventMonitor) {
         eventMonitor.expect('child_added', 'seagal');
@@ -388,7 +446,7 @@ QUnit.test('Realtime all the things (a big test of sequential ops with filtering
       name: 'remove user then nick',
       expect: 2,
       setup: function () {
-        return removeUser().then(removeNick);
+        return removeUser().delay(10).then(removeNick);
       },
       test: function(eventMonitor) {
         eventMonitor.expect('child_removed', 'seagal');
@@ -399,12 +457,14 @@ QUnit.test('Realtime all the things (a big test of sequential ops with filtering
 
     {
       name: 'set user then nick',
-      expect: 2,
+      expect: 4,
       setup: function () {
-        return setUser().then(setNick);
+        return setUser().delay(10).then(setNick);
       },
       test: function(eventMonitor) {
         eventMonitor.expect('child_added', 'seagal');
+        eventMonitor.expect('child_changed', 'seagal');
+        eventMonitor.expect('value', ['bruce', 'chuck', 'seagal']);
         eventMonitor.expect('value', ['bruce', 'chuck', 'seagal']);
       }
     },
@@ -413,7 +473,7 @@ QUnit.test('Realtime all the things (a big test of sequential ops with filtering
       name: 'remove nick then user',
       expect: 4,
       setup: function() {
-        return removeNick().then(removeUser);
+        return removeNick().delay(10).then(removeUser);
       },
       test: function(eventMonitor) {
         eventMonitor.expect('child_changed', 'seagal');
@@ -430,30 +490,29 @@ QUnit.test('Realtime all the things (a big test of sequential ops with filtering
       test: function() {}
     },
 
-    //todo: add these after filtering works with child_changed events
-    //{
-    //  name: 'unfilter existing record',
-    //  expect: 2,
-    //  setup: function() {
-    //    return changeFilterStatus(false)
-    //  },
-    //  test: function(eventMonitor) {
-    //      eventMonitor.expect('child_added', 'seagal');
-    //      eventMonitor.expect('value', ['bruce', 'chuck']);
-    //    }
-    //},
-    //
-    //{
-    //  name: 'filter existing record',
-    //  expect: 2,
-    //  setup: function() {
-    //    return changeFilterStatus(false)
-    //  },
-    //  test: function(eventMonitor) {
-    //      eventMonitor.expect('child_added', 'seagal');
-    //      eventMonitor.expect('value', ['bruce', 'chuck']);
-    //    }
-    //},
+    {
+      name: 'unfilter existing record',
+      expect: 2,
+      setup: function() {
+        return changeFilterStatus(false)
+      },
+      test: function(eventMonitor) {
+        eventMonitor.expect('child_added', 'seagal');
+        eventMonitor.expect('value', ['bruce', 'chuck', 'seagal']);
+      }
+    },
+
+    {
+      name: 'filter existing record',
+      expect: 2,
+      setup: function() {
+        return changeFilterStatus(true)
+      },
+      test: function(eventMonitor) {
+        eventMonitor.expect('child_removed', 'seagal');
+        eventMonitor.expect('value', ['bruce', 'chuck']);
+      }
+    },
 
     {
       name: 'remove filtered user',
@@ -523,7 +582,7 @@ QUnit.test('Realtime all the things (a big test of sequential ops with filtering
       if( ops.length ) {
         currentOpNumber++;
         currentOp = ops.shift();
-        log('=========== running ' + "OP" + currentOpNumber + " (" + currentOp.name + ')'); //debug
+        log('=========== running ' + "OP" + currentOpNumber + " (" + currentOp.name + ')');
         return currentOp.setup()
           .delay(100)
           .then(currentOp.test.bind(null, eventMonitor))
