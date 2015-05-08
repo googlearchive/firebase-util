@@ -145,8 +145,10 @@ RecordList.prototype = {
       }
     }
     else if(util.has(this.recs, key)) {
-      // a changed record
-      this._notify('child_changed', key);
+      if( snap.val() !== null ) { // null records are in the process of being deleted
+        // a changed record
+        this._notify('child_changed', key);
+      }
     }
     else {
       util.log('RecordList: Orphan key %s ignored. Probably a concurrent edit.', key);

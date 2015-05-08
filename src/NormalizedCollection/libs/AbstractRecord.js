@@ -29,7 +29,7 @@ function AbstractRecord(fieldMap, name, url) {
   self._url = url;
   self.lastMergedValue = util.undef; // starts undefined since first value may be null
   self._obs = new util.Observable(
-    ['value', 'child_added', 'child_removed', 'child_moved', 'child_changed'],
+    ['child_added', 'child_removed', 'child_changed', 'child_moved', 'value'],
     {
       onAdd: function(event) {
         var count = self._obs.getObservers(event).length;
