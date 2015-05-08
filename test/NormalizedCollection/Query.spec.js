@@ -23,7 +23,7 @@ describe('Query', function() {
       var fn = function() {};
       var ctx = {};
       q.on('value', fn, null, ctx);
-      expect(rec.watch).toHaveBeenCalledWith('value', fn, null, ctx);
+      expect(rec.watch).toHaveBeenCalledWith('value', fn, jasmine.any(Function), ctx);
     });
   });
 
