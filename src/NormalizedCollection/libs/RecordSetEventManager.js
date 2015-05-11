@@ -27,10 +27,7 @@ RecordSetEventManager.prototype = {
       this.masterRef.on('child_added',   this._add,    this);
       this.masterRef.on('child_removed', this._remove, this);
       this.masterRef.on('child_moved',   this._move,   this);
-      /**
-       * This depends on the fact that all child_added events on a given path will be triggered
-       * before
-       */
+      // make sure all existing keys are loaded into memory before we let recList trigger value events
       this.masterRef.once('value', this.recList.masterPathLoaded, this.recList);
     }
     return this;
@@ -116,42 +113,83 @@ RecordList.prototype = {
     util.each(this.recs, function(rec, key) {
       this.remove(key);
     }, this);
+    util.each(this.filtered, function(rec, key) {
+      this._dropRecord(key);
+    }, this);
+    util.each(this.loading, function(rec, key) {
+      this._dropRecord(key);
+    }, this);
     this.recs = {};
     this.recIds = [];
     this.snaps = {};
     this.loading = {};
+    this.filtered = {};
     this.loadComplete = false;
     this.initialKeysLeft = [];
     this.masterLoaded = false;
   },
 
   _valueUpdated: function(key, snap) {
+    var rec;
     this.snaps[key] = snap;
     if(util.has(this.loading, key)) {
-      // newly added record
-      var r = this.loading[key];
+      // record has finished loading and merging paths
+      rec = this.loading[key];
       delete this.loading[key];
-      if( this.obs.filters.test(snap.val(), key, snap.getPriority()) ) {
-        this.recs[key] = r;
-        this._putAfter(key, r.prev);
-        this._notify('child_added', key);
-      }
-      else {
-        util.log('RecordList: Filtered key %s', key);
-        r.unwatch();
-      }
-      if( this._checkLoadState(key) ) {
-        this._notifyValue();
-      }
+      this._processAdd(snap, rec);
     }
     else if(util.has(this.recs, key)) {
-      if( snap.val() !== null ) { // null records are in the process of being deleted
-        // a changed record
-        this._notify('child_changed', key);
+      rec = this.recs[key];
+      this._processChange(snap, rec);
+    }
+    else if(util.has(this.filtered, key)) {
+      if( snap.val() !== null && this.obs.filters.test(snap.val(), key, snap.getPriority()) ) {
+        // the record data has changed and it is no longer part of the filtered
+        // content, so treat it as a newly added record
+        rec = this.filtered[key];
+        delete this.filtered[key];
+        util.log('RecordList: Unfiltered key %s', key);
+        this._processAdd(snap, rec);
       }
     }
     else {
       util.log('RecordList: Orphan key %s ignored. Probably a concurrent edit.', key);
+    }
+  },
+
+  _processAdd: function(snap, rec) {
+    var key = snap.key();
+    if( this.obs.filters.test(snap.val(), key, snap.getPriority()) ) {
+      this.recs[key] = rec;
+      this._putAfter(key, rec.prev);
+      this._notify('child_added', key);
+    }
+    else {
+      util.log('RecordList: Filtered key %s', key);
+      this.filtered[key] = rec;
+    }
+    if( this._checkLoadState(key) ) {
+      this._notifyValue();
+    }
+  },
+
+  _processChange: function(snap, rec) {
+    // null records are valid at the record level and can trigger value events, but at
+    // the Set level, they mean the record is in the process of being deleted so we
+    // ignore the value event here
+    if( snap.val() !== null ) {
+      var key = snap.key();
+      if( this.obs.filters.test(snap.val(), key, snap.getPriority()) ) {
+        // a changed record that has not been filtered
+        this._notify('child_changed', key);
+      }
+      else {
+        // record changes caused it to become filtered, so treat it as a removed rec
+        // however, we'll continue to watch it for changes so it can be unfiltered later
+        delete this.recs[key];
+        this.filtered[key] = rec;
+        this._notify('child_removed', key, this.snaps[key]);
+      }
     }
   },
 
@@ -206,16 +244,23 @@ RecordList.prototype = {
   },
 
   _dropRecord: function(key) {
-    if(util.has(this.recs, key)) {
-      var snap = this.snaps[key];
+    var res = null;
+    if(this.recs[key]) {
+      res = this.snaps[key];
       this.recs[key].unwatch();
-      delete this.recs[key];
-      delete this.snaps[key];
-      delete this.loading[key];
-      util.remove(this.recIds, key);
-      return snap;
     }
-    return null;
+    if(this.loading[key]) {
+      this.loading[key].unwatch();
+    }
+    if(util.has(this.filtered, key)) {
+      this.filtered[key].unwatch();
+    }
+    delete this.loading[key];
+    delete this.snaps[key];
+    delete this.filtered[key];
+    delete this.recs[key];
+    util.remove(this.recIds, key);
+    return res;
   },
 
   /**
