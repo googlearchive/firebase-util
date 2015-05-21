@@ -9,13 +9,13 @@ This is a collection of power toys (mostly experimental) and utilities for use i
 ## The Tools
 
  - **Firebase.util.NormalizedCollection**
-   Sync to multiple Firebase paths and seamlessly merge the data into a single object. You can use most of your favorite
-   Firbebase methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
+   Sync to multiple Firebase database paths and seamlessly merge the data into a single object. You can use most of your favorite
+   Firebase database methods (on, once, set, etc) normally. The merged data is distributed back to the responsible paths
    during set/update/remove ops. [View Docs and API](src/NormalizedCollection/README.md)
 
  - **Firebase.util.Paginate**
-   Infinite scrolling and pagination with Firebase. [View Docs and API](src/Paginate/README.md)
-   
+   Infinite scrolling and pagination with Firebase data. [View Docs and API](src/Paginate/README.md)
+
 ## Setup
 
 ### In the browser
@@ -28,7 +28,7 @@ From the CDN: https://cdn.firebase.com/libs/firebase-util/x.x.x/firebase-util.mi
 <script>
    // off the global Firebase.util namespace
    var emailKey = Firebase.util.escapeEmail( anEmailAddress );
-   
+
    // or in your browserify packages
    //var fbutil = require('firebase-util');
 </script>
