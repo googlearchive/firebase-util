@@ -136,9 +136,16 @@ gulp.task('scaffold-test', function() {
   return copyTemplate('.spec.js', true);
 });
 
-gulp.task('e2e', ['bundle'], function() {
-  console.log('\n-----------------------\nPlease open e2etests.html in\nyour browser and enable LiveReload\n-----------------------\n');
-  plugins.livereload.listen();
+gulp.task('serve', function() {
+  gulp.src('.')
+    .pipe(plugins.webserver({
+      livereload: true,
+      directoryListing: true,
+      open: 'test/e2e/e2etest.html'
+    }));
+});
+
+gulp.task('e2e', ['bundle', 'serve'], function() {
   return gulp.watch(['./src/**/*.js', './test/e2e/**/*'], ['bundle']);
 });
 
