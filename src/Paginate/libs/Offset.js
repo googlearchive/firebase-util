@@ -170,9 +170,9 @@ Offset.prototype._monitorEmptyOffset = function() {
 
 Offset.prototype._listen = function() {
   this._unsubscribe();
-  if( this.curr > this.keys.length ) {
+  if( this.curr >= this.keys.length ) {
     this._grow(function(/*changed*/) {
-      if( this.keys.length > this.curr ) {
+      if( this.keys.length >= this.curr ) {
         this._subscribe();
       }
       else {
