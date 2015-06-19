@@ -13,7 +13,9 @@ data, including libs like AngularFire.
 <pre><code class="prettyprint lang-js linenums">// create a Firebase reference
 var fb = new Firebase('https://fbutil.firebaseio.com/paginate');
 
-// create an infinite scroll reference
+// create a read-only, infinite scroll reference.
+// We pass in a Firebase ref and a field that will be used in the orderBy*()
+// criteria (this accepts either a child field name, $key, $priority, or $value).
 var scrollRef = new Firebase.util.Scroll(fb, 'number');
 
 // append the next 25 items
