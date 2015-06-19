@@ -1,5 +1,13 @@
 'use strict';
 
+/**
+ * USEFUL COMMANDS:
+ *   gulp           bundle and run tests
+ *   gulp e2e       bundle, start a server, open e2e tests in browser, watch for changes, livereload
+ *   gulp bundle    lint src code, bundle content, and minify
+ *   gulp scaffold  create a new class and test unit for that class
+ */
+
 var gulp       = require('gulp');
 var plugins    = require('gulp-load-plugins')();
 var browserify = require('browserify');
@@ -145,7 +153,11 @@ gulp.task('serve', function() {
     }));
 });
 
-gulp.task('e2e', ['bundle', 'serve'], function() {
+gulp.task('e2e', function() {
+  return seq('bundle', 'serve', 'watch');
+});
+
+gulp.task('watch', function() {
   return gulp.watch(['./src/**/*.js', './test/e2e/**/*'], ['bundle']);
 });
 
