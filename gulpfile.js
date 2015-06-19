@@ -28,6 +28,19 @@ function getBundle(pkg) {
     .add('./src/expose.js');
 }
 
+function doMinify(libName) {
+  return getBundle(libName).bundle()
+    .pipe(source('./firebase-util' + (libName? '-' + libName : '') + '.min.js'))
+    .pipe(buffer())
+    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
+      pkg: require('./package.json')
+    }))
+    .pipe(plugins.uglify({preserveComments: 'some'}))
+    .pipe(plugins.size())
+    .pipe(gulp.dest('dist'))
+    .pipe(plugins.livereload());
+}
+
 function copyTemplate(ext, isSpec) {
   if( !argv.t || !argv.d || !argv.n ) {
     gutil.log(gutil.colors.red('Usage: gulp scaffold -t type -d directory -n name'));
@@ -88,45 +101,15 @@ gulp.task('minify', function() {
 });
 
 gulp.task('minify-paginate', function() {
-  return getBundle('paginate')
-    .bundle()
-    .pipe(source('./firebase-util-paginate.min.js'))
-    .pipe(buffer())
-    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
-      pkg: require('./package.json')
-    }))
-    .pipe(plugins.uglify({preserveComments: 'some'}))
-    .pipe(plugins.size())
-    .pipe(gulp.dest('dist'))
-    .pipe(plugins.livereload());
+  return doMinify('paginate');
 });
 
 gulp.task('minify-normalize', function() {
-  return getBundle('normalize')
-    .bundle()
-    .pipe(source('./firebase-util-normalize.min.js'))
-    .pipe(buffer())
-    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
-      pkg: require('./package.json')
-    }))
-    .pipe(plugins.uglify({preserveComments: 'some'}))
-    .pipe(plugins.size())
-    .pipe(gulp.dest('dist'))
-    .pipe(plugins.livereload());
+  return doMinify('normalize');
 });
 
 gulp.task('minify-all', function() {
-  return getBundle()
-    .bundle()
-    .pipe(source('./firebase-util.min.js'))
-    .pipe(buffer())
-    .pipe(plugins.header(fs.readFileSync('./gulp/header.tpl'), {
-      pkg: require('./package.json')
-    }))
-    .pipe(plugins.uglify({preserveComments: 'some'}))
-    .pipe(plugins.size())
-    .pipe(gulp.dest('dist'))
-    .pipe(plugins.livereload());
+  return doMinify();
 });
 
 gulp.task('lint', function () {
@@ -145,7 +128,7 @@ gulp.task('scaffold-test', function() {
 });
 
 gulp.task('serve', function() {
-  gulp.src('.')
+  return gulp.src('.')
     .pipe(plugins.webserver({
       livereload: true,
       directoryListing: true,
@@ -154,7 +137,7 @@ gulp.task('serve', function() {
 });
 
 gulp.task('e2e', function() {
-  return seq('bundle', 'serve', 'watch');
+  return seq('bundle', 'watch', 'serve');
 });
 
 gulp.task('watch', function() {
