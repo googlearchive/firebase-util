@@ -11,9 +11,10 @@ var DEFAULTS = {
 };
 
 exports.Scroll = function(baseRef, sortField, opts) {
-  if( !util.isFirebaseRef(baseRef) ) {
-    throw new Error('First argument to Firebase.util.Scroll must be a valid Firebase ref');
+  if( !util.isFirebaseRef(baseRef) || util.isQueryRef(baseRef) ) {
+    throw new Error('First argument to Firebase.util.Scroll must be a valid Firebase ref. It cannot be a Query (e.g. you have called orderByChild()).');
   }
+
   if( typeof sortField !== 'string' ) {
     throw new Error('Second argument to Firebase.util.Scroll must be a valid string');
   }
@@ -26,8 +27,8 @@ exports.Scroll = function(baseRef, sortField, opts) {
 };
 
 exports.Paginate = function(baseRef, sortField, opts) {
-  if( !util.isFirebaseRef(baseRef) ) {
-    throw new Error('First argument to Firebase.util.Paginate must be a valid Firebase ref');
+  if( !util.isFirebaseRef(baseRef) || util.isQueryRef(baseRef) ) {
+    throw new Error('First argument to Firebase.util.Paginate must be a valid Firebase ref. It cannot be a Query (e.g. you have called orderByChild()).');
   }
   if( typeof sortField !== 'string' ) {
     throw new Error('Second argument to Firebase.util.Paginate must be a valid string');
