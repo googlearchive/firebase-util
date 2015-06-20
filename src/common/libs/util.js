@@ -345,22 +345,34 @@ util.noop = function() {};
 
 var wrappingClasses = [];
 util.isFirebaseRef = function(x) {
+  // ES5 throws TypeError if getPrototypeOf() called on a non-object
+  if( !util.isObject(x) ) {
+    return false;
+  }
+
   // necessary because instanceof won't work on Firebase Query objects
   // so we can't simply do instanceof here
-  var isObject = util.isObject(x);
-  var proto = isObject? Object.getPrototypeOf(x) : false;
+  var proto = Object.getPrototypeOf(x);
   if( proto && proto.constructor === util.Firebase.prototype.constructor ) {
     return true;
   }
 
   //todo-hack: SDK 2.2.x no longer works with the above. This is a hack to make that work until fixed
-  if( isObject && typeof(x.ref) === 'function' && typeof(x.ref().transaction) === 'function' ) {
+  if( typeof(x.ref) === 'function' && typeof(x.ref().transaction) === 'function' ) {
     return true;
   }
 
-  return util.find(wrappingClasses, function(C) {
-    return isObject? x instanceof C : x === C;
+  return util.isFirebaseRefWrapper(x);
+};
+
+util.isFirebaseRefWrapper = function(x) {
+  return util.contains(wrappingClasses, function(C) {
+    return x instanceof C;
   });
+};
+
+util.isQueryRef = function(x) {
+  return util.isFirebaseRef(x) && typeof x.transaction !== 'function';
 };
 
 // Add a Class as a valid substitute for a Firebase reference, so that it will
