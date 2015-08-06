@@ -22,9 +22,9 @@
     "realtime",
     "utilities"
   ],
-  "main": "dist/firebase-util.min.js",
+  "main": "src/fbutil.js",
   "files": [
-    "dist/**",
+    "src/**",
     "LICENSE",
     "README.md",
     "package.json"
