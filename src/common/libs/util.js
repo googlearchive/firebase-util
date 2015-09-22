@@ -131,7 +131,7 @@ util.mapObject = function(list, iterator, scope) {
  * @param {Object} [scope] set `this` in the callback or undefined
  */
 util.find = function(vals, iterator, scope) {
-  if( util.isArray(vals) ) {
+  if( util.isArray(vals) || isArguments(vals) ) {
     for(var i = 0, len = vals.length; i < len; i++) {
       if( iterator.call(scope, vals[i], i, vals) === true ) { return vals[i]; }
     }
