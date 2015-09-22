@@ -13,7 +13,7 @@ var RecordSet     = require('./RecordSet');
  */
 function NormalizedCollection(path) { //jshint unused:vars
   assertPaths(arguments);
-  this.pathMgr = new PathManager(arguments);
+  this.pathMgr = new PathManager(util.toArray(arguments));
   this.map = new FieldMap(this.pathMgr);
   this.filters = new Filter();
   this.finalized = false;

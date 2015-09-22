@@ -26,6 +26,10 @@ util.isArray = function(v) {
   return (Array.isArray || isArray).call(null, v);
 };
 
+util.isArrayLike = function(v) {
+  return util.isArray(v) || isArguments(v);
+};
+
 /**
  * @param v value to test or if `key` is provided, the object containing method
  * @param {string} [key] if provided, v is an object and this is the method we want to find
@@ -75,7 +79,7 @@ util.bind = function(fn, scope) {
  */
 util.isEmpty = function(vals) {
   return vals === undef || vals === null ||
-    (util.isArray(vals) && vals.length === 0) ||
+    (util.isArrayLike(vals) && vals.length === 0) ||
     (util.isObject(vals) && !util.contains(vals, function(v) { return true; }));
 };
 
@@ -131,7 +135,7 @@ util.mapObject = function(list, iterator, scope) {
  * @param {Object} [scope] set `this` in the callback or undefined
  */
 util.find = function(vals, iterator, scope) {
-  if( util.isArray(vals) || isArguments(vals) ) {
+  if( util.isArrayLike(vals) ) {
     for(var i = 0, len = vals.length; i < len; i++) {
       if( iterator.call(scope, vals[i], i, vals) === true ) { return vals[i]; }
     }
@@ -148,7 +152,7 @@ util.find = function(vals, iterator, scope) {
 };
 
 util.filter = function(list, iterator, scope) {
-  var isArray = util.isArray(list);
+  var isArray = util.isArrayLike(list);
   var out = isArray? [] : {};
   util.each(list, function(v,k) {
     if( iterator.call(scope, v, k, list) ) {
@@ -191,7 +195,7 @@ util.contains = function(vals, iterator, scope) {
 };
 
 util.each = function(vals, cb, scope) {
-  if( util.isArray(vals) || isArguments(vals) ) {
+  if( util.isArrayLike(vals) ) {
     (vals.forEach || forEach).call(vals, cb, scope);
   }
   else if( util.isObject(vals) ) {
@@ -283,8 +287,8 @@ util.isEqual = function(a, b, objectsSameOrder) {
     return false;
   }
   else if( util.isObject(a) && util.isObject(b) ) {
-    var isA = util.isArray(a);
-    var isB = util.isArray(b);
+    var isA = util.isArrayLike(a);
+    var isB = util.isArrayLike(b);
     if( isA || isB ) {
       return isA && isB && a.length === b.length && !util.contains(a, function(v, i) {
         return !util.isEqual(v, b[i]);
@@ -429,7 +433,7 @@ util.inherits = function(Child, Parent) {
 
 util.deepCopy = function(data) {
   if( !util.isObject(data) ) { return data; }
-  var out = util.isArray(data)? [] : {};
+  var out = util.isArrayLike(data)? [] : {};
   util.each(data, function(v,k) {
     out[k] = util.deepCopy(v);
   });
@@ -438,7 +442,7 @@ util.deepCopy = function(data) {
 
 util.pick = function(obj, keys) {
   if( !util.isObject(obj) ) { return {}; }
-  var out = util.isArray(obj)? [] : {};
+  var out = util.isArrayLike(obj)? [] : {};
   util.each(keys, function(k) {
     out[k] = obj[k];
   });
