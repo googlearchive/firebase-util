@@ -29,7 +29,7 @@
     "changelog.txt"
   ],
   "dependencies": {
-    "firebase": "2.2.x"
+    "firebase": ">=2.2.x <3.0.0"
   },
   "devDependencies": {}
 }
