@@ -432,7 +432,7 @@ describe('Record', function() {
           expect(spy).not.toHaveBeenCalled();
         }
       });
-      expect(spy).toHaveBeenCalledWith();
+      expect(spy).toHaveBeenCalledWith(null);
     });
 
     it('triggers callback with correct context', function() {
@@ -450,7 +450,7 @@ describe('Record', function() {
       _.each(refs, function(ref) {
         try { ref.flush(); } catch(e) {}
       });
-      expect(spy).toHaveBeenCalledWith();
+      expect(spy).toHaveBeenCalledWith(null);
     });
 
     it('returns an error if any path returns an error', function() {

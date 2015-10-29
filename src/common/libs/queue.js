@@ -66,7 +66,7 @@ Queue.prototype = {
 
   handler: function(fn, context) {
     this._runOrStore(function() {
-      fn.apply(context, this.getErrors());
+      fn.apply(context, this.hasErrors()? this.getErrors() : [null]);
     });
     return this;
   },
