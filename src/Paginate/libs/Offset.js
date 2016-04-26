@@ -30,7 +30,7 @@ Offset.prototype.goTo = function(newOffset) {
 Offset.prototype.observe = function(callback, context) {
   this.listeners.push([callback, context]);
   var key = this.getKey();
-  var ref = offsetRef(this.ref, key);
+  var ref = offsetRef(this.ref, key, this.field);
   callback.call(context, key && key.val, key && key.key, ref);
 };
 
@@ -53,7 +53,7 @@ Offset.prototype._notify = function() {
   if( !util.isEqual(this.lastNotifyValue, key) ) {
     util.log('Offset._notify: key at offset %d is %s', this.curr, key && key.key);
     this.lastNotifyValue = key;
-    var ref = offsetRef(this.ref, key);
+    var ref = offsetRef(this.ref, key, this.field);
     util.each(this.listeners, function(parts) {
       parts[0].call(parts[1], key && key.val, key && key.key, ref);
     });
@@ -74,7 +74,7 @@ Offset.prototype._grow = function(callback) {
     var oldKey = self.getKey();
     var startAt = lastKey(self.keys);
     var limit = Math.min(self.curr + (startAt? 2 : 1) - len, self.max);
-    var ref = startAt !== null? self.ref.startAt(startAt.val, startAt.key) : self.ref;
+    var ref = startAt !== null? self.ref.startAt(startAt.val, self.field === '$key' ? undefined : startAt.key) : self.ref;
     ref.limitToFirst(limit).once('value', function(snap) {
       var skipFirst = startAt !== null;
       snap.forEach(function(ss) {
@@ -112,7 +112,7 @@ Offset.prototype._queryRef = function() {
   var ref = this.ref;
   if( start > 0 ) {
     var key = this.getKey(start);
-    ref = ref.startAt(key.val, key.key);
+    ref = ref.startAt(key.val, this.field === '$key' ? undefined : key.key);
   }
   return ref.limitToLast(Math.max(this.curr - start, 1));
 };
@@ -162,7 +162,7 @@ Offset.prototype._monitorEmptyOffset = function() {
   }
   if( this.keys.length ) {
     key = lastKey(this.keys);
-    ref = ref.startAt(key.val, key.key);
+    ref = ref.startAt(key.val, this.field === '$key' ? undefined : key.key);
   }
   util.log.debug('Offset._monitorEmptyOffset: No value exists at offset %d, currently %d keys at this path. Watching for a new value.', this.curr, this.keys.length);
   ref.limitToFirst(2).on('value', fn);
@@ -213,7 +213,7 @@ function extractKey(snap, field) {
   return {val: v, key: snap.key()};
 }
 
-function offsetRef(baseRef, startKey) {
+function offsetRef(baseRef, startKey, field) {
   if( startKey === false ) {
     return null;
   }
@@ -221,7 +221,7 @@ function offsetRef(baseRef, startKey) {
     return baseRef;
   }
   else {
-    return baseRef.startAt(startKey.val, startKey.key);
+    return baseRef.startAt(startKey.val, field === '$key' ? undefined : startKey.key);
   }
 }
 
