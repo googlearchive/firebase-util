@@ -12,6 +12,55 @@ var hp                  = require('./helpers');
 var _                   = require('lodash');
 
 describe('RecordSet', function() {
+
+  var RECS = (function() {
+    var fb = hp.mockRef();
+    return {
+      r1: {
+        data: {
+          s1: 'p1r1',
+          foo: 'p1r1foo',
+          s2: 'p2r1',
+          bar: 'p2bar',
+          p3key: 'r1',
+          link: 'r41',
+          nest: {p4val: 'p4r41'}
+        },
+        pri: 11
+      },
+      r2: {
+        data: {s1: 'p1r2', p3key: 'r2', link: 'r42', nest: {p4val: 'p4r42'}},
+        pri: 22
+      },
+      r3: {
+        data: {s2: 'p2r3', p3key: 'r3'},
+        pri: 33
+      },
+      r4: {
+        data: {s1: 'p1r4', foo: 'p1r4foo', p3key: 'r4'},
+        pri: 44
+      },
+      r5: {
+        data: {p3key: 'r5', link: 'r44'},
+        pri: 55
+      }
+    };
+  })();
+
+  var PATHS = {
+    p1: {id: 'path1', alias: 'p1', url: 'Mock1://path1'},
+    p2: {id: 'path2', alias: 'p2', url: 'Mock1://p2parent/path2'},
+    p3: {id: null,    alias: 'p3', url: 'Mock2://'},
+    p4: {id: 'path4', alias: 'p4', url: 'Mock1://path4', dep: 'p3.p4key'}
+  };
+
+  var FIELDS = [
+    'p1,s,s1', 'p1,f,foo', 'p1,f99',
+    'p2,s,s2', 'p2,n', 'p2,b,bar',
+    'p3,$key,p3key', 'p3,p4key,link',
+    'p4,$value,nest.p4val'
+  ];
+
   describe('<constructor>', function() {
     it('should inherit from AbstractRecord', function() {
       var recs = new RecordSet(makeFieldMap(makePathMgr()), new Filter());
@@ -350,51 +399,4 @@ describe('RecordSet', function() {
     return out;
   }
 
-  var RECS = (function() {
-    var fb = hp.mockRef();
-    return {
-      r1: {
-        data: {
-          s1: 'p1r1',
-          foo: 'p1r1foo',
-          s2: 'p2r1',
-          bar: 'p2bar',
-          p3key: 'r1',
-          link: 'r41',
-          nest: {p4val: 'p4r41'}
-        },
-        pri: 11
-      },
-      r2: {
-        data: {s1: 'p1r2', p3key: 'r2', link: 'r42', nest: {p4val: 'p4r42'}},
-        pri: 22
-      },
-      r3: {
-        data: {s2: 'p2r3', p3key: 'r3'},
-        pri: 33
-      },
-      r4: {
-        data: {s1: 'p1r4', foo: 'p1r4foo', p3key: 'r4'},
-        pri: 44
-      },
-      r5: {
-        data: {p3key: 'r5', link: 'r44'},
-        pri: 55
-      }
-    };
-  })();
-
-  var PATHS = {
-    p1: {id: 'path1', alias: 'p1', url: 'Mock1://path1'},
-    p2: {id: 'path2', alias: 'p2', url: 'Mock1://p2parent/path2'},
-    p3: {id: null,    alias: 'p3', url: 'Mock2://'},
-    p4: {id: 'path4', alias: 'p4', url: 'Mock1://path4', dep: 'p3.p4key'}
-  };
-
-  var FIELDS = [
-    'p1,s,s1', 'p1,f,foo', 'p1,f99',
-    'p2,s,s2', 'p2,n', 'p2,b,bar',
-    'p3,$key,p3key', 'p3,p4key,link',
-    'p4,$value,nest.p4val'
-  ];
 });

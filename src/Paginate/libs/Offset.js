@@ -149,6 +149,9 @@ Offset.prototype._doneSubscribing = function() {
 };
 
 Offset.prototype._monitorEmptyOffset = function() {
+  var self = this;
+  var ref = self.ref;
+  var key = null;
   function fn(snap) {
     var count = snap.numChildren();
     if( count > (key === null? 0 : 1) ) {
@@ -157,9 +160,6 @@ Offset.prototype._monitorEmptyOffset = function() {
       self._grow();
     }
   }
-  var self = this;
-  var ref = self.ref;
-  var key = null;
   if( this.keys.length ) {
     key = lastKey(this.keys);
     ref = ref.startAt(key.val, key.key);
