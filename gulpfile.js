@@ -13,7 +13,7 @@ var plugins    = require('gulp-load-plugins')();
 var browserify = require('browserify');
 var source     = require('vinyl-source-stream');
 var buffer     = require('vinyl-buffer');
-var karma      = require('karma-as-promised').server;
+var Server      = require('karma').Server;
 var fs         = require('fs');
 var argv       = require('yargs').argv;
 var gutil      = require('gulp-util');
@@ -82,17 +82,17 @@ gulp.task('build', function(){
     .pipe(plugins.livereload());
 });
 
-gulp.task('watch', function() {
-  return karma.start({
+gulp.task('watch', function(done) {
+  new Server({
     configFile: __dirname + '/karma.conf.js'
-  });
+  }, done).start();
 });
 
-gulp.task('test', function () {
-  return karma.start({
+gulp.task('test', function (done) {
+  new Server({
     configFile: __dirname+'/karma.conf.js',
     singleRun: true
-  });
+  }, done).start();
 });
 
 //todo include the debug maps as external files
