@@ -11,6 +11,21 @@ var hp                  = require('./helpers');
 var _                   = require('lodash');
 
 describe('Record', function() {
+
+  var PATHS = {
+    p1: {id: 'path1', alias: 'p1', url: 'Mock1://path1'},
+    p2: {id: 'path2', alias: 'p2', url: 'Mock1://p2parent/path2'},
+    p3: {id: null,    alias: 'p3', url: 'Mock2://'},
+    p4: {id: 'path4', alias: 'p4', url: 'Mock1://path4', dep: 'p3.$value'}
+  };
+
+  var FIELDS = {
+    p1: ['p1,f10', 'p1,f11,foo', 'p1,f99'],
+    p2: ['p2,f20', 'p2,f99,bar'],
+    p3: ['p3,$key,p3key', 'p3,$value,p3val'],
+    p4: ['p4,$value,nest.p4val']
+  };
+
   describe('#constructor', function() {
     it('should inherit AbstractRecord', function() {
       var rec = new Record(makeFieldMap(makePathMgr()));
@@ -649,20 +664,6 @@ describe('Record', function() {
     });
     return snaps;
   }
-
-  var PATHS = {
-    p1: {id: 'path1', alias: 'p1', url: 'Mock1://path1'},
-    p2: {id: 'path2', alias: 'p2', url: 'Mock1://p2parent/path2'},
-    p3: {id: null,    alias: 'p3', url: 'Mock2://'},
-    p4: {id: 'path4', alias: 'p4', url: 'Mock1://path4', dep: 'p3.$value'}
-  };
-
-  var FIELDS = {
-    p1: ['p1,f10', 'p1,f11,foo', 'p1,f99'],
-    p2: ['p2,f20', 'p2,f99,bar'],
-    p3: ['p3,$key,p3key', 'p3,$value,p3val'],
-    p4: ['p4,$value,nest.p4val']
-  };
 
   function defaultIdFn(pathName) {
     return pathName === 'p4'? '33' : 'record1';
