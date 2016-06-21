@@ -3,7 +3,7 @@
   "description": "A set of experimental power tools for Firebase.",
   "version": "0.0.0",
   "authors": [
-    "Firebase <support@firebase.com> (https://www.firebase.com/)"
+    "Firebase (https://firebase.google.com/)"
   ],
   "homepage": "https://github.com/firebase/firebase-util",
   "repository": {
