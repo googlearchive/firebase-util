@@ -47,7 +47,7 @@ var baseRef = new Firebase('https://fbutil.firebaseio.com/paginate');
 // create a read-only paginate ref, we pass in the baseRef and the field that
 // will be used in the orderByChild() criteria (this also accepts $key, $priority, and $value)
 // an optional third argument can be used to specify the number of items per page
-var pageRef = new Firebase.util.Paginate(fb, 'number', {pageSize: 10});
+var pageRef = new Firebase.util.Paginate(baseRef, 'number', {pageSize: 10});
 
 // listen for changes to the data as you would on any Firebase ref
 pageRef.on('child_added', function(snap) {
