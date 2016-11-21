@@ -10,7 +10,7 @@ var DEFAULTS = {
   windowSize: 250
 };
 
-exports.Scroll = function(baseRef, sortField, opts) {
+exports.Scroll = function(baseRef, sortField, opts, desc) {
   if( !util.isFirebaseRef(baseRef) || util.isQueryRef(baseRef) ) {
     throw new Error('First argument to Firebase.util.Scroll must be a valid Firebase ref. It cannot be a Query (e.g. you have called orderByChild()).');
   }
@@ -22,7 +22,7 @@ exports.Scroll = function(baseRef, sortField, opts) {
     throw new Error('Optional third argument to Firebase.util.Scroll must be an object of key/value pairs');
   }
   var ref = new ReadOnlyRef(baseRef);
-  ref.scroll = new Scroll(ref, sortField, calcOpts(opts, 'windowSize', 'Scroll'));
+  ref.scroll = new Scroll(ref, sortField, calcOpts(opts, 'windowSize', 'Scroll'), desc);
   return ref;
 };
 
