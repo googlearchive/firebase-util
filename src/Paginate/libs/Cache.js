@@ -2,7 +2,7 @@
 var util = require('../../common');
 var Offset = require('./Offset');
 
-function Cache(outRef, sortField, maxRecordsLoaded) {
+function Cache(outRef, sortField, maxRecordsLoaded, desc) {
   util.log.debug('Cache: caching %s using field=%s maxRecordsLoaded=%d', outRef.toString(), sortField, maxRecordsLoaded);
   this.offset = new Offset({field: sortField, max: maxRecordsLoaded, ref: outRef.ref()});
   this.outRef = outRef;
@@ -15,6 +15,7 @@ function Cache(outRef, sortField, maxRecordsLoaded) {
   this.endCount = -1;
   this.nextListeners = [];
   this.offset.observe(this._keyChange, this);
+  this.desc = desc;
 }
 
 Cache.prototype.moveTo = function(startOffset, numberOfRecords) {
@@ -87,11 +88,11 @@ Cache.prototype._unsubscribe = function() {
 Cache.prototype._refChange = function() {
   this._unsubscribe();
   if( this.inRef && this.count > -1 ) {
-    this.countRef = this.inRef.limitToFirst(this.count+1);
+    this.countRef = this.desc ? this.inRef.limitToLast(this.count+1) : this.inRef.limitToFirst(this.count+1);
     this.countRef.on('value', this._count, this);
     //todo we should queue all the events until the once('value') is completed
     //todo so that we can trigger removed before added
-    this.queryRef = this.inRef.limitToFirst(this.count);
+    this.queryRef = this.desc ? this.inRef.limitToLast(this.count) : this.inRef.limitToFirst(this.count);
     this.queryRef.on('child_added', this._add, this);
     this.queryRef.on('child_removed', this._remove, this);
     this.queryRef.on('child_moved', this._move, this);

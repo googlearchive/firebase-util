@@ -7,11 +7,11 @@ var Cache = require('./Cache');
  * @param {Object} [opts]
  * @constructor
  */
-function Scroll(readOnlyRef, field, opts) {
+function Scroll(readOnlyRef, field, opts, desc) {
   this.max = opts.windowSize;
   this.start = 0;
   this.end = 0;
-  this.cache = new Cache(readOnlyRef, field, opts.maxCacheSize);
+  this.cache = new Cache(readOnlyRef, field, opts.maxCacheSize, desc);
 }
 
 /**
