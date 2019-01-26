@@ -130,7 +130,7 @@ Paginate.prototype.onPageCount = function(callback, context) {
  * @param {Function} [callback]
  * @param {Object} [context]
  */
-Paginate.prototype.getCountByDowloadingAllKeys = function(callback, context) {
+Paginate.prototype.getCountByDownloadingAllKeys = function(callback, context) {
   var self = this;
   self.downloadingEverything = true;
   var url = self.ref.ref().toString();
